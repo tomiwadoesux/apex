@@ -1233,21 +1233,40 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  {/* Detailed vehicle text aligned to the right-top */}
-                  <div className="absolute top-2 right-4 lg:right-10 z-30 max-w-[220px] sm:max-w-xs text-right flex flex-col items-end p-4 rounded-2xl border border-white/10 bg-neutral-950/40 dark:bg-black/50 backdrop-blur-md shadow-lg pointer-events-none">
-                    <span className="text-[9px] uppercase font-bold tracking-[0.25em] text-white/70 dark:text-[#FDBA16]">
-                      {selectedVehicle.class}
-                    </span>
-                    <span className="mt-1 text-lg sm:text-xl font-bold font-josefin text-white">
-                      {selectedVehicle.rate}
-                    </span>
-                    <span className="mt-1 text-[11px] font-mono text-white/60">
-                      {selectedVehicle.specs}
-                    </span>
-                    <p className="mt-2 text-[10px] leading-relaxed font-light text-white/50 text-right font-josefin">
-                      {selectedVehicle.details}
-                    </p>
+                  {/* Left-side specifications block (Price & Specs) */}
+                  <div className="absolute -top-14 left-4 lg:left-12 z-30 text-left flex flex-col items-start gap-2.5 pointer-events-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+                    {/* Price/Rate */}
+                    <div className="flex items-center gap-2 text-white font-josefin">
+                      <span className="text-[#00209C] dark:text-[#3b82f6] flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5 sm:w-5 sm:h-5">
+                          <line x1="12" y1="1" x2="12" y2="23"></line>
+                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                      </span>
+                      <span className="text-base sm:text-lg font-bold tracking-tight">{selectedVehicle.rate}</span>
+                    </div>
+
+                    {/* Specs */}
+                    <div className="flex items-center gap-2 text-white/90 font-josefin">
+                      <span className="text-[#00209C] dark:text-[#3b82f6] flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5 sm:w-5 sm:h-5">
+                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L18 7" />
+                          <path d="M16 3h5v5" />
+                          <line x1="12" y1="12" x2="16" y2="8" />
+                          <circle cx="12" cy="12" r="1" />
+                        </svg>
+                      </span>
+                      <span className="text-xs sm:text-sm font-medium tracking-wide">{selectedVehicle.specs}</span>
+                    </div>
                   </div>
+
+                  {/* Right-side vehicle title block (h1 Car Name) */}
+                  <div className="absolute -top-16 right-4 lg:right-12 z-30 text-right pointer-events-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-josefin text-white uppercase tracking-tight">
+                      {selectedVehicle.name}
+                    </h1>
+                  </div>
+
 
                   {/* Right arrow */}
                   <button
