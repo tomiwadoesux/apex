@@ -902,7 +902,7 @@ export default function BookingForm() {
 
       {/* Floating step progress text, positioned constantly at the top */}
       {currentStep <= 6 && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-4 select-none pointer-events-none">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-4 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
             <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${sub} flex flex-wrap justify-center items-center`}>
               {displayedStepText.split("").map((char, index) => (
