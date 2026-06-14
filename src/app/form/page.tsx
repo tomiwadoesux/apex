@@ -375,7 +375,7 @@ export default function BookingForm() {
     ? "bg-white/45 border border-neutral-900/10 shadow-[0_25px_60px_rgba(0,0,0,0.06)] text-neutral-900 backdrop-blur-md"
     : "bg-neutral-950/20 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.6)] text-white backdrop-blur-md";
 
-  const [displayedStepText, setDisplayedStepText] = useState("Step 1 of 7");
+  const [displayedStepText, setDisplayedStepText] = useState("Step 1 of 7 · Contact");
   const [displayedSubLabel, setDisplayedSubLabel] = useState("Provide Your Contact Information");
 
   const getSubLabelText = (step: number) => {
@@ -383,7 +383,7 @@ export default function BookingForm() {
       case 0: return "Provide Your Contact Information";
       case 1: return selectedLocation?.name || "Lagos International Airport";
       case 2: return "Enter Booking Destination";
-      case 3: return "Choose a car or an attractive one.";
+      case 3: return carouselVehicleName || "Select Your Premium Vehicle";
       case 4: return "Choose Luxury Service Level";
       case 5: return "Schedule Date, Time & Passengers";
       case 6: return "Any Special Requests?";
@@ -393,7 +393,7 @@ export default function BookingForm() {
 
   useEffect(() => {
     if (currentStep <= 6) {
-      const newText = `Step ${currentStep + 1} of 7`;
+      const newText = `Step ${currentStep + 1} of 7 · ${STEPS[currentStep]}`;
       const newSubLabel = getSubLabelText(currentStep);
       
       if (displayedStepText === newText && displayedSubLabel === newSubLabel) return;
@@ -902,8 +902,8 @@ export default function BookingForm() {
 
       {/* Floating step progress text, positioned constantly at the top */}
       {currentStep <= 6 && (
-        <div className="fixed top-[22px] left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-1 select-none pointer-events-none">
-          <div className="h-4 flex items-center justify-center overflow-visible">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-4 select-none pointer-events-none">
+          <div className="h-5 flex items-center justify-center overflow-visible">
             <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${sub} flex flex-wrap justify-center items-center`}>
               {displayedStepText.split("").map((char, index) => (
                 <span 
@@ -917,7 +917,7 @@ export default function BookingForm() {
             </p>
           </div>
 
-          <h1 className={`max-w-3xl text-xs sm:text-sm font-medium tracking-wide ${heading} transition-all duration-300 min-h-[20px] flex flex-wrap justify-center items-center`}>
+          <h1 className={`max-w-3xl text-3xl font-light tracking-tight sm:text-4xl ${heading} transition-all duration-300 min-h-[50px] flex flex-wrap justify-center items-center`}>
             {displayedSubLabel.split(" ").map((word, wordIdx) => (
               <span key={wordIdx} className="inline-block whitespace-nowrap">
                 {word.split("").map((char, charIdx) => (
@@ -945,7 +945,7 @@ export default function BookingForm() {
             currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
           }`}>
             {/* Spacer to preserve form placement where h1 used to be */}
-            <div className="h-4" />
+            <div className="h-[50px] mt-2.5" />
 
             {/* Step 1: Contact Details */}
             {currentStep === 0 && (
