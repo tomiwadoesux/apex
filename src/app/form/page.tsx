@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Logo from "@/components/Logo";
+import Logo3D from "@/components/Logo3D";
 import Image from "next/image";
 import { gsap } from "gsap";
 
@@ -250,39 +250,13 @@ const validateEmail = (email: string) => {
   return regex.test(email.trim());
 };
 
-const ExtrudedLogo = ({ size, color, isLight }: { size: number; color: string; isLight: boolean }) => {
-  const layers = [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4];
-  
+// The real extruded 3D brand mark (WebGL via <Logo3D>). The `.logo-3d-wrapper`
+// class is kept so the contact fly-animation can find and position it; the
+// physical tumble is driven natively by Logo3D's `trigger` prop, not CSS.
+const ExtrudedLogo = ({ size, mode, trigger }: { size: number; mode: Mode; trigger: number }) => {
   return (
-    <div 
-      className="logo-3d-wrapper relative animate-none" 
-      style={{ 
-        width: `${(size * 139) / 152}px`, 
-        height: `${size}px`,
-        transformStyle: "preserve-3d",
-        backfaceVisibility: "visible",
-      }}
-    >
-      {layers.map((z, idx) => {
-        const isMiddle = idx !== 0 && idx !== layers.length - 1;
-        const layerColor = isMiddle 
-          ? (isLight ? "#001460" : "#b0800c")
-          : color;
-          
-        return (
-          <div 
-            key={idx} 
-            className="absolute inset-0"
-            style={{ 
-              transform: `translateZ(${z}px)`,
-              transformStyle: "preserve-3d",
-              backfaceVisibility: "visible",
-            }}
-          >
-            <Logo size={size} color={layerColor} />
-          </div>
-        );
-      })}
+    <div className="logo-3d-wrapper relative" style={{ width: `${size}px`, height: `${size}px` }}>
+      <Logo3D mode={mode} trigger={trigger} size={size} />
     </div>
   );
 };
@@ -656,8 +630,6 @@ export default function BookingForm() {
           const deltaX = headerRect.left - modalRect.left;
           const deltaY = headerRect.top - modalRect.top;
 
-          const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
-
           // Hide header logo
           gsap.set(headerLogoContainer, { opacity: 0 });
 
@@ -684,24 +656,8 @@ export default function BookingForm() {
             duration: 0.65,
             ease: "power2.out",
           });
-
-          if (modal3d) {
-            gsap.killTweensOf(modal3d);
-            // Tilt X to 12 degrees to show depth/thickness
-            gsap.to(modal3d, {
-              rotationX: 12,
-              duration: 0.65,
-              ease: "power2.out"
-            });
-            // Infinite 3D Y spin starting from its current rotationY
-            gsap.set(modal3d, { transformPerspective: 400 });
-            gsap.to(modal3d, {
-              rotationY: "+=360",
-              repeat: -1,
-              duration: 5,
-              ease: "none"
-            });
-          }
+          // The 3D tumble is driven natively by Logo3D's `trigger` prop (fired
+          // when contactOpen flips), so there's no CSS rotation to apply here.
         });
       }
     } else {
@@ -744,26 +700,7 @@ export default function BookingForm() {
         const deltaX = headerRect.left - modalRect.left;
         const deltaY = headerRect.top - modalRect.top;
 
-        const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
-
-        if (modal3d) {
-          gsap.killTweensOf(modal3d);
-          // Tilt back to flat (0)
-          gsap.to(modal3d, {
-            rotationX: 0,
-            duration: 0.6,
-            ease: "power2.inOut"
-          });
-          // Spin exactly 1 cycle (360 degrees) and stop smoothly
-          gsap.to(modal3d, {
-            rotationY: "+=360",
-            duration: 1.0,
-            ease: "power2.out",
-            transformPerspective: 200,
-            transformOrigin: "center"
-          });
-        }
-
+        // 3D tumble on close is handled by Logo3D's `trigger` (contactOpen → 0).
         gsap.killTweensOf(modalLogoContainer);
         gsap.to(modalLogoContainer, {
           x: deltaX,
@@ -881,7 +818,7 @@ export default function BookingForm() {
       <header className="flex items-center justify-between p-5 z-20">
         <div className={`flex items-center gap-2.5 ${heading}`}>
           <div ref={logoContainerRef}>
-            <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
+            <ExtrudedLogo size={28} mode={mode} trigger={contactOpen ? 1 : 0} />
           </div>
           <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
             Apex<span className="font-semibold opacity-85">Ride</span>
@@ -1626,8 +1563,8 @@ export default function BookingForm() {
             }`}
         >
           {/* Logo container inside the modal card */}
-          <div ref={logoTargetRef} className="w-[25.6px] h-[28px] mx-auto mb-5 relative opacity-0">
-            <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
+          <div ref={logoTargetRef} className="w-[28px] h-[28px] mx-auto mb-5 relative opacity-0">
+            <ExtrudedLogo size={28} mode={mode} trigger={contactOpen ? 1 : 0} />
           </div>
 
           <button
