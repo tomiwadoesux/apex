@@ -30,7 +30,7 @@ const COLOR: Record<Mode, string> = {
   dark: "#FDBA16",
 };
 
-const DURATION = 1.15; // contact tumble length, seconds
+const DEFAULT_DURATION = 1.15; // contact tumble length, seconds
 
 // zero 1st-derivative at both ends → no velocity jump in or out
 const smootherstep = (x: number) => {
@@ -42,10 +42,12 @@ function LogoModel({
   mode,
   trigger,
   reduced,
+  duration,
 }: {
   mode: Mode;
   trigger: number;
   reduced: boolean;
+  duration: number;
 }) {
   const gltf = useGLTF(LOGO_URL);
   // clone so our scale/material edits never corrupt the useGLTF cache on remount
@@ -77,7 +79,7 @@ function LogoModel({
     // edge-on it reads as a thin line. Override the Z scale to give the
     // extrusion real, chunky depth — a proper solid that shows its side walls
     // as it turns. TARGET_DEPTH is depth as a fraction of the (unit) height.
-    const TARGET_DEPTH = 0.34;
+    const TARGET_DEPTH = 0.52;
     scene.scale.z = TARGET_DEPTH / size.z;
 
     const collected: THREE.MeshStandardMaterial[] = [];
@@ -137,7 +139,7 @@ function LogoModel({
     }
 
     if (animStart.current !== null) {
-      const t = (state.clock.elapsedTime - animStart.current) / DURATION;
+      const t = (state.clock.elapsedTime - animStart.current) / duration;
       if (t >= 1) {
         animStart.current = null;
         g.rotation.set(0, 0, 0);
@@ -185,11 +187,14 @@ export default function Logo3D({
   mode,
   trigger,
   size = 34,
+  spinDuration = DEFAULT_DURATION,
 }: {
   mode: Mode;
   trigger: number;
   /** Rendered box in px — the glyph is framed to read ~28px tall, like <Logo size={28} />. */
   size?: number;
+  /** Length of the one-cycle tumble in seconds. Tune to match the fly travel. */
+  spinDuration?: number;
 }) {
   const reduced = useReducedMotion();
   return (
@@ -210,7 +215,7 @@ export default function Logo3D({
           <directionalLight position={[3, 2, 1.5]} intensity={0.85} />
           <directionalLight position={[-2.5, -1, 1]} intensity={0.28} />
           <Suspense fallback={null}>
-            <LogoModel mode={mode} trigger={trigger} reduced={reduced} />
+            <LogoModel mode={mode} trigger={trigger} reduced={reduced} duration={spinDuration} />
           </Suspense>
         </Canvas>
       </div>

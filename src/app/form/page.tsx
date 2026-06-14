@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Logo from "@/components/Logo";
 import Logo3D from "@/components/Logo3D";
 import Image from "next/image";
 import { gsap } from "gsap";
@@ -253,10 +254,10 @@ const validateEmail = (email: string) => {
 // The real extruded 3D brand mark (WebGL via <Logo3D>). The `.logo-3d-wrapper`
 // class is kept so the contact fly-animation can find and position it; the
 // physical tumble is driven natively by Logo3D's `trigger` prop, not CSS.
-const ExtrudedLogo = ({ size, mode, trigger }: { size: number; mode: Mode; trigger: number }) => {
+const ExtrudedLogo = ({ size, mode, trigger, spinDuration }: { size: number; mode: Mode; trigger: number; spinDuration?: number }) => {
   return (
     <div className="logo-3d-wrapper relative" style={{ width: `${size}px`, height: `${size}px` }}>
-      <Logo3D mode={mode} trigger={trigger} size={size} />
+      <Logo3D mode={mode} trigger={trigger} size={size} spinDuration={spinDuration} />
     </div>
   );
 };
@@ -369,7 +370,7 @@ export default function BookingForm() {
     if (currentStep <= 6) {
       const newText = `Step ${currentStep + 1} of 7 · ${STEPS[currentStep]}`;
       const newSubLabel = getSubLabelText(currentStep);
-      
+
       if (displayedStepText === newText && displayedSubLabel === newSubLabel) return;
 
       const targets = document.querySelectorAll(".step-char, .sub-step-char");
@@ -646,18 +647,20 @@ export default function BookingForm() {
             });
           }
 
-          // Smoothly animate modal logo to center-top of the modal card
+          // Smoothly animate modal logo to center-top of the modal card. The
+          // travel time matches Logo3D's spinDuration (0.9s) so the native 3D
+          // tumble plays right across the flight rather than over/undershooting.
           gsap.killTweensOf(modalLogoContainer);
           gsap.to(modalLogoContainer, {
             x: 0,
             y: 0,
             scale: 1.4,
             opacity: 1,
-            duration: 0.65,
+            duration: 0.9,
             ease: "power2.out",
           });
-          // The 3D tumble is driven natively by Logo3D's `trigger` prop (fired
-          // when contactOpen flips), so there's no CSS rotation to apply here.
+          // The 3D rotation is driven by Logo3D's `trigger`, not CSS — spinning a
+          // <canvas> with CSS rotateY would flatten it edge-on at 90°.
         });
       }
     } else {
@@ -700,14 +703,17 @@ export default function BookingForm() {
         const deltaX = headerRect.left - modalRect.left;
         const deltaY = headerRect.top - modalRect.top;
 
-        // 3D tumble on close is handled by Logo3D's `trigger` (contactOpen → 0).
+        // Fly back to the header while Logo3D's `trigger` (contactOpen → 0) runs
+        // exactly one tumble cycle. The travel time matches that spin (1.15s) and
+        // decelerates (power2.out) so the mark eases to a stop, front-facing,
+        // just as it lands in the header.
         gsap.killTweensOf(modalLogoContainer);
         gsap.to(modalLogoContainer, {
           x: deltaX,
           y: deltaY,
           scale: 1,
-          duration: 0.6,
-          ease: "power2.inOut",
+          duration: 1.15,
+          ease: "power2.out",
           onComplete: () => {
             // Restore header logo visibility only if the modal is still closed
             if (!overlayRef.current || overlayRef.current.style.display === "none") {
@@ -815,7 +821,7 @@ export default function BookingForm() {
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
       {/* 1. Header component */}
-      <header className="flex items-center justify-between p-5 z-20">
+      <header className="flex items-center justify-between px-12 py-5 z-20">
         <div className={`flex items-center gap-2.5 ${heading}`}>
           <div ref={logoContainerRef}>
             <ExtrudedLogo size={28} mode={mode} trigger={contactOpen ? 1 : 0} />
@@ -843,8 +849,8 @@ export default function BookingForm() {
           <div className="h-5 flex items-center justify-center overflow-visible">
             <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${sub} flex flex-wrap justify-center items-center`}>
               {displayedStepText.split("").map((char, index) => (
-                <span 
-                  key={index} 
+                <span
+                  key={index}
                   className="step-char inline-block whitespace-pre relative"
                   style={{ zIndex: 100 - index }}
                 >
@@ -878,9 +884,8 @@ export default function BookingForm() {
       <div className="flex-1 flex flex-col items-center justify-center px-4 pt-8 pb-44 z-10 select-none">
 
         {currentStep <= 6 && (
-          <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${
-            currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
-          }`}>
+          <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
+            }`}>
             {/* Spacer to preserve form placement where h1 used to be */}
             <div className="h-[50px] mt-2.5" />
 
@@ -890,7 +895,7 @@ export default function BookingForm() {
                 onSubmit={(e) => e.preventDefault()}
                 className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}
               >
-                
+
                 <div className="flex flex-col">
                   <label htmlFor="contactName" className={`text-xs font-semibold tracking-wide mb-2 font-josefin ${isLight ? "text-neutral-600" : "text-white/50"}`}>Full Name *</label>
                   <input
@@ -901,11 +906,10 @@ export default function BookingForm() {
                     placeholder="John Doe"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
-                      isLight 
-                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]" 
-                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
-                    }`}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                      ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+                      : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                      }`}
                   />
                 </div>
 
@@ -920,11 +924,10 @@ export default function BookingForm() {
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
                     onBlur={() => setPhoneBlurred(true)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
-                      isLight 
-                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]" 
-                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
-                    }`}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                      ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+                      : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                      }`}
                   />
                   {showPhoneError && (
                     <span className={`text-[10px] font-medium mt-2 ${isLight ? "text-red-600" : "text-red-400"}`}>
@@ -944,11 +947,10 @@ export default function BookingForm() {
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     onBlur={() => setEmailBlurred(true)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
-                      isLight
-                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
-                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
-                    }`}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                      ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+                      : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                      }`}
                   />
                   {showEmailError && (
                     <span className={`text-[10px] font-medium mt-2 ${isLight ? "text-red-600" : "text-red-400"}`}>
@@ -1065,11 +1067,10 @@ export default function BookingForm() {
                   {/* Left arrow */}
                   <button
                     onClick={() => spinCar(-1)}
-                    className={`pointer-events-auto absolute left-2 lg:left-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${
-                      isLight
-                        ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
-                        : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
-                    }`}
+                    className={`pointer-events-auto absolute left-2 lg:left-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight
+                      ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
+                      : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
+                      }`}
                     aria-label="Previous Vehicle"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1170,14 +1171,14 @@ export default function BookingForm() {
                   </div>
 
                   {/* Right-side vehicle specifications details block */}
-                  <div className="absolute -top-16 right-4 lg:right-12 z-30 text-right flex flex-col items-end gap-1.5 pointer-events-none">
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-josefin text-neutral-900 dark:text-white uppercase tracking-tight">
+                  <div className="fixed top-[100px] right-12 z-40 text-right flex flex-col items-end gap-1 pointer-events-none max-w-[200px] sm:max-w-xs transition-all duration-300">
+                    <h2 className={`text-xl sm:text-2xl font-black font-josefin uppercase tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
                       {selectedVehicle.name}
-                    </h1>
-                    <div className="text-base sm:text-lg font-bold font-josefin text-[#00209C] dark:text-[#3b82f6] tracking-tight">
+                    </h2>
+                    <div className={`text-sm font-bold font-josefin tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
                       {selectedVehicle.rate}
                     </div>
-                    <div className="text-xs sm:text-sm font-medium font-josefin text-neutral-600 dark:text-white/60 tracking-wide">
+                    <div className={`text-xs font-medium font-josefin tracking-wide ${isLight ? "text-neutral-600" : "text-white/60"}`}>
                       {selectedVehicle.specs}
                     </div>
                   </div>
@@ -1186,11 +1187,10 @@ export default function BookingForm() {
                   {/* Right arrow */}
                   <button
                     onClick={() => spinCar(1)}
-                    className={`pointer-events-auto absolute right-2 lg:right-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${
-                      isLight
-                        ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
-                        : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
-                    }`}
+                    className={`pointer-events-auto absolute right-2 lg:right-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight
+                      ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
+                      : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
+                      }`}
                     aria-label="Next Vehicle"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1211,26 +1211,26 @@ export default function BookingForm() {
                       ? "bg-[#00209C] border-[#00209C] text-white shadow-xl shadow-indigo-500/10 scale-[1.03]"
                       : "bg-neutral-900 border-[#FDBA16] text-white shadow-2xl scale-[1.03]"
                     : isLight
-                    ? "bg-white/45 border-neutral-900/10 text-neutral-800 hover:border-neutral-900/25 hover:scale-[1.01] backdrop-blur-md"
-                    : "bg-neutral-950/20 border-white/10 text-white/70 hover:border-white/30 hover:scale-[1.01] backdrop-blur-md";
+                      ? "bg-white/45 border-neutral-900/10 text-neutral-800 hover:border-neutral-900/25 hover:scale-[1.01] backdrop-blur-md"
+                      : "bg-neutral-950/20 border-white/10 text-white/70 hover:border-white/30 hover:scale-[1.01] backdrop-blur-md";
 
                   const badgeStyle = isSelected
                     ? "text-white/70"
                     : isLight
-                    ? "text-neutral-900/40"
-                    : "text-white/40";
+                      ? "text-neutral-900/40"
+                      : "text-white/40";
 
                   const nameStyle = isSelected
                     ? "text-white font-light"
                     : isLight
-                    ? "text-neutral-900 font-light"
-                    : "text-white font-light";
+                      ? "text-neutral-900 font-light"
+                      : "text-white font-light";
 
                   const descStyle = isSelected
                     ? "text-white/60 font-light"
                     : isLight
-                    ? "text-neutral-900/50 font-light"
-                    : "text-white/50 font-light";
+                      ? "text-neutral-900/50 font-light"
+                      : "text-white/50 font-light";
 
                   return (
                     <button
@@ -1285,15 +1285,14 @@ export default function BookingForm() {
                     <button
                       onClick={() => setPassengers((p) => Math.max(1, p - 1))}
                       disabled={passengers <= 1}
-                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${
-                        passengers <= 1
-                          ? isLight
-                            ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
-                            : "border-white/5 text-white/20 cursor-not-allowed"
-                          : isLight
+                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${passengers <= 1
+                        ? isLight
+                          ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
+                          : "border-white/5 text-white/20 cursor-not-allowed"
+                        : isLight
                           ? "border-neutral-900/25 text-neutral-900 hover:bg-neutral-900/5"
                           : "border-white/20 text-white hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       −
                     </button>
@@ -1303,15 +1302,14 @@ export default function BookingForm() {
                     <button
                       onClick={() => setPassengers((p) => Math.min(7, p + 1))}
                       disabled={passengers >= 7}
-                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${
-                        passengers >= 7
-                          ? isLight
-                            ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
-                            : "border-white/5 text-white/20 cursor-not-allowed"
-                          : isLight
+                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${passengers >= 7
+                        ? isLight
+                          ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
+                          : "border-white/5 text-white/20 cursor-not-allowed"
+                        : isLight
                           ? "border-neutral-900/25 text-neutral-900 hover:bg-neutral-900/5"
                           : "border-white/20 text-white hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       +
                     </button>
@@ -1326,7 +1324,7 @@ export default function BookingForm() {
 
                 {/* Booking Summary Recap Card */}
                 <div className={`p-8 rounded-[2.5rem] border ${cardBgStyle} text-left`}>
-                  <div 
+                  <div
                     className="text-xs font-bold uppercase tracking-widest mb-3.5"
                     style={{ color: isLight ? "#00209C" : "#FDBA16" }}
                   >
@@ -1377,11 +1375,10 @@ export default function BookingForm() {
               {currentStep > 0 && (
                 <button
                   onClick={prevStep}
-                  className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center ${
-                    isLight
-                      ? "border-neutral-900/25 hover:bg-neutral-900/[0.04] text-neutral-900/70"
-                      : "border-white/20 hover:bg-white/[0.04] text-white/70"
-                  }`}
+                  className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center ${isLight
+                    ? "border-neutral-900/25 hover:bg-neutral-900/[0.04] text-neutral-900/70"
+                    : "border-white/20 hover:bg-white/[0.04] text-white/70"
+                    }`}
                 >
                   Back
                 </button>
@@ -1390,13 +1387,12 @@ export default function BookingForm() {
               <button
                 onClick={nextStep}
                 disabled={!isStepValid()}
-                className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 flex items-center justify-center ${
-                  !isStepValid()
-                    ? "opacity-35 cursor-not-allowed border-neutral-500/20 bg-neutral-900/10 text-neutral-400"
-                    : isLight
+                className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 flex items-center justify-center ${!isStepValid()
+                  ? "opacity-35 cursor-not-allowed border-neutral-500/20 bg-neutral-900/10 text-neutral-400"
+                  : isLight
                     ? "border-[#00209C] bg-[#00209C] text-white hover:scale-[1.02] active:scale-[0.98]"
                     : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 hover:scale-[1.02] active:scale-[0.98]"
-                }`}
+                  }`}
                 style={{ minWidth: "120px" }}
               >
                 {currentStep === 6 ? "Submit Request" : "Next"}
@@ -1506,8 +1502,8 @@ export default function BookingForm() {
         </div>
       </div>
 
-      {/* 4. Headlights theme toggle (bottom right) */}
-      <div className="pointer-events-auto fixed bottom-5 right-6 z-20 select-none">
+      {/* 4. Headlights theme toggle (bottom left) */}
+      <div className="pointer-events-auto fixed bottom-5 left-12 z-20 select-none">
         <div className={`relative flex rounded-full border p-1 shadow-lg backdrop-blur-md transition-all duration-300 ${isLight
           ? "border-neutral-900/15 bg-transparent shadow-neutral-900/5"
           : "border-white/10 bg-transparent shadow-black/40"
@@ -1564,7 +1560,7 @@ export default function BookingForm() {
         >
           {/* Logo container inside the modal card */}
           <div ref={logoTargetRef} className="w-[28px] h-[28px] mx-auto mb-5 relative opacity-0">
-            <ExtrudedLogo size={28} mode={mode} trigger={contactOpen ? 1 : 0} />
+            <ExtrudedLogo size={28} mode={mode} trigger={contactOpen ? 1 : 0} spinDuration={contactOpen ? 0.9 : 1.15} />
           </div>
 
           <button
