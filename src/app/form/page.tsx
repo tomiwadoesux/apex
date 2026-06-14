@@ -1,0 +1,1693 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Logo from "@/components/Logo";
+import Image from "next/image";
+import { gsap } from "gsap";
+
+type Mode = "light" | "dark";
+
+interface LocationItem {
+  id: string;
+  name: string;
+  subtitle: string;
+  code: string;
+  desc: string;
+  coordinates: string;
+}
+
+const LOCATIONS: LocationItem[] = [
+  {
+    id: "lagos",
+    name: "Lagos International Airport",
+    subtitle: "Murtala Muhammed Airport (LOS) · Ikeja",
+    code: "LOS",
+    desc: "Primary aviation gateway serving Lagos. Convenient access to major business districts and hotels.",
+    coordinates: "6.5770° N, 3.3211° E",
+  },
+  {
+    id: "abuja",
+    name: "Abuja International Airport",
+    subtitle: "Nnamdi Azikiwe Airport (ABV) · Airport Rd",
+    code: "ABV",
+    desc: "Federal Capital Territory gateway. Features modern terminal facilities and direct links to Maitama.",
+    coordinates: "9.0068° N, 7.2631° E",
+  },
+  {
+    id: "lekki",
+    name: "Lekki Luxury Haven Hub",
+    subtitle: "Admiralty Way Gateway · Lekki Phase 1",
+    code: "LEK",
+    desc: "Coastal luxury terminal catering to corporate executives, high-end shoppers, and Lekki residents.",
+    coordinates: "6.4478° N, 3.4735° E",
+  },
+  {
+    id: "vi",
+    name: "Victoria Island Business Hub",
+    subtitle: "Adeola Odeku Center · Victoria Island",
+    code: "VIC",
+    desc: "Financial heart of Lagos. Swift chauffeur connections to headquarter complexes and premium hotels.",
+    coordinates: "6.4281° N, 3.4219° E",
+  },
+];
+
+interface VehicleAngles {
+  front: string;
+  side: string;
+  rear: string;
+}
+
+interface VehicleItem {
+  name: string;
+  class: string;
+  rate: string;
+  specs: string;
+  details: string;
+  // Image filenames in /public/images, by theme then camera angle.
+  // `light` = darker car (reads against the light backdrop); `dark` = lighter car.
+  img: { light: VehicleAngles; dark: VehicleAngles };
+}
+
+const VEHICLES: VehicleItem[] = [
+  {
+    name: "Rolls-Royce Phantom",
+    class: "Ultra Luxury",
+    rate: "$650 / hr",
+    specs: "V12 · Chauffeured",
+    details: "Extended wheelbase, bespoke leather interior, starlight headliner, and active roll stabilization for maximum passenger comfort.",
+    img: {
+      light: {
+        front: "rollsroyce phantom Front black-silver.webp",
+        side: "rollsroyce phantom Side black-silver.webp",
+        rear: "rollsroyce phantom Rear black-silver.webp",
+      },
+      dark: {
+        front: "rollsroyce phantom Front silver-black.webp",
+        side: "rollsroyce phantom Side white-black.webp",
+        rear: "rollsroyce phantom Rear black-silver 2.webp",
+      },
+    },
+  },
+  {
+    name: "Lexus LX 600",
+    class: "Luxury SUV",
+    rate: "$240 / hr",
+    specs: "V6 Twin-Turbo · AWD",
+    details: "Flagship luxury SUV featuring active height control, premium Mark Levinson surround sound system, and executive second-row seating.",
+    img: {
+      light: {
+        front: "lexus lx Front black.webp",
+        side: "lexus lx Side black.webp",
+        rear: "lexus lx Rear black.webp",
+      },
+      dark: {
+        front: "lexus lx Front white.webp",
+        side: "lexus lx Side white.webp",
+        rear: "lexus lx Rear white.webp",
+      },
+    },
+  },
+  {
+    name: "Toyota Corolla",
+    class: "Executive Sedan",
+    rate: "$90 / hr",
+    specs: "Hybrid · Efficient",
+    details: "Modern executive sedan offering a smooth hybrid powertrain, spacious cabin, advanced safety systems, and dual-zone climate control.",
+    img: {
+      light: {
+        front: "toyota corolla Front black.webp",
+        side: "toyota corolla Side black.webp",
+        rear: "toyota corolla Rear black.webp",
+      },
+      dark: {
+        front: "toyota corolla Front white.webp",
+        side: "toyota corolla Side white.webp",
+        rear: "toyota corolla Rear silver.webp",
+      },
+    },
+  },
+  {
+    name: "Toyota Hiace",
+    class: "Group Van",
+    rate: "$140 / hr",
+    specs: "14 Seats · Spacious",
+    details: "Premium high-occupancy executive van with custom plush leather seating, rear air conditioning, and generous luggage space.",
+    img: {
+      light: {
+        front: "toyota hiace Front black.webp",
+        side: "toyota hiace Side black.webp",
+        rear: "toyota hiace Rear black.webp",
+      },
+      dark: {
+        front: "toyota hiace Front white.webp",
+        side: "toyota hiace Side white.webp",
+        rear: "toyota hiace Rear white.webp",
+      },
+    },
+  },
+];
+
+interface ServiceItem {
+  id: string;
+  name: string;
+  desc: string;
+}
+
+const SERVICES: ServiceItem[] = [
+  { id: "hourly", name: "Hourly Charter", desc: "Chauffeur-driven luxury billed by the hour (minimum 3 hours)" },
+  { id: "airport", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals" },
+  { id: "point", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates" },
+];
+
+// Contact channels shown in the "Contact Us" overlay.
+// Editable placeholders — swap the value/href for the real handles when available.
+const CONTACTS = [
+  { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
+  { label: "WhatsApp", value: "+234 800 000 0000", href: "https://wa.me/2348000000000" },
+  { label: "X (Twitter)", value: "@apexride", href: "https://x.com/apexride" },
+  { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
+];
+
+// --- Simple Icon Pack ---
+function MailIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
+function HeadlampOnIcon() {
+  const BODY = "M31.875 1.875C37.7083 2.29167 49.375 7.5 49.375 19.375C49.375 31.25 37.7083 36.4583 31.875 36.875C27.5 36.875 25.625 34.75 25.625 26.25L25.625 12.5C25.625 4 27.5 1.875 31.875 1.875Z";
+  const BEAMS = "M17.5 8.125L1.875 8.125M17.5 15.625L1.875 15.625M17.5 23.125L1.875 23.125M17.5 30.625L1.875 30.625";
+  return (
+    <svg width="22" height="16" viewBox="0 0 52 39" fill="none" stroke="currentColor" strokeWidth="3.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={`${BEAMS} ${BODY}`} />
+    </svg>
+  );
+}
+
+function HeadlampOffIcon() {
+  const BODY = "M31.875 1.875C37.7083 2.29167 49.375 7.5 49.375 19.375C49.375 31.25 37.7083 36.4583 31.875 36.875C27.5 36.875 25.625 34.75 25.625 26.25L25.625 12.5C25.625 4 27.5 1.875 31.875 1.875Z";
+  return (
+    <svg width="22" height="16" viewBox="0 0 52 39" fill="none" stroke="currentColor" strokeWidth="3.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path transform="translate(-11.5 0)" d={BODY} />
+    </svg>
+  );
+}
+
+const BG_GRADIENT: Record<Mode, string> = {
+  light: "radial-gradient(120% 120% at 50% 50%, #e2e8f0 0%, #cbd5e1 60%, #94a3b8 100%)",
+  dark: "radial-gradient(120% 120% at 50% 50%, #1c1c1c 0%, #0a0a0a 60%, #020202 100%)",
+};
+
+// Fades the outer left/right edges of the flanking car images so they melt away.
+const EDGE_FADE = "linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%)";
+
+// STEPS strictly matching user requirements:
+// 1. Contact (Name, Phone, Email)
+// 2. Pickup Location (3D carousel of black squares)
+// 3. Destination (Destination input)
+// 4. Car Type (Vehicle select)
+// 5. Service Type (Service select)
+// 6. Schedule (Pickup Date, Time, Passengers)
+// 7. Special Requests
+const STEPS = [
+  "Contact",
+  "Pickup Location",
+  "Destination",
+  "Car Type",
+  "Service",
+  "Schedule",
+  "Requests"
+];
+
+const validateNigerianPhone = (phone: string) => {
+  const cleaned = phone.replace(/[^\d+]/g, "");
+  const regex = /^(?:\+234|234|0)[789]\d{9}$/;
+  return regex.test(cleaned);
+};
+
+const validateEmail = (email: string) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email.trim());
+};
+
+const ExtrudedLogo = ({ size, color, isLight }: { size: number; color: string; isLight: boolean }) => {
+  const layers = [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4];
+  
+  return (
+    <div 
+      className="logo-3d-wrapper relative animate-none" 
+      style={{ 
+        width: `${(size * 139) / 152}px`, 
+        height: `${size}px`,
+        transformStyle: "preserve-3d",
+        backfaceVisibility: "visible",
+      }}
+    >
+      {layers.map((z, idx) => {
+        const isMiddle = idx !== 0 && idx !== layers.length - 1;
+        const layerColor = isMiddle 
+          ? (isLight ? "#001460" : "#b0800c")
+          : color;
+          
+        return (
+          <div 
+            key={idx} 
+            className="absolute inset-0"
+            style={{ 
+              transform: `translateZ(${z}px)`,
+              transformStyle: "preserve-3d",
+              backfaceVisibility: "visible",
+            }}
+          >
+            <Logo size={size} color={layerColor} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default function BookingForm() {
+  const [mode, setMode] = useState<Mode>("light");
+  const [currentStep, setCurrentStep] = useState(0); // 0 to 6
+  const [activeIndex, setActiveIndex] = useState(0); // Location carousel active index
+  const [carIndex, setCarIndex] = useState(0); // Car-type carousel active index
+  const [carouselVehicleName, setCarouselVehicleName] = useState(VEHICLES[0].name);
+  const prevVehicle = VEHICLES[(carIndex - 1 + VEHICLES.length) % VEHICLES.length];
+  const nextVehicle = VEHICLES[(carIndex + 1) % VEHICLES.length];
+  const farNextVehicle = VEHICLES[(carIndex + 2) % VEHICLES.length];
+  const incomingNextVehicle = VEHICLES[(carIndex + 3) % VEHICLES.length];
+  const [leftVehicle, setLeftVehicle] = useState(nextVehicle);
+  const [farLeftVehicle, setFarLeftVehicle] = useState(farNextVehicle);
+  const [incomingVehicle, setIncomingVehicle] = useState(incomingNextVehicle);
+
+  useEffect(() => {
+    setLeftVehicle(nextVehicle);
+    setFarLeftVehicle(farNextVehicle);
+    setIncomingVehicle(incomingNextVehicle);
+  }, [carIndex, nextVehicle, farNextVehicle, incomingNextVehicle]);
+
+  const leftCarRef = useRef<HTMLDivElement>(null);
+  const centerCarRef = useRef<HTMLDivElement>(null);
+  const rightCarRef = useRef<HTMLDivElement>(null);
+  const farLeftCarRef = useRef<HTMLDivElement>(null);
+  const incomingCarRef = useRef<HTMLDivElement>(null);
+  const carAnimRef = useRef(false);
+
+  // Contact details
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [phoneBlurred, setPhoneBlurred] = useState(false);
+  const [emailBlurred, setEmailBlurred] = useState(false);
+
+  const showPhoneError = phoneBlurred && contactPhone.trim() !== "" && !validateNigerianPhone(contactPhone);
+
+  const emailAtIndex = contactEmail.indexOf('@');
+  const emailHasAt = emailAtIndex !== -1;
+  const emailHasDotAfterAt = emailHasAt && contactEmail.slice(emailAtIndex).includes('.');
+  const showEmailError = (emailHasAt && !emailHasDotAfterAt) || (emailBlurred && contactEmail.trim() !== "" && !validateEmail(contactEmail));
+
+  // Booking fields
+  const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
+  const [destination, setDestination] = useState("");
+  const [selectedVehicle, setSelectedVehicle] = useState(VEHICLES[0]);
+  const [selectedService, setSelectedService] = useState(SERVICES[0]);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [passengers, setPassengers] = useState(1);
+  const [specialRequests, setSpecialRequests] = useState("");
+
+  const [bookingId, setBookingId] = useState("");
+
+  const [contactOpen, setContactOpen] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const blurProxyRef = useRef({ v: 0 });
+  const didMountRef = useRef(false);
+  const modeRef = useRef<Mode>(mode);
+  modeRef.current = mode;
+
+  // Logo 3D floating animation refs
+  const logoContainerRef = useRef<HTMLDivElement>(null);
+  const logoTargetRef = useRef<HTMLDivElement>(null);
+
+  const isLight = mode === "light";
+
+  const cardBgStyle = isLight
+    ? "bg-white/45 border-[#00209C]/20 backdrop-blur-md text-neutral-900"
+    : "bg-neutral-950/25 border-[#FDBA16]/20 backdrop-blur-md text-white";
+
+  // Shared input styling — matches the Contact step (borderless, bottom-border, accent on focus)
+  const labelStyle = isLight
+    ? "block text-xs font-semibold tracking-wide mb-2 font-josefin text-neutral-600"
+    : "block text-xs font-semibold tracking-wide mb-2 font-josefin text-white/50";
+
+  const inputStyle = isLight
+    ? "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+    : "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
+
+  const textareaStyle = isLight
+    ? "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+    : "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
+
+  const carouselCardStyle = isLight
+    ? "bg-white/45 border border-neutral-900/10 shadow-[0_25px_60px_rgba(0,0,0,0.06)] text-neutral-900 backdrop-blur-md"
+    : "bg-neutral-950/20 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.6)] text-white backdrop-blur-md";
+
+  const [displayedStepText, setDisplayedStepText] = useState("Step 1 of 7 · Contact");
+  const [displayedSubLabel, setDisplayedSubLabel] = useState("Provide Your Contact Information");
+
+  const getSubLabelText = (step: number) => {
+    switch (step) {
+      case 0: return "Provide Your Contact Information";
+      case 1: return selectedLocation?.name || "Lagos International Airport";
+      case 2: return "Enter Booking Destination";
+      case 3: return carouselVehicleName || "Select Your Premium Vehicle";
+      case 4: return "Choose Luxury Service Level";
+      case 5: return "Schedule Date, Time & Passengers";
+      case 6: return "Any Special Requests?";
+      default: return "";
+    }
+  };
+
+  useEffect(() => {
+    if (currentStep <= 6) {
+      const newText = `Step ${currentStep + 1} of 7 · ${STEPS[currentStep]}`;
+      const newSubLabel = getSubLabelText(currentStep);
+      
+      if (displayedStepText === newText && displayedSubLabel === newSubLabel) return;
+
+      const targets = document.querySelectorAll(".step-char, .sub-step-char");
+      if (targets.length > 0) {
+        gsap.to(targets, {
+          opacity: 0,
+          x: 16,
+          filter: "blur(6px)",
+          webkitFilter: "blur(6px)",
+          duration: 0.15,
+          stagger: 0,
+          ease: "power2.in",
+          onComplete: () => {
+            setDisplayedStepText(newText);
+            setDisplayedSubLabel(newSubLabel);
+          }
+        });
+      } else {
+        setDisplayedStepText(newText);
+        setDisplayedSubLabel(newSubLabel);
+      }
+    }
+  }, [currentStep, selectedLocation?.name, carouselVehicleName]);
+
+  useEffect(() => {
+    const topTargets = document.querySelectorAll(".step-char");
+    const bottomTargets = document.querySelectorAll(".sub-step-char");
+
+    if (topTargets.length > 0) {
+      gsap.set(topTargets, {
+        opacity: 0,
+        x: -16,
+        filter: "blur(6px)",
+        webkitFilter: "blur(6px)"
+      });
+      gsap.to(topTargets, {
+        opacity: 1,
+        x: 0,
+        filter: "blur(0px)",
+        webkitFilter: "blur(0px)",
+        duration: 0.38,
+        stagger: 0.014,
+        ease: "power2.out"
+      });
+    }
+
+    if (bottomTargets.length > 0) {
+      gsap.set(bottomTargets, {
+        opacity: 0,
+        x: 16,
+        filter: "blur(6px)",
+        webkitFilter: "blur(6px)"
+      });
+      gsap.to(bottomTargets, {
+        opacity: 1,
+        x: 0,
+        filter: "blur(0px)",
+        webkitFilter: "blur(0px)",
+        duration: 0.25,
+        stagger: {
+          each: 0.008,
+          from: "end"
+        },
+        ease: "power2.out"
+      });
+    }
+  }, [displayedStepText, displayedSubLabel]);
+
+  // Sync selected location state to active carousel card
+  useEffect(() => {
+    if (currentStep === 1) {
+      setSelectedLocation(LOCATIONS[activeIndex]);
+    }
+  }, [activeIndex, currentStep]);
+
+  useEffect(() => {
+    if (currentStep === 3) {
+      setSelectedVehicle(VEHICLES[carIndex]);
+      setCarouselVehicleName(VEHICLES[carIndex].name);
+    }
+    if (centerCarRef.current && leftCarRef.current && farLeftCarRef.current && incomingCarRef.current) {
+      gsap.set(centerCarRef.current, {
+        transform: "translateX(0%) scale(1) scaleX(-1)",
+        opacity: 1,
+        filter: "blur(0px)"
+      });
+      gsap.set(leftCarRef.current, {
+        transform: "translateX(-70%) scale(0.24) scaleX(-1)",
+        opacity: 0.9,
+        filter: "blur(12px)"
+      });
+      gsap.set(farLeftCarRef.current, {
+        transform: "translateX(-92%) scale(0.08) scaleX(-1)",
+        opacity: 0.75,
+        filter: "blur(28px)"
+      });
+      gsap.set(incomingCarRef.current, {
+        transform: "translateX(-102%) scale(0.02) scaleX(-1)",
+        opacity: 0,
+        filter: "blur(28px)"
+      });
+    }
+  }, [carIndex, currentStep]);
+
+  // Transition between cars: Left car scales up and slides to center; center car scales up further and exits to the right.
+  const spinCar = (dir: number) => {
+    const C = centerCarRef.current;
+    const L = leftCarRef.current;
+    const FL = farLeftCarRef.current;
+    const IN = incomingCarRef.current;
+    if (!C || !L || !FL || !IN || carAnimRef.current) return;
+    carAnimRef.current = true;
+    const target = (carIndex + dir + VEHICLES.length) % VEHICLES.length;
+
+    // Update the sub-label proxy immediately so it animates in sync with the car slide
+    setCarouselVehicleName(VEHICLES[target].name);
+
+    // If dir is -1 (previous), we instantly update leftVehicle, farLeftVehicle and incomingVehicle
+    // so they show the correct incoming cars.
+    if (dir === -1) {
+      setLeftVehicle(VEHICLES[target]);
+      setFarLeftVehicle(VEHICLES[(target + 1) % VEHICLES.length]);
+      setIncomingVehicle(VEHICLES[(target + 2) % VEHICLES.length]);
+    }
+
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setCarIndex(target);
+      setLeftVehicle(VEHICLES[(target + 1) % VEHICLES.length]);
+      setFarLeftVehicle(VEHICLES[(target + 2) % VEHICLES.length]);
+      setIncomingVehicle(VEHICLES[(target + 3) % VEHICLES.length]);
+      carAnimRef.current = false;
+      return;
+    }
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        // Swap state
+        setCarIndex(target);
+        carAnimRef.current = false;
+      }
+    });
+
+    // Animate active car out to the right (sliding right, scaling up, no opacity fade, getting blurry)
+    tl.to(C, {
+      transform: "translateX(180%) scale(1.5) scaleX(-1)",
+      opacity: 1,
+      filter: "blur(12px)",
+      duration: 0.55,
+      ease: "power2.inOut"
+    }, 0);
+
+    // Animate left car into the center (scaling up, losing blur/opacity)
+    tl.to(L, {
+      transform: "translateX(0%) scale(1) scaleX(-1)",
+      opacity: 1,
+      filter: "blur(0px)",
+      duration: 0.55,
+      ease: "power2.inOut"
+    }, 0);
+
+    // Animate far-left car into the left background position (scaling up, losing some blur, opacity stays at 0.9)
+    tl.to(FL, {
+      transform: "translateX(-70%) scale(0.24) scaleX(-1)",
+      opacity: 0.9,
+      filter: "blur(12px)",
+      duration: 0.55,
+      ease: "power2.inOut"
+    }, 0);
+
+    // Animate incoming car into the far-left position (scaling up, fading in, losing some blur)
+    tl.to(IN, {
+      transform: "translateX(-92%) scale(0.08) scaleX(-1)",
+      opacity: 0.75,
+      filter: "blur(28px)",
+      duration: 0.55,
+      ease: "power2.inOut"
+    }, 0);
+  };
+
+  // Handle stored theme setting
+
+  // Handle stored theme setting
+  useEffect(() => {
+    const stored = localStorage.getItem("apex-form-theme");
+    if (stored === "light" || stored === "dark") setMode(stored);
+    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setMode("dark");
+  }, []);
+
+
+
+  // Animate the contact overlay: the page blur builds up, then the card reveals, with smooth logo flying transition
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    const card = cardRef.current;
+    if (!overlay || !card) return;
+
+    const rows = Array.from(overlay.querySelectorAll(".contact-row"));
+    const proxy = blurProxyRef.current;
+    const firstRun = !didMountRef.current;
+    didMountRef.current = true;
+
+    const isDark = modeRef.current === "dark";
+    const scrim = (v: number) =>
+      isDark ? `rgba(2,2,2,${v * 0.55})` : `rgba(226,232,240,${v * 0.5})`;
+    const applyBlur = (v: number) => {
+      const b = v * 12;
+      overlay.style.setProperty("backdrop-filter", `blur(${b}px)`);
+      overlay.style.setProperty("-webkit-backdrop-filter", `blur(${b}px)`);
+      overlay.style.backgroundColor = v <= 0 ? "transparent" : scrim(v);
+    };
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    const headerLogoContainer = logoContainerRef.current;
+    const modalLogoContainer = logoTargetRef.current;
+
+    gsap.killTweensOf(proxy);
+    gsap.killTweensOf([card, ...rows]);
+
+    if (contactOpen) {
+      overlay.style.display = "flex";
+      overlay.style.pointerEvents = "auto";
+
+      if (reduce) {
+        proxy.v = 1;
+        applyBlur(1);
+        gsap.set(card, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)" });
+        gsap.set(rows, { opacity: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)" });
+        if (headerLogoContainer) gsap.set(headerLogoContainer, { opacity: 0 });
+        if (modalLogoContainer) gsap.set(modalLogoContainer, { opacity: 1, x: 0, y: 0, scale: 1.4 });
+        return;
+      }
+
+      // Start the blur and background overlay animation
+      gsap.to(proxy, {
+        v: 1,
+        duration: 0.5,
+        ease: "power2.out",
+        onUpdate: () => applyBlur(proxy.v),
+      });
+      gsap.fromTo(
+        card,
+        { opacity: 0, scale: 0.92, y: 16, filter: "blur(8px)", webkitFilter: "blur(8px)" },
+        { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)", duration: 0.5, ease: "power3.out", delay: 0.05 }
+      );
+      gsap.fromTo(
+        rows,
+        { opacity: 0, y: 10, filter: "blur(4px)", webkitFilter: "blur(4px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)", duration: 0.4, stagger: 0.06, delay: 0.15, ease: "power2.out" }
+      );
+
+      // Smooth Logo fly-to-modal animation
+      if (headerLogoContainer && modalLogoContainer) {
+        requestAnimationFrame(() => {
+          const headerRect = headerLogoContainer.getBoundingClientRect();
+          const modalRect = modalLogoContainer.getBoundingClientRect();
+
+          const deltaX = headerRect.left - modalRect.left;
+          const deltaY = headerRect.top - modalRect.top;
+
+          const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
+
+          // Hide header logo
+          gsap.set(headerLogoContainer, { opacity: 0 });
+
+          // check if currently animating to avoid snaps/glitches
+          const isCurrentlyActive = gsap.isTweening(modalLogoContainer);
+
+          // Place modal logo exactly over header logo's position if starting fresh
+          if (!isCurrentlyActive && modalLogoContainer.style.opacity === "0") {
+            gsap.set(modalLogoContainer, {
+              x: deltaX,
+              y: deltaY,
+              scale: 1,
+              opacity: 1
+            });
+          }
+
+          // Smoothly animate modal logo to center-top of the modal card
+          gsap.killTweensOf(modalLogoContainer);
+          gsap.to(modalLogoContainer, {
+            x: 0,
+            y: 0,
+            scale: 1.4,
+            opacity: 1,
+            duration: 0.65,
+            ease: "power2.out",
+          });
+
+          if (modal3d) {
+            gsap.killTweensOf(modal3d);
+            // Tilt X to 12 degrees to show depth/thickness
+            gsap.to(modal3d, {
+              rotationX: 12,
+              duration: 0.65,
+              ease: "power2.out"
+            });
+            // Infinite 3D Y spin starting from its current rotationY
+            gsap.set(modal3d, { transformPerspective: 400 });
+            gsap.to(modal3d, {
+              rotationY: "+=360",
+              repeat: -1,
+              duration: 5,
+              ease: "none"
+            });
+          }
+        });
+      }
+    } else {
+      if (firstRun || reduce) {
+        proxy.v = 0;
+        overlay.style.pointerEvents = "none";
+        overlay.style.display = "none";
+        applyBlur(0);
+        gsap.set(card, { opacity: 0, scale: 0.92, y: 16, filter: "blur(8px)", webkitFilter: "blur(8px)" });
+        if (headerLogoContainer) gsap.set(headerLogoContainer, { opacity: 1 });
+        if (modalLogoContainer) gsap.set(modalLogoContainer, { opacity: 0, x: 0, y: 0, scale: 1 });
+        return;
+      }
+
+      gsap.to(proxy, {
+        v: 0,
+        duration: 0.35,
+        ease: "power2.in",
+        onUpdate: () => applyBlur(proxy.v),
+        onComplete: () => {
+          overlay.style.pointerEvents = "none";
+          overlay.style.display = "none";
+        },
+      });
+      gsap.to(card, {
+        opacity: 0,
+        scale: 0.96,
+        y: 10,
+        filter: "blur(6px)",
+        webkitFilter: "blur(6px)",
+        duration: 0.3,
+        ease: "power2.in",
+      });
+
+      // Smooth Logo fly-back-to-header animation
+      if (headerLogoContainer && modalLogoContainer) {
+        const headerRect = headerLogoContainer.getBoundingClientRect();
+        const modalRect = modalLogoContainer.getBoundingClientRect();
+
+        const deltaX = headerRect.left - modalRect.left;
+        const deltaY = headerRect.top - modalRect.top;
+
+        const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
+
+        if (modal3d) {
+          gsap.killTweensOf(modal3d);
+          // Tilt back to flat (0)
+          gsap.to(modal3d, {
+            rotationX: 0,
+            duration: 0.6,
+            ease: "power2.inOut"
+          });
+          // Spin exactly 1 cycle (360 degrees) and stop smoothly
+          gsap.to(modal3d, {
+            rotationY: "+=360",
+            duration: 1.0,
+            ease: "power2.out",
+            transformPerspective: 200,
+            transformOrigin: "center"
+          });
+        }
+
+        gsap.killTweensOf(modalLogoContainer);
+        gsap.to(modalLogoContainer, {
+          x: deltaX,
+          y: deltaY,
+          scale: 1,
+          duration: 0.6,
+          ease: "power2.inOut",
+          onComplete: () => {
+            // Restore header logo visibility only if the modal is still closed
+            if (!overlayRef.current || overlayRef.current.style.display === "none") {
+              gsap.set(headerLogoContainer, { opacity: 1 });
+              gsap.set(modalLogoContainer, { opacity: 0, x: 0, y: 0, scale: 1 });
+            }
+          }
+        });
+      }
+    }
+  }, [contactOpen]);
+
+  // Close the contact overlay on Escape; lock body scroll while it's open
+  useEffect(() => {
+    if (!contactOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setContactOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [contactOpen]);
+
+  const toggleTheme = (theme: Mode) => {
+    setMode(theme);
+    try {
+      localStorage.setItem("apex-form-theme", theme);
+    } catch { }
+  };
+
+  // Stepper state validation
+  const isStepValid = () => {
+    if (currentStep === 0) {
+      return (
+        contactName.trim() !== "" &&
+        contactPhone.trim() !== "" &&
+        validateNigerianPhone(contactPhone) &&
+        contactEmail.trim() !== "" &&
+        validateEmail(contactEmail)
+      );
+    }
+    if (currentStep === 5) {
+      return bookingDate !== "" && bookingTime !== "";
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (!isStepValid()) return;
+    if (currentStep < 6) {
+      setCurrentStep((s) => s + 1);
+    } else {
+      setBookingId("APX-" + Math.floor(100000 + Math.random() * 900000));
+      setCurrentStep(7);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+    }
+  };
+
+  const resetForm = () => {
+    setCurrentStep(0);
+    setActiveIndex(0);
+    setCarIndex(0);
+    setCarouselVehicleName(VEHICLES[0].name);
+    setContactName("");
+    setContactPhone("");
+    setContactEmail("");
+    setPhoneBlurred(false);
+    setEmailBlurred(false);
+    setDestination("");
+    setSelectedVehicle(VEHICLES[0]);
+    setSelectedService(SERVICES[0]);
+    setBookingDate("");
+    setBookingTime("");
+    setPassengers(1);
+    setSpecialRequests("");
+    setBookingId("");
+  };
+
+
+
+  // Carousel relative offset helper
+  const getDiff = (idx: number) => {
+    let d = idx - activeIndex;
+    const count = LOCATIONS.length;
+    if (d < -1) d += count;
+    if (d > 1) d -= count;
+    return d;
+  };
+
+  const heading = isLight ? "text-neutral-900" : "text-white";
+  const sub = isLight ? "text-neutral-600" : "text-white/60";
+
+  return (
+    <main
+      className="relative min-h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between"
+      style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
+    >
+      {/* 1. Header component */}
+      <header className="flex items-center justify-between p-5 z-20">
+        <div className={`flex items-center gap-2.5 ${heading}`}>
+          <div ref={logoContainerRef}>
+            <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
+          </div>
+          <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
+            Apex<span className="font-semibold opacity-85">Ride</span>
+          </h4>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setContactOpen(true)}
+          className={`pointer-events-auto rounded-full border px-6 py-2.5 text-xs font-semibold tracking-wider transition-all duration-300 flex items-center gap-2 ${isLight
+            ? "border-neutral-900/40 hover:bg-neutral-900/[0.08] text-neutral-900"
+            : "border-white/30 hover:bg-white/[0.08] text-white"
+            }`}
+        >
+          <MailIcon />
+          Contact Us
+        </button>
+      </header>
+
+      {/* Floating step progress text, positioned constantly at the top */}
+      {currentStep <= 6 && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-4 select-none pointer-events-none">
+          <div className="h-5 flex items-center justify-center overflow-visible">
+            <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${sub} flex flex-wrap justify-center items-center`}>
+              {displayedStepText.split("").map((char, index) => (
+                <span 
+                  key={index} 
+                  className="step-char inline-block whitespace-pre relative"
+                  style={{ zIndex: 100 - index }}
+                >
+                  {char}
+                </span>
+              ))}
+            </p>
+          </div>
+
+          <h1 className={`max-w-3xl text-3xl font-light tracking-tight sm:text-4xl ${heading} transition-all duration-300 min-h-[50px] flex flex-wrap justify-center items-center`}>
+            {displayedSubLabel.split(" ").map((word, wordIdx) => (
+              <span key={wordIdx} className="inline-block whitespace-nowrap">
+                {word.split("").map((char, charIdx) => (
+                  <span
+                    key={charIdx}
+                    className="sub-step-char inline-block whitespace-pre relative"
+                  >
+                    {char}
+                  </span>
+                ))}
+                {wordIdx < displayedSubLabel.split(" ").length - 1 && (
+                  <span className="sub-step-char inline-block whitespace-pre relative"> </span>
+                )}
+              </span>
+            ))}
+          </h1>
+        </div>
+      )}
+
+      {/* 2. Main content container */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-8 pb-44 z-10 select-none">
+
+        {currentStep <= 6 && (
+          <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${
+            currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
+          }`}>
+            {/* Spacer to preserve form placement where h1 used to be */}
+            <div className="h-[50px] mt-2.5" />
+
+            {/* Step 1: Contact Details */}
+            {currentStep === 0 && (
+              <form
+                onSubmit={(e) => e.preventDefault()}
+                className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}
+              >
+                
+                <div className="flex flex-col">
+                  <label htmlFor="contactName" className={`text-xs font-semibold tracking-wide mb-2 font-josefin ${isLight ? "text-neutral-600" : "text-white/50"}`}>Full Name *</label>
+                  <input
+                    type="text"
+                    id="contactName"
+                    name="name"
+                    autoComplete="name"
+                    placeholder="John Doe"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
+                      isLight 
+                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]" 
+                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                    }`}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label htmlFor="contactPhone" className={`text-xs font-semibold tracking-wide mb-2 font-josefin ${isLight ? "text-neutral-600" : "text-white/50"}`}>Phone Number *</label>
+                  <input
+                    type="tel"
+                    id="contactPhone"
+                    name="phone"
+                    autoComplete="tel"
+                    placeholder="08012345678"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    onBlur={() => setPhoneBlurred(true)}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
+                      isLight 
+                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]" 
+                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                    }`}
+                  />
+                  {showPhoneError && (
+                    <span className={`text-[10px] font-medium mt-2 ${isLight ? "text-red-600" : "text-red-400"}`}>
+                      Invalid Nigerian phone number. Must be 11 digits starting with 0 (e.g. 08012345678).
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col">
+                  <label htmlFor="contactEmail" className={`text-xs font-semibold tracking-wide mb-2 font-josefin ${isLight ? "text-neutral-600" : "text-white/50"}`}>Email Address *</label>
+                  <input
+                    type="email"
+                    id="contactEmail"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="john@example.com"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    onBlur={() => setEmailBlurred(true)}
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${
+                      isLight
+                        ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+                        : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
+                    }`}
+                  />
+                  {showEmailError && (
+                    <span className={`text-[10px] font-medium mt-2 ${isLight ? "text-red-600" : "text-red-400"}`}>
+                      Invalid email address. Please enter a valid address (e.g. john@example.com).
+                    </span>
+                  )}
+                </div>
+
+              </form>
+            )}
+
+            {/* Step 2: Pickup Location Carousel (Black Squares) */}
+            {currentStep === 1 && (
+              <div className="relative w-full h-[450px] flex items-center justify-center mt-6">
+
+                {/* Left arrow */}
+                <button
+                  onClick={() => setActiveIndex((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
+                  className={`pointer-events-auto absolute left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                    }`}
+                  aria-label="Previous Location"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+
+                {/* The 3D-Style Carousel */}
+                <div className="relative w-full max-w-4xl h-full flex items-center justify-center overflow-visible">
+                  {LOCATIONS.map((loc, idx) => {
+                    const diff = getDiff(idx);
+                    const isActive = diff === 0;
+                    const isPrev = diff === -1;
+                    const isNext = diff === 1;
+
+                    let transformClass = "";
+                    if (isActive) {
+                      transformClass = "translate-x-0 translate-y-0 scale-100 z-10 opacity-100 rotate-0";
+                    } else if (isPrev) {
+                      transformClass = "-translate-x-[22rem] lg:-translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 -rotate-6 pointer-events-auto cursor-pointer";
+                    } else if (isNext) {
+                      transformClass = "translate-x-[22rem] lg:translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 rotate-6 pointer-events-auto cursor-pointer";
+                    } else {
+                      transformClass = "translate-y-24 scale-50 z-0 opacity-0 pointer-events-none";
+                    }
+
+                    return (
+                      <div
+                        key={loc.id}
+                        onClick={() => {
+                          if (isPrev) setActiveIndex((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
+                          if (isNext) setActiveIndex((i) => (i + 1) % LOCATIONS.length);
+                        }}
+                        className={`absolute w-80 h-80 rounded-2xl flex flex-col justify-between p-7 text-left transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform ${transformClass} ${carouselCardStyle}`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className={`text-4xl font-extrabold tracking-widest select-none ${isLight ? "text-neutral-900/10" : "text-white/10"}`}>
+                            {loc.code}
+                          </span>
+                          {isActive && <div className="orb-marker" />}
+                        </div>
+
+                        <div className={`flex-1 flex flex-col justify-center border-y my-4 py-4 opacity-80 ${isLight ? "border-neutral-900/5" : "border-white/5"}`}>
+                          <div className={`text-[9px] tracking-widest uppercase font-bold ${isLight ? "text-neutral-900/40" : "text-white/40"}`}>Terminal Coordinates</div>
+                          <div className={`font-mono text-xs mt-1 ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>{loc.coordinates}</div>
+                          <p className={`text-xs mt-3 leading-relaxed font-light line-clamp-3 select-none ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>
+                            {loc.desc}
+                          </p>
+                        </div>
+
+                        <div className={`text-xs font-semibold truncate ${isLight ? "text-neutral-900/90" : "text-white/90"}`}>
+                          {loc.subtitle}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Right arrow */}
+                <button
+                  onClick={() => setActiveIndex((idx) => (idx + 1) % LOCATIONS.length)}
+                  className={`pointer-events-auto absolute right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                    }`}
+                  aria-label="Next Location"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {/* Step 3: Destination */}
+            {currentStep === 2 && (
+              <div className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Destination (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Where are you headed?"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    className={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
+            {currentStep === 3 && (
+              <div className="w-full flex flex-col items-center">
+                <div className="relative w-full h-[380px] sm:h-[420px] flex items-center justify-center mt-2">
+
+                  {/* Left arrow */}
+                  <button
+                    onClick={() => spinCar(-1)}
+                    className={`pointer-events-auto absolute left-2 lg:left-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${
+                      isLight
+                        ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
+                        : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
+                    }`}
+                    aria-label="Previous Vehicle"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+
+                  {/* Previous car (left) · Current active car (middle) */}
+                  <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible">
+                    {/* Front — incoming flanker showing off-screen waiting vehicle */}
+                    <div
+                      ref={incomingCarRef}
+                      className="absolute w-[95%] max-w-4xl flex items-center justify-center z-0"
+                      style={{
+                        transform: "translateX(-102%) scale(0.02) scaleX(-1)",
+                        opacity: 0,
+                        filter: "blur(28px)",
+                        willChange: "transform, opacity, filter"
+                      }}
+                    >
+                      <Image
+                        src={encodeURI(`/images/${incomingVehicle.img[isLight ? "light" : "dark"].front}`)}
+                        alt={`${incomingVehicle.name} incoming front view`}
+                        width={800}
+                        height={450}
+                        draggable={false}
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        sizes="(max-width: 768px) 100vw, 800px"
+                      />
+                    </div>
+
+                    {/* Front — far-left flanker showing deep background vehicle */}
+                    <div
+                      ref={farLeftCarRef}
+                      className="absolute w-[95%] max-w-4xl flex items-center justify-center z-10"
+                      style={{
+                        transform: "translateX(-92%) scale(0.08) scaleX(-1)",
+                        opacity: 0.75,
+                        filter: "blur(28px)",
+                        willChange: "transform, opacity, filter"
+                      }}
+                    >
+                      <Image
+                        src={encodeURI(`/images/${farLeftVehicle.img[isLight ? "light" : "dark"].front}`)}
+                        alt={`${farLeftVehicle.name} far front view`}
+                        width={800}
+                        height={450}
+                        draggable={false}
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        sizes="(max-width: 768px) 100vw, 800px"
+                      />
+                    </div>
+
+                    {/* Front — left flanker showing incoming vehicle */}
+                    <div
+                      ref={leftCarRef}
+                      className="absolute w-[95%] max-w-4xl flex items-center justify-center z-20"
+                      style={{
+                        transform: "translateX(-70%) scale(0.24) scaleX(-1)",
+                        opacity: 0.9,
+                        filter: "blur(12px)",
+                        willChange: "transform, opacity, filter"
+                      }}
+                    >
+                      <Image
+                        src={encodeURI(`/images/${leftVehicle.img[isLight ? "light" : "dark"].front}`)}
+                        alt={`${leftVehicle.name} front view`}
+                        width={800}
+                        height={450}
+                        draggable={false}
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        sizes="(max-width: 768px) 100vw, 800px"
+                      />
+                    </div>
+
+                    {/* Front — active, centered hero */}
+                    <div
+                      ref={centerCarRef}
+                      className="absolute w-[95%] max-w-4xl flex items-center justify-center z-30"
+                      style={{
+                        transform: "translateX(0%) scale(1) scaleX(-1)",
+                        opacity: 1,
+                        filter: "blur(0px)",
+                        willChange: "transform, opacity, filter"
+                      }}
+                    >
+                      <Image
+                        src={encodeURI(`/images/${selectedVehicle.img[isLight ? "light" : "dark"].front}`)}
+                        alt={`${selectedVehicle.name} front view`}
+                        width={800}
+                        height={450}
+                        priority
+                        draggable={false}
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        sizes="(max-width: 768px) 100vw, 800px"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Detailed vehicle text aligned to the right-top */}
+                  <div className="absolute top-2 right-4 lg:right-10 z-30 max-w-[220px] sm:max-w-xs text-right flex flex-col items-end p-4 rounded-2xl border border-white/10 bg-neutral-950/40 dark:bg-black/50 backdrop-blur-md shadow-lg pointer-events-none">
+                    <span className="text-[9px] uppercase font-bold tracking-[0.25em] text-white/70 dark:text-[#FDBA16]">
+                      {selectedVehicle.class}
+                    </span>
+                    <span className="mt-1 text-lg sm:text-xl font-bold font-josefin text-white">
+                      {selectedVehicle.rate}
+                    </span>
+                    <span className="mt-1 text-[11px] font-mono text-white/60">
+                      {selectedVehicle.specs}
+                    </span>
+                    <p className="mt-2 text-[10px] leading-relaxed font-light text-white/50 text-right font-josefin">
+                      {selectedVehicle.details}
+                    </p>
+                  </div>
+
+                  {/* Right arrow */}
+                  <button
+                    onClick={() => spinCar(1)}
+                    className={`pointer-events-auto absolute right-2 lg:right-8 z-40 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${
+                      isLight
+                        ? "bg-white text-[#00209C] border border-neutral-200 hover:bg-neutral-50"
+                        : "bg-neutral-900 text-[#FDBA16] border border-white/10 hover:bg-neutral-800"
+                    }`}
+                    aria-label="Next Vehicle"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Service Type */}
+            {currentStep === 4 && (
+              <div className="w-full max-w-3xl mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                {SERVICES.map((srv) => {
+                  const isSelected = selectedService.id === srv.id;
+                  const cardStyle = isSelected
+                    ? isLight
+                      ? "bg-[#00209C] border-[#00209C] text-white shadow-xl shadow-indigo-500/10 scale-[1.03]"
+                      : "bg-neutral-900 border-[#FDBA16] text-white shadow-2xl scale-[1.03]"
+                    : isLight
+                    ? "bg-white/45 border-neutral-900/10 text-neutral-800 hover:border-neutral-900/25 hover:scale-[1.01] backdrop-blur-md"
+                    : "bg-neutral-950/20 border-white/10 text-white/70 hover:border-white/30 hover:scale-[1.01] backdrop-blur-md";
+
+                  const badgeStyle = isSelected
+                    ? "text-white/70"
+                    : isLight
+                    ? "text-neutral-900/40"
+                    : "text-white/40";
+
+                  const nameStyle = isSelected
+                    ? "text-white font-light"
+                    : isLight
+                    ? "text-neutral-900 font-light"
+                    : "text-white font-light";
+
+                  const descStyle = isSelected
+                    ? "text-white/60 font-light"
+                    : isLight
+                    ? "text-neutral-900/50 font-light"
+                    : "text-white/50 font-light";
+
+                  return (
+                    <button
+                      key={srv.id}
+                      onClick={() => setSelectedService(srv)}
+                      className={`p-6 rounded-2xl border text-left transition-all duration-300 shadow-lg ${cardStyle}`}
+                    >
+                      <div className={`text-[10px] uppercase font-bold tracking-widest ${badgeStyle}`}>Service Tier</div>
+                      <h2 className={`text-lg tracking-tight mt-2 ${nameStyle}`}>{srv.name}</h2>
+                      <p className={`text-xs leading-relaxed mt-3 ${descStyle}`}>{srv.desc}</p>
+                      {isSelected && (
+                        <div className="mt-5 flex justify-end">
+                          <span className={`rounded-full p-1 ${isLight ? "bg-white text-[#00209C]" : "bg-[#FDBA16] text-neutral-950"}`}><CheckIcon /></span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Step 6: Schedule (Date, Time, Passengers) */}
+            {currentStep === 5 && (
+              <div className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Pickup Date *</label>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    className={`${inputStyle} font-mono`}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Pickup Time *</label>
+                  <input
+                    type="time"
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                    className={`${inputStyle} font-mono`}
+                  />
+                </div>
+
+                {/* Tactile Passenger Counter */}
+                <div className={`flex justify-between items-center border-t pt-5 ${isLight ? "border-neutral-900/10" : "border-white/10"}`}>
+                  <div>
+                    <label className={`block text-sm font-semibold ${isLight ? "text-neutral-900" : "text-white"}`}>Passengers</label>
+                    <span className={`text-[9px] uppercase tracking-widest font-mono ${isLight ? "text-neutral-900/40" : "text-white/40"}`}>SUV fits up to 7</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setPassengers((p) => Math.max(1, p - 1))}
+                      disabled={passengers <= 1}
+                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${
+                        passengers <= 1
+                          ? isLight
+                            ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
+                            : "border-white/5 text-white/20 cursor-not-allowed"
+                          : isLight
+                          ? "border-neutral-900/25 text-neutral-900 hover:bg-neutral-900/5"
+                          : "border-white/20 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      −
+                    </button>
+                    <span className={`text-lg font-bold font-mono w-5 text-center ${isLight ? "text-neutral-900" : "text-white"}`}>
+                      {passengers}
+                    </span>
+                    <button
+                      onClick={() => setPassengers((p) => Math.min(7, p + 1))}
+                      disabled={passengers >= 7}
+                      className={`w-9 h-9 flex items-center justify-center rounded-full border text-lg font-bold transition-all duration-200 ${
+                        passengers >= 7
+                          ? isLight
+                            ? "border-neutral-900/5 text-neutral-900/20 cursor-not-allowed"
+                            : "border-white/5 text-white/20 cursor-not-allowed"
+                          : isLight
+                          ? "border-neutral-900/25 text-neutral-900 hover:bg-neutral-900/5"
+                          : "border-white/20 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 7: Special Requests (with Booking Summary Card) */}
+            {currentStep === 6 && (
+              <div className="w-full max-w-xl mt-8 flex flex-col gap-6">
+
+                {/* Booking Summary Recap Card */}
+                <div className={`p-8 rounded-[2.5rem] border ${cardBgStyle} text-left`}>
+                  <div 
+                    className="text-xs font-bold uppercase tracking-widest mb-3.5"
+                    style={{ color: isLight ? "#00209C" : "#FDBA16" }}
+                  >
+                    Booking Recap
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm font-light">
+                    <div>
+                      <span className={`block text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>Passenger</span>
+                      <span className={`font-semibold ${isLight ? "text-neutral-900" : "text-white"}`}>{contactName} ({contactPhone})</span>
+                    </div>
+                    <div>
+                      <span className={`block text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>Vehicle & Tier</span>
+                      <span className={`font-semibold ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedVehicle.name} · {selectedService.name}</span>
+                    </div>
+                    <div>
+                      <span className={`block text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>Route</span>
+                      <span className={`font-semibold ${isLight ? "text-neutral-900" : "text-white"}`}>{selectedLocation.name} {destination ? `➔ ${destination}` : ""}</span>
+                    </div>
+                    <div>
+                      <span className={`block text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>Schedule</span>
+                      <span className={`font-semibold font-mono ${isLight ? "text-neutral-900" : "text-white"}`}>{bookingDate} @ {bookingTime} ({passengers} Pax)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Special Requests Textarea */}
+                <div className={`p-8 rounded-[2.5rem] border ${cardBgStyle} text-left`}>
+                  <div className="flex flex-col">
+                    <label className={labelStyle}>Special Requests</label>
+                    <textarea
+                      maxLength={500}
+                      placeholder="Any special requirements or additional information"
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      className={`${textareaStyle} h-24`}
+                    />
+                    <div className={`flex justify-end text-[10px] font-mono mt-2 ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>
+                      {specialRequests.length} / 500
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Stepper Buttons constant position at the bottom */}
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-20 flex gap-4 pointer-events-auto">
+              {currentStep > 0 && (
+                <button
+                  onClick={prevStep}
+                  className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center ${
+                    isLight
+                      ? "border-neutral-900/25 hover:bg-neutral-900/[0.04] text-neutral-900/70"
+                      : "border-white/20 hover:bg-white/[0.04] text-white/70"
+                  }`}
+                >
+                  Back
+                </button>
+              )}
+
+              <button
+                onClick={nextStep}
+                disabled={!isStepValid()}
+                className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 flex items-center justify-center ${
+                  !isStepValid()
+                    ? "opacity-35 cursor-not-allowed border-neutral-500/20 bg-neutral-900/10 text-neutral-400"
+                    : isLight
+                    ? "border-[#00209C] bg-[#00209C] text-white hover:scale-[1.02] active:scale-[0.98]"
+                    : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 hover:scale-[1.02] active:scale-[0.98]"
+                }`}
+                style={{ minWidth: "120px" }}
+              >
+                {currentStep === 6 ? "Submit Request" : "Next"}
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* Step 8: Success Panel */}
+        {currentStep === 7 && (
+          <div className="w-full max-w-md flex flex-col items-center text-center p-8 rounded-2xl bg-neutral-950 border border-white/15 shadow-2xl text-white">
+            <div className="w-16 h-16 bg-white text-neutral-950 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+              <CheckIcon />
+            </div>
+
+            <h1 className="text-3xl font-light tracking-tight mt-6">Booking Awaiting Review</h1>
+            <p className="text-xs font-mono text-white/50 mt-1 uppercase tracking-widest">Booking ID: {bookingId}</p>
+
+            <p className="text-sm text-white/60 leading-relaxed font-light mt-4 select-none">
+              Your luxury ride request from **{selectedLocation.name}** has been submitted. Our executive chauffeurs are preparing for your pickup.
+            </p>
+
+            <button
+              onClick={resetForm}
+              className="mt-8 rounded-full bg-white text-neutral-950 font-bold uppercase tracking-widest text-[10px] px-8 py-3.5 hover:bg-neutral-200 transition-all duration-300"
+            >
+              Book Another Ride
+            </button>
+          </div>
+        )}
+
+      </div>
+
+      {/* 3. Stepper progress tracker floating glass-morphic dock (Exactly 7 indicators matching strict requirements) */}
+      <div className="pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[70vw] px-0 z-20 select-none">
+        <div className="relative px-0 py-5 transition-all duration-300">
+          <div className="relative grid grid-cols-7 items-start">
+            {/* The horizontal connecting line */}
+            <div
+              className={`absolute top-[8px] h-[1px] -z-10 ${isLight ? "bg-neutral-900/10" : "bg-white/10"
+                }`}
+              style={{
+                left: "calc(100% / 14)",
+                right: "calc(100% / 14)",
+              }}
+            />
+
+            {/* The active progress colored overlay */}
+            <div
+              className="absolute top-[8px] h-[1.5px] -z-10"
+              style={{
+                left: "calc(100% / 14)",
+                right: "calc(100% / 14)",
+              }}
+            >
+              <div
+                className="h-full transition-all duration-500"
+                style={{
+                  width: `${currentStep <= 6 ? (currentStep / 6) * 100 : 100}%`,
+                  background: isLight ? "#171717" : "#ffffff",
+                }}
+              />
+            </div>
+
+            {STEPS.map((stepName, idx) => {
+              const isCompleted = currentStep > idx || currentStep === 7;
+              const isActive = currentStep === idx;
+
+              const accentHex = isLight ? "#00209C" : "#FDBA16";
+
+              return (
+                <div key={stepName} className="flex flex-col items-center">
+                  <div className="h-4 flex items-center justify-center">
+                    <button
+                      onClick={() => currentStep <= 6 && setCurrentStep(idx)}
+                      disabled={currentStep > 6}
+                      className={`transition-all duration-300 focus:outline-none ${isActive
+                        ? "w-3.5 h-3.5 border rounded-full shadow-md scale-110 cursor-pointer"
+                        : "w-2.5 h-2.5 border-2 rounded-full cursor-pointer"
+                        }`}
+                      style={{
+                        backgroundColor: isActive
+                          ? accentHex
+                          : isCompleted
+                            ? (isLight ? "#a2b0d3" : "#3a2d0c")
+                            : (isLight ? "#cbd5e1" : "#0a0a0a"),
+                        borderColor: isActive
+                          ? accentHex
+                          : (isLight ? "rgba(0, 32, 156, 0.8)" : "rgba(253, 186, 22, 0.8)"),
+                        boxShadow: isActive
+                          ? `0 0 0 4px ${isLight ? "rgba(0, 32, 156, 0.2)" : "rgba(253, 186, 22, 0.2)"}`
+                          : undefined,
+                      }}
+                    />
+                  </div>
+                  <span className={`mt-2.5 text-[11px] font-semibold tracking-wide font-sans transition-colors duration-300 ${isActive
+                    ? (isLight ? "text-neutral-900 font-bold" : "text-white font-bold")
+                    : (isLight ? "text-neutral-900/80" : "text-white/75")
+                    }`}>
+                    {stepName}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Headlights theme toggle (bottom right) */}
+      <div className="pointer-events-auto fixed bottom-5 right-6 z-20 select-none">
+        <div className={`relative flex rounded-full border p-1 shadow-lg backdrop-blur-md transition-all duration-300 ${isLight
+          ? "border-neutral-900/15 bg-transparent shadow-neutral-900/5"
+          : "border-white/10 bg-transparent shadow-black/40"
+          }`}>
+          <div
+            className={`absolute top-[4px] bottom-[4px] w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-in-out border ${isLight
+              ? "left-[4px] border-neutral-950 bg-white shadow-sm"
+              : "left-[50%] border-white bg-white/10 shadow-sm"
+              }`}
+          />
+          <button
+            onClick={() => toggleTheme("light")}
+            aria-label="Light mode"
+            className={`relative z-10 rounded-full p-2 transition-all duration-300 ${isLight ? "text-neutral-900" : "text-white/45 hover:text-white"
+              }`}
+          >
+            <HeadlampOnIcon />
+          </button>
+          <button
+            onClick={() => toggleTheme("dark")}
+            aria-label="Dark mode"
+            className={`relative z-10 rounded-full p-2 transition-all duration-300 ${!isLight ? "text-white" : "text-neutral-500 hover:text-neutral-900"
+              }`}
+          >
+            <HeadlampOffIcon />
+          </button>
+        </div>
+      </div>
+
+      {/* 5. Contact overlay — blurs the page behind it and reveals contact channels */}
+      <div
+        ref={overlayRef}
+        onClick={() => setContactOpen(false)}
+        aria-hidden={!contactOpen}
+        className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+        style={{
+          pointerEvents: "none",
+          backdropFilter: "blur(0px)",
+          WebkitBackdropFilter: "blur(0px)",
+          backgroundColor: "transparent",
+          display: "none",
+        }}
+      >
+        <div
+          ref={cardRef}
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Contact ApexRide"
+          className={`relative w-full max-w-md rounded-2xl border p-8 shadow-2xl backdrop-blur-xl ${isLight
+            ? "bg-white/80 border-neutral-900/10 text-neutral-900"
+            : "bg-neutral-950/70 border-white/10 text-white"
+            }`}
+        >
+          {/* Logo container inside the modal card */}
+          <div ref={logoTargetRef} className="w-[25.6px] h-[28px] mx-auto mb-5 relative opacity-0">
+            <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setContactOpen(false)}
+            className={`absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-widest transition-colors duration-200 ${isLight ? "text-neutral-900/40 hover:text-neutral-900" : "text-white/40 hover:text-white"
+              }`}
+          >
+            Close
+          </button>
+
+          <div className="text-center">
+            <div
+              className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2"
+              style={{ color: isLight ? "#00209C" : "#FDBA16" }}
+            >
+              Get in touch
+            </div>
+            <h2 className={`text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
+              Reach ApexRide
+            </h2>
+            <p className={`mt-2 text-xs font-light leading-relaxed ${isLight ? "text-neutral-900/55" : "text-white/55"}`}>
+              Our concierge desk is available around the clock. Reach us on any channel below.
+            </p>
+          </div>
+
+          <div className={`mt-6 border-t ${isLight ? "border-neutral-900/10" : "border-white/10"}`}>
+            {CONTACTS.map((c) => (
+              <a
+                key={c.label}
+                href={c.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`contact-row group flex items-center justify-between gap-4 border-b py-3.5 ${isLight ? "border-neutral-900/10" : "border-white/10"
+                  }`}
+              >
+                <span
+                  className={`text-sm font-semibold tracking-wide transition-all duration-200 group-hover:translate-x-1 ${isLight
+                    ? "text-neutral-900 group-hover:text-[#00209C]"
+                    : "text-white group-hover:text-[#FDBA16]"
+                    }`}
+                >
+                  {c.label}
+                </span>
+                <span
+                  className={`text-xs font-light transition-colors duration-200 ${isLight
+                    ? "text-neutral-900/50 group-hover:text-[#00209C]/70"
+                    : "text-white/50 group-hover:text-[#FDBA16]/70"
+                    }`}
+                >
+                  {c.value}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

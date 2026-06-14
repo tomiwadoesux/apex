@@ -1,0 +1,351 @@
+/* ===========================================================================
+   Apex District map — light & dark themes.
+   Every color is a CSS variable on .wrap; [data-theme="dark"] swaps the set, so
+   toggling is a single attribute change and the SVG re-tints instantly.
+   =========================================================================== */
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+
+  /* light theme (Google "day") */
+  --bg-1: #eef1f5;
+  --bg-2: #dde2e9;
+  --c-land: #eceee9;
+  --c-park: #d4e3c6;
+  --c-park-edge: #c2d6b1;
+  --c-water: #b7d6e8;
+  --c-water-edge: #9ec6dd;
+  --c-building: #e7e2da;
+  --c-building-edge: #d7d1c4;
+  --c-building-shadow: rgba(45, 55, 75, 0.13);
+  --c-landmark: #d8d1e6;
+  --c-mall: #f0d8bf;
+  --c-mall-edge: #e2c2a1;
+  --c-plaza: #e8e2d5;
+  --c-plaza-edge: #d9d1bf;
+  --c-road: #ffffff;
+  --c-road-casing: #e1dace;
+  --c-arterial: #fdf2cf;
+  --c-arterial-casing: #ecd7a3;
+  --c-tree: #a9cf8e;
+  --c-fountain: #bfe0ef;
+  --c-fountain-rim: #ffffff;
+  --c-fountain-jet: #ffffff;
+  --c-promenade: #cdb89a;
+  --c-label: #707a88;
+  --c-label-poi: #444b58;
+  --c-label-park: #5d7d4a;
+  --c-label-water: #3f7c97;
+  --c-halo: rgba(255, 255, 255, 0.92);
+  --c-marker-body: #14264f;
+  --c-marker-dot: #2f6bff;
+  --c-pulse: #2f6bff;
+  --c-frame-edge: #cdd5df;
+  --c-ui-bg: rgba(255, 255, 255, 0.78);
+  --c-ui-fg: #2b3340;
+  --c-ui-edge: rgba(20, 30, 50, 0.1);
+  --c-brand: #14264f;
+
+  background: radial-gradient(circle at 50% 36%, var(--bg-1), var(--bg-2));
+  transition: background 0.45s ease;
+}
+
+.wrap[data-theme="dark"] {
+  /* dark theme (Google "night") */
+  --bg-1: #121a26;
+  --bg-2: #070b11;
+  --c-land: #19212e;
+  --c-park: #213527;
+  --c-park-edge: #2c4533;
+  --c-water: #143049;
+  --c-water-edge: #1f456a;
+  --c-building: #28323f;
+  --c-building-edge: #333f50;
+  --c-building-shadow: rgba(0, 0, 0, 0.4);
+  --c-landmark: #3b3656;
+  --c-mall: #4a3a2c;
+  --c-mall-edge: #5c4a38;
+  --c-plaza: #2b3340;
+  --c-plaza-edge: #384354;
+  --c-road: #3a4655;
+  --c-road-casing: #262e3a;
+  --c-arterial: #59512f;
+  --c-arterial-casing: #3c3824;
+  --c-tree: #2f6b46;
+  --c-fountain: #2b6a8c;
+  --c-fountain-rim: #bfe0ef;
+  --c-fountain-jet: #e9ffff;
+  --c-promenade: #4a586a;
+  --c-label: #97a3b3;
+  --c-label-poi: #d2dae6;
+  --c-label-park: #8fb47a;
+  --c-label-water: #79b6cf;
+  --c-halo: rgba(9, 14, 20, 0.85);
+  --c-marker-body: #eaf0ff;
+  --c-marker-dot: #5b8cff;
+  --c-pulse: #5b8cff;
+  --c-frame-edge: #2c3848;
+  --c-ui-bg: rgba(24, 32, 44, 0.74);
+  --c-ui-fg: #e6ecf4;
+  --c-ui-edge: rgba(255, 255, 255, 0.1);
+  --c-brand: #eaf0ff;
+}
+
+.frame {
+  position: relative;
+  width: clamp(280px, 62vmin, 540px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 3px solid var(--c-frame-edge);
+  box-shadow:
+    0 24px 60px rgba(20, 35, 65, 0.32),
+    inset 0 0 0 5px rgba(255, 255, 255, 0.35);
+  isolation: isolate;
+  transition: border-color 0.45s ease;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---- map surfaces -------------------------------------------------------- */
+.land {
+  fill: var(--c-land);
+}
+.park {
+  fill: var(--c-park);
+  stroke: var(--c-park-edge);
+  stroke-width: 1;
+}
+.island {
+  fill: var(--c-park);
+  stroke: var(--c-park-edge);
+  stroke-width: 0.8;
+}
+.plaza {
+  fill: var(--c-plaza);
+  stroke: var(--c-plaza-edge);
+  stroke-width: 0.8;
+}
+.water {
+  fill: var(--c-water);
+  stroke: var(--c-water-edge);
+  stroke-width: 1;
+}
+.promenade {
+  fill: none;
+  stroke: var(--c-promenade);
+  stroke-width: 1.4;
+  stroke-dasharray: 2.4 2.4;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+.tree {
+  fill: var(--c-tree);
+}
+
+.buildingShadow {
+  fill: var(--c-building-shadow);
+}
+.building {
+  fill: var(--c-building);
+  stroke: var(--c-building-edge);
+  stroke-width: 0.5;
+}
+.landmark {
+  fill: var(--c-landmark);
+  stroke: var(--c-building-edge);
+  stroke-width: 0.6;
+}
+.mall {
+  fill: var(--c-mall);
+  stroke: var(--c-mall-edge);
+  stroke-width: 0.8;
+}
+
+/* ---- roads --------------------------------------------------------------- */
+.roadCasing,
+.arterialCasing,
+.road,
+.arterial {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.roadCasing {
+  stroke: var(--c-road-casing);
+}
+.arterialCasing {
+  stroke: var(--c-arterial-casing);
+}
+.road {
+  stroke: var(--c-road);
+}
+.arterial {
+  stroke: var(--c-arterial);
+}
+
+/* ---- fountains ----------------------------------------------------------- */
+.fountainBasin {
+  fill: var(--c-fountain);
+  stroke: var(--c-water-edge);
+  stroke-width: 0.5;
+}
+.fountainRim {
+  fill: none;
+  stroke: var(--c-fountain-rim);
+  stroke-width: 0.8;
+  opacity: 0.8;
+}
+.fountainJet {
+  fill: var(--c-fountain-jet);
+}
+
+/* ---- labels (Google-Maps style: text with a soft halo) ------------------- */
+.labelStreet,
+.labelPoi,
+.labelPark,
+.labelWater {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  paint-order: stroke;
+  stroke: var(--c-halo);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  pointer-events: none;
+  user-select: none;
+}
+.labelStreet {
+  fill: var(--c-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.labelPoi {
+  fill: var(--c-label-poi);
+  font-weight: 700;
+}
+.labelPark {
+  fill: var(--c-label-park);
+  font-weight: 600;
+}
+.labelWater {
+  fill: var(--c-label-water);
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ---- navigator marker + GPS pulse ---------------------------------------- */
+.marker {
+  filter: drop-shadow(0 1px 1.4px rgba(0, 0, 0, 0.4));
+}
+.markerBody {
+  fill: var(--c-marker-body);
+}
+.markerDot {
+  fill: var(--c-marker-dot);
+}
+.pulse {
+  fill: var(--c-pulse);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mt-pulse 2.4s ease-out infinite;
+}
+@keyframes mt-pulse {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.5;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(5);
+    opacity: 0;
+  }
+}
+
+/* ---- chrome (brand, toggle, caption) ------------------------------------- */
+.brand {
+  position: absolute;
+  top: clamp(16px, 4vmin, 34px);
+  left: clamp(16px, 4vmin, 38px);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--c-brand);
+}
+.brandName {
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.brandThin {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.toggle {
+  position: absolute;
+  top: clamp(16px, 4vmin, 34px);
+  right: clamp(16px, 4vmin, 38px);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--c-ui-edge);
+  background: var(--c-ui-bg);
+  color: var(--c-ui-fg);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(20, 35, 65, 0.16);
+  transition:
+    transform 0.15s ease,
+    background 0.3s ease,
+    color 0.3s ease;
+}
+.toggle:hover {
+  transform: translateY(-1px);
+}
+.toggle:active {
+  transform: translateY(0);
+}
+.toggleIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.caption {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 13px;
+  color: var(--c-ui-fg);
+  opacity: 0.72;
+  letter-spacing: 0.01em;
+}
+.captionLogo {
+  color: var(--c-marker-dot);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
