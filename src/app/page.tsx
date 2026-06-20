@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useRef, ComponentType, useEffect } from "react";
+import { useState, useRef, ComponentType, useEffect, type MouseEvent } from "react";
 import type { Mode, LensType } from "@/components/car/CarStage";
 import MiniMap from "@/components/MiniMap";
 import Logo from "@/components/Logo"; // flat SVG brand mark (top-left lockup)
 import ServicesBento from "@/components/ServicesBento"; // services section (bento grid) below the hero
 import { useReducedMotion } from "@/components/useReducedMotion";
+import SmoothScroll from "@/components/SmoothScroll"; // Lenis smooth scroll (window/root mode)
+import { useLenis } from "lenis/react";
 
 // WebGL / three.js is browser-only — skip prerendering, like the /car page does.
 const CarStage = dynamic(() => import("@/components/car/CarStage"), {
@@ -93,6 +95,24 @@ function MailIconSolid() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+    </svg>
+  );
+}
+
+// Social / contact icons for the contact card.
+function InstagramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="5.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function TikTokIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.5 3c.32 2.04 1.62 3.62 3.5 3.92v2.45c-1.3 0-2.55-.42-3.6-1.16v6.36c0 3.18-2.58 5.73-5.7 5.73S5 17.65 5 14.47s2.58-5.73 5.7-5.73c.3 0 .6.02.88.07v2.5a3.2 3.2 0 1 0 2.32 3.08V3h2.6z" />
     </svg>
   );
 }
@@ -308,6 +328,9 @@ function ScrollHint({ isLight }: { isLight: boolean }) {
   const main = isLight ? "#0c0c0e" : "#ffffff";
   const acc = isLight ? "#2A4FD0" : "#FDBA16";
   const [hovered, setHovered] = useState(false);
+  // Lenis instance (from the root provider) so the anchor jump rides the same
+  // smooth scroll as wheel/touch instead of fighting it with native smooth.
+  const lenis = useLenis();
   // Pick the icon AFTER mount (random on the server/first render would mismatch
   // hydration). `idx === null` until then, so NO icon renders on the first paint
   // — instead of flashing the default — and the chosen one fades in once picked.
@@ -321,20 +344,27 @@ function ScrollHint({ isLight }: { isLight: boolean }) {
       type="button"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() =>
-        document
-          .getElementById("services")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" })
-      }
+      onClick={() => {
+        if (lenis) lenis.scrollTo("#services", { offset: 0 });
+        else
+          document
+            .getElementById("services")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }}
       className="pointer-events-auto text-sm font-medium tracking-wide transition-colors duration-300"
-      style={{ color: hovered ? acc : main, ["--accent" as string]: acc }}
+      style={{
+        color: hovered ? acc : main,
+        ["--accent" as string]: acc,
+        animation: "scroll-float 2.8s ease-in-out infinite", // gentle levitate
+      }}
     >
+      <style>{`@keyframes scroll-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
       {/* one underlined unit: the label AND the icon share a single bottom rule */}
       <span
         className="flex items-center gap-2 border-b pb-1"
         style={{ borderColor: "currentColor" }}
       >
-        Scroll to see our services
+        Scroll for services
         {/* fixed-width slot reserves space so the line doesn't shift when the
             icon fades in (the glyphs vary 20–26px wide) */}
         <span
@@ -488,6 +518,53 @@ function PillButtonGroup({
   );
 }
 
+// Glossy "primary" CTA — vertical accent gradient + a top sheen (no drop shadow).
+// Accent per mode: light → brand blue, dark → brand yellow.
+function GlossButton({
+  label,
+  href,
+  Icon,
+  onClick,
+  isLight,
+  float = false,
+}: {
+  label: string;
+  href: string;
+  Icon?: ComponentType<{ className?: string }>;
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  isLight: boolean;
+  /** gentle up/down bob to draw the eye (used on the hero "Book Now") */
+  float?: boolean;
+}) {
+  const g = isLight
+    ? { top: "#4360e8", bottom: "#1f3bb0", border: "#16308f", ink: "#ffffff" } // brand blue
+    : { top: "#ffce4d", bottom: "#e89c00", border: "#c98800", ink: "#1a1205" }; // brand yellow
+  const button = (
+    <a
+      href={href}
+      onClick={onClick}
+      className="pointer-events-auto inline-flex h-11 items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold tracking-wide transition-[filter,transform] duration-150 hover:brightness-[1.05] active:translate-y-px active:brightness-95"
+      style={{
+        background: `linear-gradient(180deg, ${g.top} 0%, ${g.bottom} 100%)`,
+        borderColor: g.border,
+        color: g.ink,
+        boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)", // soft, low-opacity top sheen (blurred, not a hard line)
+      }}
+    >
+      {Icon ? <Icon /> : null}
+      {label}
+    </a>
+  );
+  if (!float) return button;
+  // wrap so the bob animation doesn't fight the button's own hover/active transforms
+  return (
+    <span style={{ display: "inline-block", animation: "gloss-float 2.8s ease-in-out infinite" }}>
+      <style>{`@keyframes gloss-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
+      {button}
+    </span>
+  );
+}
+
 // The hero headline: each word starts LYING on the floor (rotateX 90°, hinged on
 // its bottom edge under CSS perspective) and stands up to vertical, staggered
 // left → right, the instant `reveal` flips. At rest it's a plain flat heading.
@@ -529,64 +606,67 @@ function StandUpHeadline({
 const TESTIMONIALS = [
   {
     name: "Adeola Balogun",
+    role: "Airport transfers",
     message:
       "Spotless cars and a chauffeur who made the airport run effortless. The only service I trust in Lagos now.",
   },
   {
     name: "Chidi Okeke",
+    role: "Wedding hire",
     message:
       "Booked the fleet for our wedding — every car arrived early, beautifully styled, and the drivers were impeccable.",
   },
   {
     name: "Funke Adeyemi",
+    role: "Corporate travel",
     message:
       "Discreet, professional and always on time for my corporate travel. Genuinely a class above the rest.",
   },
 ];
 
-// A single testimonial — a frosted-glass card themed to the current mode. Just a
-// name and message, dressed up: a soft accent glow + oversized watermark quote in
-// the corner, a gradient monogram avatar, a hairline divider, and a hover lift.
+// A single testimonial — a frosted-glass card themed to the current mode: a gold
+// 5-star rating, the quote, a hairline divider, then a NEUTRAL (un-coloured)
+// monogram with the name + role. No hover, no accent fill on the avatar.
 function TestimonialCard({
   name,
+  role,
   message,
   isLight,
 }: {
   name: string;
+  role: string;
   message: string;
   isLight: boolean;
 }) {
-  const accent = isLight ? "#2A4FD0" : "#FDBA16";
   // monogram from the first + last name initials (e.g. "Adeola Balogun" → "AB")
   const words = name.trim().split(/\s+/);
   const initials = (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
   return (
     <figure
-      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border p-6 text-left transition-[transform,box-shadow] duration-300 ease-out sm:hover:-translate-y-1.5"
+      className="relative flex h-full flex-col overflow-hidden rounded-[28px] border p-7 text-left"
       style={{
         background: isLight
-          ? "linear-gradient(155deg, rgba(255,255,255,0.92) 0%, rgba(235,241,249,0.74) 100%)"
-          : "linear-gradient(155deg, rgba(40,44,55,0.78) 0%, rgba(14,16,22,0.6) 100%)",
-        borderColor: isLight ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.14)",
-        backdropFilter: "blur(26px) saturate(165%)",
-        WebkitBackdropFilter: "blur(26px) saturate(165%)",
+          ? "linear-gradient(155deg, rgba(255,255,255,0.95) 0%, rgba(236,241,249,0.78) 100%)"
+          : "linear-gradient(155deg, rgba(44,48,60,0.8) 0%, rgba(15,17,23,0.62) 100%)",
+        borderColor: isLight ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)",
+        backdropFilter: "blur(28px) saturate(160%)",
+        WebkitBackdropFilter: "blur(28px) saturate(160%)",
         boxShadow: isLight
-          ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 20px 56px rgba(15,23,42,0.12)"
-          : "inset 0 1px 0 rgba(255,255,255,0.1), 0 22px 64px rgba(0,0,0,0.34)",
+          ? "inset 0 1px 0 rgba(255,255,255,0.9), 0 18px 50px rgba(15,23,42,0.10)"
+          : "inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 56px rgba(0,0,0,0.32)",
       }}
     >
-      {/* oversized watermark quotation mark */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute right-5 top-1 font-serif text-[5.5rem] leading-none"
-        style={{ color: accent, opacity: isLight ? 0.09 : 0.13 }}
+      {/* gold 5-star rating */}
+      <div
+        aria-label="Rated 5 out of 5"
+        style={{ color: "#f5b50a", fontSize: "13px", letterSpacing: "3px", lineHeight: 1 }}
       >
-        &rdquo;
-      </span>
+        ★★★★★
+      </div>
 
       <blockquote
-        className={`relative flex-1 text-[14px] leading-[1.65] ${
-          isLight ? "text-neutral-700" : "text-white/80"
+        className={`relative mt-4 flex-1 text-[15px] leading-[1.72] ${
+          isLight ? "text-neutral-700" : "text-white/85"
         }`}
       >
         {message}
@@ -598,30 +678,31 @@ function TestimonialCard({
         className="relative my-5 h-px w-full"
         style={{
           background: isLight
-            ? "linear-gradient(to right, rgba(15,23,42,0.14), transparent)"
-            : "linear-gradient(to right, rgba(255,255,255,0.18), transparent)",
+            ? "linear-gradient(to right, rgba(15,23,42,0.12), transparent)"
+            : "linear-gradient(to right, rgba(255,255,255,0.16), transparent)",
         }}
       />
 
+      {/* author — neutral monogram (no accent fill) + name + role */}
       <figcaption className="relative flex items-center gap-3.5">
         <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[13px] font-bold tracking-wide"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border text-[13px] font-semibold tracking-wide"
           style={{
-            background: `linear-gradient(145deg, ${accent}, color-mix(in srgb, ${accent} 58%, ${
-              isLight ? "#ffffff" : "#000000"
-            }))`,
-            color: isLight ? "#ffffff" : "#16161a",
+            background: isLight ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.07)",
+            borderColor: isLight ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.14)",
+            color: isLight ? "#0f172a" : "#ffffff",
           }}
         >
           {initials}
         </span>
-        <span
-          className={`text-[15px] font-semibold tracking-tight ${
-            isLight ? "text-neutral-900" : "text-white"
-          }`}
-        >
-          {name}
-        </span>
+        <div className="leading-tight">
+          <div className={`text-[15px] font-semibold tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
+            {name}
+          </div>
+          <div className={`mt-0.5 text-[12px] ${isLight ? "text-neutral-500" : "text-white/55"}`}>
+            {role}
+          </div>
+        </div>
       </figcaption>
     </figure>
   );
@@ -726,6 +807,7 @@ function TestimonialsCarousel({
         <CarouselArrow dir={-1} disabled={!canLeft} onClick={() => page(-1)} isLight={isLight} />
         <div
           ref={scrollRef}
+          data-lenis-prevent
           className="flex flex-1 snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 pt-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-5 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
           style={{ perspective: "1100px", perspectiveOrigin: "center" }}
         >
@@ -750,7 +832,7 @@ function TestimonialsCarousel({
                   willChange: "transform, opacity",
                 }}
               >
-                <TestimonialCard name={t.name} message={t.message} isLight={isLight} />
+                <TestimonialCard name={t.name} role={t.role} message={t.message} isLight={isLight} />
               </div>
             );
           })}
@@ -807,6 +889,14 @@ export default function Home() {
   // until the visitor scrolls. No logo flight, no blur veil.
   const [posterIn, setPosterIn] = useState(false); // car poster eases in
   const [reveal, setReveal] = useState(false); // headline stands up (text animation)
+  // Contact popup — opens a blurred backdrop + a glass contact card.
+  const [contactOpen, setContactOpen] = useState(false);
+  useEffect(() => {
+    if (!contactOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setContactOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [contactOpen]);
 
   // Camera tuner (dev): lens state it drives, shown only when the URL hash has
   // "tune". Use it to position the footer top-of-car pose (pose index 6), then
@@ -894,6 +984,7 @@ export default function Home() {
   const sub = isLight ? "text-neutral-500" : "text-white/55";
 
   return (
+    <SmoothScroll>
     <main className="relative w-full">
       {/* fixed studio backdrop. The LIGHT gradient is always painted as the base;
           the DARK gradient sits on top and simply CROSS-FADES in/out by opacity
@@ -985,13 +1076,19 @@ export default function Home() {
           translateX centres it (90% = scaled half-width), translateY drops the top
           to 13vh. No sm:left-10 so the centring stays exact across breakpoints. */}
       <div
-        className={`pointer-events-none fixed left-5 top-5 z-30 flex items-center gap-2.5 ${heading}`}
+        className={`pointer-events-none fixed left-5 top-5 flex items-center gap-2.5 ${
+          contactOpen ? "z-[70]" : "z-30"
+        } ${heading}`}
         style={{
-          transform: atFooter
-            ? "translateX(calc(50vw - 1.25rem - 90%)) translateY(calc(13vh - 1.25rem)) scale(1.8)"
-            : "none",
+          // contact open → the mark flies to the TOP-CENTRE of the contact card.
+          // footer → it slides to centre. (scale s → half-width = 50%·s.)
+          transform: contactOpen
+            ? "translateX(calc(50vw - 1.25rem - 57.5%)) translateY(calc(21vh - 1.25rem)) scale(1.15)"
+            : atFooter
+              ? "translateX(calc(50vw - 1.25rem - 90%)) translateY(calc(13vh - 1.25rem)) scale(1.8)"
+              : "none",
           transformOrigin: "left top",
-          transition: "transform 900ms cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: "transform 700ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <Logo
@@ -1027,15 +1124,14 @@ export default function Home() {
         }}
         className="pointer-events-none fixed right-5 top-5 z-30"
       >
-        <PillButtonGroup
+        <GlossButton
+          label="Contact Us"
+          href="#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            setContactOpen(true);
+          }}
           isLight={isLight}
-          items={[
-            {
-              label: "Contact Us",
-              href: "mailto:contact@apexride.com",
-              Icon: MailIconSolid,
-            },
-          ]}
         />
       </div>
 
@@ -1074,16 +1170,7 @@ export default function Home() {
             className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:gap-4"
           >
             <ScrollHint isLight={isLight} />
-            <PillButtonGroup
-              isLight={isLight}
-              items={[
-                {
-                  label: "Book Now",
-                  href: "/car",
-                  accent: { light: "#FDBA16", dark: "#FDBA16" },
-                },
-              ]}
-            />
+            <GlossButton label="Book Now" href="/form" isLight={isLight} />
           </div>
         </div>
 
@@ -1155,10 +1242,171 @@ export default function Home() {
           car (poses live in CarStage); the matching service bento fades in. */}
       <div ref={tourRef} id="services" className="relative">
         {Array.from({ length: TOUR_STOPS }).map((_, i) => (
-          // 154vh = 110vh × 1.4 → the whole tour scrolls 1.4× longer (slower)
-          <section key={i} aria-hidden className="h-[154vh]" />
+          // per-stop scroll distance — lower = the tour advances FASTER per scroll
+          <section key={i} aria-hidden className="h-[124vh]" />
         ))}
       </div>
+
+      {/* Contact popup — clicking "Contact Us" frosts the whole page (backdrop
+          blur) and floats a glass card. Click outside / × / Esc to close. */}
+      <div
+        aria-hidden={!contactOpen}
+        onClick={() => setContactOpen(false)}
+        className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto px-6 pb-10 pt-[20vh] transition-opacity duration-300"
+        style={{
+          opacity: contactOpen ? 1 : 0,
+          pointerEvents: contactOpen ? "auto" : "none",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          backgroundColor: isLight ? "rgba(226,232,240,0.45)" : "rgba(10,12,16,0.55)",
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Contact ApexRide"
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-sm rounded-3xl border px-7 pb-7 pt-16 text-center transition-[transform,opacity] duration-300"
+          style={{
+            transform: contactOpen ? "translateY(0) scale(1)" : "translateY(14px) scale(0.97)",
+            background: isLight
+              ? "linear-gradient(155deg, rgba(255,255,255,0.96), rgba(236,241,249,0.82))"
+              : "linear-gradient(155deg, rgba(44,48,60,0.88), rgba(15,17,23,0.72))",
+            borderColor: isLight ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.12)",
+            boxShadow: isLight
+              ? "0 30px 80px rgba(15,23,42,0.22)"
+              : "0 30px 80px rgba(0,0,0,0.5)",
+            color: isLight ? "#0c1222" : "#f3f5fa",
+          }}
+        >
+          <button
+            onClick={() => setContactOpen(false)}
+            aria-label="Close"
+            className={`absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-lg leading-none ${
+              isLight ? "text-neutral-500 hover:bg-neutral-900/5" : "text-white/55 hover:bg-white/10"
+            }`}
+          >
+            ×
+          </button>
+          <h3 className="text-[1.35rem] font-light leading-tight tracking-tight">Get in touch</h3>
+          <p className={`mx-auto mt-2 max-w-[18rem] text-[13px] leading-relaxed ${sub}`}>
+            Executive transport across Lagos &amp; Abuja — reach us anytime.
+          </p>
+
+          {/* email + phone as plain text */}
+          <div className="mt-4 flex flex-col items-center gap-1 text-[13px]">
+            <a
+              href="mailto:contact@apexride.com"
+              className="font-medium tracking-tight transition-opacity hover:opacity-70"
+            >
+              contact@apexride.com
+            </a>
+            <a
+              href="tel:+2348012345678"
+              className={`tracking-tight transition-opacity hover:opacity-70 ${sub}`}
+            >
+              +234 801 234 5678
+            </a>
+          </div>
+
+          {/* socials — Instagram + TikTok only */}
+          <div className="mx-auto mt-6 grid w-full max-w-[15rem] grid-cols-2 gap-3">
+            {[
+              { label: "Instagram", Icon: InstagramIcon, href: "https://instagram.com/apexride" },
+              { label: "TikTok", Icon: TikTokIcon, href: "https://www.tiktok.com/@apexride" },
+            ].map(({ label, Icon, href }) => (
+              <a
+                key={label}
+                href={href}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel={href.startsWith("http") ? "noreferrer" : undefined}
+                className={`group flex flex-col items-center gap-2.5 rounded-2xl border py-4 transition-colors ${
+                  isLight
+                    ? "border-neutral-900/[0.07] hover:border-neutral-900/20 hover:bg-neutral-900/[0.03]"
+                    : "border-white/10 hover:border-white/25 hover:bg-white/[0.05]"
+                }`}
+              >
+                <span
+                  className="grid h-9 w-9 place-items-center rounded-full transition-transform duration-200 group-hover:scale-110"
+                  style={{
+                    background: `color-mix(in srgb, ${isLight ? "#2A4FD0" : "#FDBA16"} ${isLight ? "12%" : "20%"}, transparent)`,
+                    color: isLight ? "#2A4FD0" : "#FDBA16",
+                  }}
+                >
+                  <Icon />
+                </span>
+                <span className={`text-[11px] font-medium tracking-wide ${sub}`}>{label}</span>
+              </a>
+            ))}
+          </div>
+
+          {/* divider */}
+          <div className="my-6 flex items-center gap-3">
+            <span className="h-px flex-1" style={{ background: isLight ? "rgba(12,18,34,0.09)" : "rgba(255,255,255,0.1)" }} />
+            <span className={`text-[10px] font-medium uppercase tracking-[0.18em] ${sub}`}>or send a message</span>
+            <span className="h-px flex-1" style={{ background: isLight ? "rgba(12,18,34,0.09)" : "rgba(255,255,255,0.1)" }} />
+          </div>
+
+          {/* small inquiry form — name · phone · message → opens a prefilled email */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const name = String(fd.get("name") || "");
+              const phone = String(fd.get("phone") || "");
+              const inquiry = String(fd.get("inquiry") || "");
+              const body = `Name: ${name}\nPhone: ${phone}\n\n${inquiry}`;
+              window.location.href = `mailto:contact@apexride.com?subject=${encodeURIComponent(
+                `Inquiry from ${name || "a guest"}`,
+              )}&body=${encodeURIComponent(body)}`;
+              setContactOpen(false);
+            }}
+            className="grid grid-cols-2 gap-2.5 text-left"
+          >
+            {[
+              { name: "name", type: "text", ph: "Name" },
+              { name: "phone", type: "tel", ph: "Phone" },
+            ].map((f) => (
+              <input
+                key={f.name}
+                name={f.name}
+                type={f.type}
+                required
+                placeholder={f.ph}
+                className={`rounded-xl border px-3.5 py-3 text-sm outline-none transition-colors ${
+                  isLight
+                    ? "border-neutral-900/15 bg-white/55 placeholder:text-neutral-400 focus:border-neutral-900/45"
+                    : "border-white/12 bg-white/[0.04] placeholder:text-white/35 focus:border-white/45"
+                }`}
+              />
+            ))}
+            <textarea
+              name="inquiry"
+              rows={3}
+              placeholder="Your inquiry"
+              className={`col-span-2 resize-none rounded-xl border px-3.5 py-3 text-sm leading-relaxed outline-none transition-colors ${
+                isLight
+                  ? "border-neutral-900/15 bg-white/55 placeholder:text-neutral-400 focus:border-neutral-900/45"
+                  : "border-white/12 bg-white/[0.04] placeholder:text-white/35 focus:border-white/45"
+              }`}
+            />
+            <button
+              type="submit"
+              className="col-span-2 mt-0.5 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[filter,transform] hover:brightness-[1.06] active:scale-[0.99]"
+              style={{
+                background: isLight
+                  ? "linear-gradient(180deg,#4360e8,#1f3bb0)"
+                  : "linear-gradient(180deg,#ffce4d,#e89c00)",
+                color: isLight ? "#fff" : "#1a1205",
+                boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)",
+              }}
+            >
+              Send inquiry
+            </button>
+          </form>
+        </div>
+      </div>
     </main>
+    </SmoothScroll>
   );
 }

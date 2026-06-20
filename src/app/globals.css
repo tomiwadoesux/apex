@@ -23,6 +23,27 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Lenis smooth scroll (see SmoothScroll.tsx). When Lenis is active it adds the
+   .lenis / .lenis-smooth classes to <html>; these rules let it own the scroll
+   (native smooth-behavior off) and keep nested scrollers / iframes well-behaved.
+   [data-lenis-prevent] opts an element out (e.g. the testimonials swipe row). */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
 /* Accessibility: honour prefers-reduced-motion for everything CSS-driven —
    page transitions, the mode toggle, button fills, the logo keyframes, the
    orb/GPS pulses, and smooth scrolling. The JS / WebGL scenes opt out

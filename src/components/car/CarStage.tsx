@@ -964,6 +964,9 @@ function FloorField({
   anchor: { current: THREE.Vector3 };
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 639px)").matches;
   // anchor is set once on model load; copying each frame just applies it after
   // load (cheap — a single Vector3 copy) and survives any later re-measure.
   useFrame(() => {
@@ -974,7 +977,8 @@ function FloorField({
       <Floor mode={mode} />
       <LogoFloorTiles mode={mode} />
       {/* soft contact shadow the car casts on the floor (sits just above the
-          grid/logos so it grounds the car) */}
+          grid/logos so it grounds the car). Half-res shadow map on phones — it's
+          re-rendered every frame, so this is a meaningful per-frame saving. */}
       <ContactShadows
         position={[0, 0.02, 0]}
         scale={11}
@@ -982,7 +986,7 @@ function FloorField({
         blur={2.6}
         opacity={0.6}
         color="#000000"
-        resolution={512}
+        resolution={isMobile ? 256 : 512}
       />
     </group>
   );
@@ -1036,6 +1040,7 @@ export default function CarStage({
   staticView = false,
   lens = "perspective",
   fisheyeZoom = 0.5,
+  capture = false,
 }: {
   mode: Mode;
   bg?: string;
@@ -1045,6 +1050,10 @@ export default function CarStage({
   onLoaded?: () => void;
   /** scroll progress through the services tour, 0..1 (mutable ref, no re-renders) */
   tourProgress?: { current: number };
+  /** Poster-capture mode (the /capture route): keep the drawing buffer readable
+      for toDataURL, force full quality (crisp dpr + MSAA + full IBL) regardless
+      of device so the saved poster looks its best. */
+  capture?: boolean;
   /** Park the car dead-still at the side view (no intro/orbit/spin/wheel roll);
       the scroll tour still drives the camera. */
   staticView?: boolean;
@@ -1054,6 +1063,15 @@ export default function CarStage({
   fisheyeZoom?: number;
 }) {
   const reduced = useReducedMotion();
+  // Phones get lighter render settings — fewer pixels (dpr 1), no MSAA, and a
+  // smaller IBL map — so the scroll tour stays smooth and the scene initialises
+  // faster. Desktop is unchanged. Read once on the client (this canvas is
+  // client-only via the page's ssr:false dynamic import).
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 639px)").matches;
+  // phone downgrades apply only OUTSIDE capture mode (posters stay crisp)
+  const lowQuality = isMobile && !capture;
   // the car's parked world centre — written by Car's setup, read by FloorField so
   // the grid/tiles centre their (empty) box under the parked car.
   const floorAnchor = useRef(new THREE.Vector3());
@@ -1070,15 +1088,42 @@ export default function CarStage({
         staticView={staticView}
         floorAnchor={floorAnchor}
       />
-      <Environment preset="city" />
+      {/* city IBL gives the car its reflections; a much smaller cubemap on phones
+          (64 vs the 256 default) cuts GPU memory + PMREM processing — reflections
+          are slightly softer but the lighting/tone match the poster. */}
+      <Environment preset="city" resolution={lowQuality ? 64 : 256} />
     </>
   );
   return (
     <GLErrorBoundary>
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={capture ? 2 : isMobile ? 1 : [1, 1.5]}
         camera={{ fov: 30, position: [8, 1.6, 1] }}
-        gl={{ antialias: true, powerPreference: "high-performance", alpha: true }}
+        gl={{
+          antialias: !lowQuality,
+          powerPreference: "high-performance",
+          alpha: true,
+          preserveDrawingBuffer: capture,
+        }}
+        onCreated={({ gl, invalidate }) => {
+          // WebGL contexts are a limited resource. In dev, HMR leaks one per
+          // hot-reload until the browser force-loses the oldest — which silently
+          // blanks the hero. The React error boundary can't catch that (it's a
+          // DOM event, not a render error), so handle it here: preventDefault on
+          // "lost" lets the browser RESTORE the context, and we re-render once
+          // it's back instead of leaving a blank canvas.
+          const canvas = gl.domElement;
+          canvas.addEventListener(
+            "webglcontextlost",
+            (e) => e.preventDefault(),
+            false,
+          );
+          canvas.addEventListener(
+            "webglcontextrestored",
+            () => invalidate(),
+            false,
+          );
+        }}
       >
         {!transparent && (
           <color attach="background" args={[bg ?? THEME[mode].bg]} />

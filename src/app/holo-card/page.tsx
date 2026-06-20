@@ -63,6 +63,21 @@ const CARS: Car[] = [
 
 const PICKUP = "Murtala Muhammed Intl · LOS";
 const DESTINATION = "Eko Hotel, Victoria Island";
+
+// Floating-island renders of each location (public/images/city) — a DAY cut-out
+// for light mode, a NIGHT/dusk one for dark mode. Keyed by the location label so
+// a route row can float its city beside the name. (Transparent PNGs, so the
+// island floats on the card with no box.)
+const LOCATION_IMG: Record<string, { light: string; dark: string }> = {
+  [PICKUP]: {
+    light: "/images/city/hf_20260609_191835_10382fac-98f4-4f3f-bbc5-b18661d9cd13.webp",
+    dark: "/images/city/hf_20260609_191641_778c656b-3c37-40dc-b8b6-fb969aa69c40.webp",
+  },
+  [DESTINATION]: {
+    light: "/images/city/hf_20260609_214000_7ad9a240-b82c-4cf6-8804-6d3d9f859ffc.webp",
+    dark: "/images/city/hf_20260609_214125_de3aa492-7fb6-42b6-a4bc-d3f0de8d54c7.webp",
+  },
+};
 const RIDE_DATE = "Sat, 21 Jun 2026";
 const RIDE_TIME = "18:30";
 const PHONE = "+234 801 234 5678";
@@ -298,18 +313,31 @@ export default function HoloCardPage() {
 }
 
 /* ── one route row (marker + label + place) ─────────────────────────────── */
-function RouteRow({ marker, icon: Icon, label, name, accent, ink, dim }: { marker?: "filled" | "ring"; icon?: LucideIcon; label: string; name: string; accent: string; ink: string; dim: string }) {
+function RouteRow({ marker, icon: Icon, label, name, accent, ink, dim, img, light = false }: { marker?: "filled" | "ring"; icon?: LucideIcon; label: string; name: string; accent: string; ink: string; dim: string; img?: { light: string; dark: string }; light?: boolean }) {
   return (
-    <div className="flex items-start" style={{ gap: "3cqw" }}>
+    <div className="relative flex items-start" style={{ gap: "3cqw" }}>
       {Icon ? (
         <Icon strokeWidth={2.2} style={{ width: "3.8cqw", height: "3.8cqw", color: accent, flexShrink: 0, marginTop: "0.2cqw" }} />
       ) : (
         <span style={{ marginTop: "0.6cqw", width: "3.4cqw", height: "3.4cqw", borderRadius: "9999px", flexShrink: 0, background: marker === "filled" ? accent : "transparent", border: `1.5px solid ${accent}`, boxShadow: marker === "filled" ? `0 0 0 1.1cqw ${accent}22` : "none" }} />
       )}
-      <div className="min-w-0">
+      <div className="min-w-0" style={img ? { paddingRight: "15cqw" } : undefined}>
         <div style={{ fontSize: "2cqw", letterSpacing: "0.28em", textTransform: "uppercase", color: dim }}>{label}</div>
         <div className="truncate" style={{ fontSize: "3cqw", fontWeight: 500, color: ink, marginTop: "0.4cqw" }}>{name}</div>
       </div>
+      {/* the location itself — a floating-island render, themed light/dark */}
+      {img && (
+        <div className="pointer-events-none absolute" style={{ right: 0, top: "50%", width: "13cqw", height: "12cqw", transform: "translateY(-50%)" }}>
+          <Image
+            src={light ? img.light : img.dark}
+            alt={`${name} location`}
+            fill
+            sizes="180px"
+            className="object-contain"
+            style={{ filter: `drop-shadow(0 1.2cqw 1.4cqw rgba(0,0,0,${light ? 0.28 : 0.55}))` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -336,6 +364,11 @@ type RideCardProps = {
 
 function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, service, pickup, dropoff, duration, date, time, bookingRef }: RideCardProps) {
   const reduced = useReducedMotion();
+  // touch devices can't hover, so we auto-play a GENTLE version of the hover there
+  const noHoverRef = useRef(false);
+  useEffect(() => {
+    noHoverRef.current = window.matchMedia("(hover: none)").matches;
+  }, []);
   const stageRef = useRef<HTMLDivElement>(null);
   const target = useRef({ x: 0.5, y: 0.5, active: 0 });
   const current = useRef({ x: 0.5, y: 0.5, active: 0 });
@@ -350,11 +383,13 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
       const t = target.current;
       const c = current.current;
       if (!hovering.current) {
-        if (cfg.animate && !rm && cfg.idle > 0) {
+        // Desktop: dead still — only a real hover tilts it. Touch (no hover):
+        // a gentle auto-sweep, weaker than a real hover (active capped low).
+        if (noHoverRef.current && !rm) {
           const now = performance.now() / 1000;
-          t.x = 0.5 + Math.sin(now * 0.6) * 0.2 * cfg.idle;
-          t.y = 0.5 + Math.cos(now * 0.45) * 0.2 * cfg.idle;
-          t.active = 0.3 * cfg.idle;
+          t.x = 0.5 + Math.sin(now * 0.55) * 0.14;
+          t.y = 0.5 + Math.cos(now * 0.42) * 0.14;
+          t.active = 0.42;
         } else {
           t.x = 0.5;
           t.y = 0.5;
@@ -433,7 +468,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
 
   return (
     <div className="flex items-center justify-center py-6" style={vars}>
-      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative" style={{ width: "min(420px, 86vw)", aspectRatio: "5 / 7" }}>
+      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative" style={{ width: "min(460px, 88vw)", aspectRatio: "5 / 7.5" }}>
         <div
           className="absolute inset-0 overflow-hidden"
           style={{
@@ -452,17 +487,18 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: light ? "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.75) 0%, transparent 55%)" : "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.07) 0%, transparent 55%)" }} />
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(85% 60% at 78% 112%, rgba(var(--glow-rgb), ${light ? 0.05 : 0.1}) 0%, transparent 60%)` }} />
 
+          {/* oversized faint logo bleeding off the corner — depth, not a centre mark */}
           <LogoMark style={{ position: "absolute", top: "-11cqw", right: "-13cqw", width: "62cqw", height: "auto", color: accent, opacity: light ? 0.06 : 0.08, transform: "rotate(-8deg)", pointerEvents: "none" }} />
 
-          <div className="pointer-events-none absolute inset-0 flex flex-col" style={{ padding: "6cqw 7cqw", transform: "translate(calc(var(--cx) * var(--parallax)), calc(var(--cy) * var(--parallax)))" }}>
+          <div className="pointer-events-none absolute inset-0 flex flex-col" style={{ padding: "4cqw 7cqw 2cqw", transform: "translate(calc(var(--cx) * var(--parallax)), calc(var(--cy) * var(--parallax)))" }}>
             {/* header: brand lockup + booked service (big) + date + time */}
             <div className="flex flex-col items-center text-center">
-              <div className="flex items-center justify-center" style={{ gap: "2.4cqw" }}>
-                <svg viewBox={LOGO_VIEWBOX} fill="none" style={{ width: "7cqw", height: "auto", overflow: "visible", flexShrink: 0 }}>
+              <div className="flex items-center justify-center" style={{ gap: "3cqw" }}>
+                <svg viewBox={LOGO_VIEWBOX} fill="none" style={{ width: "9cqw", height: "auto", overflow: "visible", flexShrink: 0 }}>
                   <path d={LOGO_PATHS[0]} fill={ink} />
                   <path d={LOGO_PATHS[1]} fill={accent} />
                 </svg>
-                <span style={{ fontWeight: 700, fontSize: "4.6cqw", letterSpacing: "0.08em", textTransform: "uppercase", color: ink, lineHeight: 1 }}>
+                <span style={{ fontWeight: 700, fontSize: "5.8cqw", letterSpacing: "0.08em", textTransform: "uppercase", color: ink, lineHeight: 1 }}>
                   Apex<span style={{ color: accent }}>Ride</span>
                 </span>
               </div>
@@ -473,8 +509,8 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               </div>
             </div>
 
-            {/* hero: the car — bigger now, for more breathing room */}
-            <div className="relative mt-[1cqw]" style={{ height: "64cqw", marginInline: "-6cqw" }}>
+            {/* hero: the car — bigger for more presence / breathing room */}
+            <div className="relative mt-[1cqw]" style={{ height: "72cqw", marginInline: "-7cqw" }}>
               <Image
                 key={car.name + (light ? "l" : "d")}
                 src={encodeURI(`/images/${light ? car.side.light : car.side.dark}`)}
@@ -503,13 +539,13 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
             <div className="mt-[2cqw] flex flex-col">
               {dropoff ? (
                 <>
-                  <RouteRow marker="filled" label="Pickup" name={pickup} accent={accent} ink={ink} dim={dim} />
-                  <div style={{ height: "3.5cqw", marginLeft: "1.7cqw", borderLeft: `1.5px dashed ${light ? "rgba(10,18,40,.35)" : "rgba(255,255,255,.32)"}` }} />
-                  <RouteRow marker="ring" label="Drop-off" name={dropoff} accent={accent} ink={ink} dim={dim} />
+                  <RouteRow marker="filled" label="Pickup" name={pickup} accent={accent} ink={ink} dim={dim} img={LOCATION_IMG[pickup]} light={light} />
+                  <div style={{ height: "7cqw", marginLeft: "1.7cqw", borderLeft: `1.5px dashed ${light ? "rgba(10,18,40,.35)" : "rgba(255,255,255,.32)"}` }} />
+                  <RouteRow marker="ring" label="Drop-off" name={dropoff} accent={accent} ink={ink} dim={dim} img={LOCATION_IMG[dropoff]} light={light} />
                 </>
               ) : (
                 <>
-                  <RouteRow icon={MapPin} label="Pickup" name={pickup} accent={accent} ink={ink} dim={dim} />
+                  <RouteRow icon={MapPin} label="Pickup" name={pickup} accent={accent} ink={ink} dim={dim} img={LOCATION_IMG[pickup]} light={light} />
                   {duration && <div style={{ marginTop: "3cqw" }}><RouteRow icon={Clock} label="Duration" name={duration} accent={accent} ink={ink} dim={dim} /></div>}
                 </>
               )}
@@ -520,6 +556,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               <div style={{ borderTop: `2px dotted ${light ? "rgba(10,18,40,.3)" : "rgba(255,255,255,.26)"}`, margin: "2cqw 0 2.5cqw" }} />
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.3em", color: dim }}>BOOKING No.</div>
               <div style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600, fontSize: "5.6cqw", letterSpacing: "0.2em", color: ink, marginTop: "1.2cqw" }}>{bookingRef}</div>
+              <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apexride.com/booking/{bookingRef.replace(/\s+/g, "")}</div>
             </div>
 
             {/* contact — pinned to the bottom */}
@@ -532,6 +569,11 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
                 <Mail strokeWidth={2.2} style={{ width: "2.9cqw", height: "2.9cqw", color: accent, flexShrink: 0 }} />
                 {EMAIL}
               </span>
+            </div>
+
+            {/* sharing instruction — pushed right down to the bottom edge */}
+            <div style={{ marginTop: "3cqw", fontSize: "2.3cqw", lineHeight: 1.4, color: dim, textAlign: "center", paddingInline: "1cqw" }}>
+              Only share this card with whoever you&apos;re sharing this ride with, or who you booked it for.
             </div>
           </div>
 

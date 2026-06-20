@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type ReactNode, type CSSProperties, type TouchEvent as ReactTouchEvent } from "react";
 import Logo from "@/components/Logo";
 import Image from "next/image";
 import { gsap } from "gsap";
@@ -50,6 +50,24 @@ const LOCATIONS: LocationItem[] = [
     coordinates: "6.4281° N, 3.4219° E",
   },
 ];
+
+// Floating-island renders for the pickup-location cards (public/images/city):
+// a DAY cut-out for light mode, a NIGHT/dusk one for dark. Keyed by location id.
+// (Lekki has no render yet, so it keeps the coordinates/description block.)
+const LOCATION_CITY_IMG: Record<string, { light: string; dark: string }> = {
+  lagos: {
+    light: "/images/city/hf_20260609_191835_10382fac-98f4-4f3f-bbc5-b18661d9cd13.webp",
+    dark: "/images/city/hf_20260609_191641_778c656b-3c37-40dc-b8b6-fb969aa69c40.webp",
+  },
+  abuja: {
+    light: "/images/city/hf_20260609_211859_cfbf3152-29e3-469c-8852-c925c9926b80.webp",
+    dark: "/images/city/hf_20260609_212050_d98df3f4-df45-4dc1-b005-a168344cbae4.webp",
+  },
+  vi: {
+    light: "/images/city/hf_20260609_214000_7ad9a240-b82c-4cf6-8804-6d3d9f859ffc.webp",
+    dark: "/images/city/hf_20260609_214125_de3aa492-7fb6-42b6-a4bc-d3f0de8d54c7.webp",
+  },
+};
 
 interface VehicleAngles {
   front: string;
@@ -375,6 +393,20 @@ export default function BookingForm() {
   const farLeftCarRef = useRef<HTMLDivElement>(null);
   const incomingCarRef = useRef<HTMLDivElement>(null);
   const carAnimRef = useRef(false);
+
+  // Touch-swipe support for the location / car carousels on mobile.
+  const swipeStartXRef = useRef<number | null>(null);
+  const makeSwipeHandlers = (onSwipe: (dir: number) => void) => ({
+    onTouchStart: (e: ReactTouchEvent) => {
+      swipeStartXRef.current = e.touches[0].clientX;
+    },
+    onTouchEnd: (e: ReactTouchEvent) => {
+      if (swipeStartXRef.current === null) return;
+      const dx = e.changedTouches[0].clientX - swipeStartXRef.current;
+      swipeStartXRef.current = null;
+      if (Math.abs(dx) > 40) onSwipe(dx < 0 ? 1 : -1);
+    },
+  });
 
   const backButtonContainerRef = useRef<HTMLDivElement>(null);
   const headerDividerRef = useRef<HTMLDivElement>(null);
@@ -1361,7 +1393,7 @@ export default function BookingForm() {
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
       {/* 1. Header component */}
-      <header className="flex items-center justify-between px-12 py-5 z-20">
+      <header className="flex items-center justify-between px-5 sm:px-8 md:px-12 py-5 z-20">
         <div className="flex items-center">
           {/* Back button container with sliding width and fade */}
           <div
@@ -1401,7 +1433,7 @@ export default function BookingForm() {
         <button
           type="button"
           onClick={() => setContactOpen(true)}
-          className={`pointer-events-auto rounded-full border px-6 py-2.5 text-xs font-semibold tracking-wider transition-all duration-300 ${isLight
+          className={`pointer-events-auto rounded-full border px-4 sm:px-6 py-2 sm:py-2.5 text-xs font-semibold tracking-wider transition-all duration-300 whitespace-nowrap ${isLight
             ? "border-neutral-900/40 hover:bg-neutral-900/[0.08] text-neutral-900"
             : "border-white/30 hover:bg-white/[0.08] text-white"
             }`}
@@ -1412,15 +1444,15 @@ export default function BookingForm() {
 
       {/* Floating step progress text, positioned constantly at the top */}
       {currentStep <= 6 && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-20 w-full text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
-            <p className={`step-text text-[10px] font-bold uppercase tracking-[0.3em] ${sub}`}>
+            <p className={`step-text text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] ${sub}`}>
               {displayedStepText}
             </p>
           </div>
           {currentStep !== 3 && (
             <div className="flex flex-col items-center">
-              <h1 className={`max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl ${heading} transition-all duration-300 min-h-[50px] flex items-center justify-center text-center`}>
+              <h1 className={`max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl ${heading} transition-all duration-300 min-h-[44px] sm:min-h-[50px] flex items-center justify-center text-center`}>
                 <span className="sub-step-text inline-block">
                   {displayedSubLabel}
                 </span>
@@ -1448,7 +1480,7 @@ export default function BookingForm() {
             {currentStep === 0 && (
               <form
                 onSubmit={(e) => e.preventDefault()}
-                className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}
+                className={`w-full max-w-md mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}
               >
 
                 <div className="flex flex-col">
@@ -1519,12 +1551,17 @@ export default function BookingForm() {
 
             {/* Step 2: Pickup Location Carousel (Black Squares) */}
             {currentStep === 1 && (
-              <div className="relative w-full h-[450px] flex items-center justify-center mt-6">
+              <div
+                className="relative w-full h-[370px] sm:h-[450px] flex items-center justify-center mt-6"
+                {...makeSwipeHandlers((dir) =>
+                  setActiveIndex((idx) => (idx + dir + LOCATIONS.length) % LOCATIONS.length)
+                )}
+              >
 
                 {/* Left arrow */}
                 <button
                   onClick={() => setActiveIndex((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                  className={`pointer-events-auto absolute left-1 sm:left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                   aria-label="Previous Location"
                 >
@@ -1540,14 +1577,15 @@ export default function BookingForm() {
                     const isActive = diff === 0;
                     const isPrev = diff === -1;
                     const isNext = diff === 1;
+                    const cityImg = LOCATION_CITY_IMG[loc.id];
 
                     let transformClass = "";
                     if (isActive) {
                       transformClass = "translate-x-0 translate-y-0 scale-100 z-10 opacity-100 rotate-0";
                     } else if (isPrev) {
-                      transformClass = "-translate-x-[22rem] lg:-translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 -rotate-6 pointer-events-auto cursor-pointer";
+                      transformClass = "-translate-x-[13rem] sm:-translate-x-[22rem] lg:-translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 -rotate-6 pointer-events-auto cursor-pointer";
                     } else if (isNext) {
-                      transformClass = "translate-x-[22rem] lg:translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 rotate-6 pointer-events-auto cursor-pointer";
+                      transformClass = "translate-x-[13rem] sm:translate-x-[22rem] lg:translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 rotate-6 pointer-events-auto cursor-pointer";
                     } else {
                       transformClass = "translate-y-24 scale-50 z-0 opacity-0 pointer-events-none";
                     }
@@ -1559,26 +1597,51 @@ export default function BookingForm() {
                           if (isPrev) setActiveIndex((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
                           if (isNext) setActiveIndex((i) => (i + 1) % LOCATIONS.length);
                         }}
-                        className={`absolute w-80 h-80 rounded-2xl flex flex-col justify-between p-7 text-left transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform ${transformClass} ${carouselCardStyle}`}
+                        className={`absolute w-[17rem] h-[17rem] sm:w-80 sm:h-80 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform ${transformClass} ${
+                          cityImg
+                            ? "flex flex-col items-center justify-center"
+                            : `rounded-2xl flex flex-col justify-between p-6 sm:p-7 text-left ${carouselCardStyle}`
+                        }`}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className={`text-4xl font-extrabold tracking-widest select-none ${isLight ? "text-neutral-900/10" : "text-white/10"}`}>
-                            {loc.code}
-                          </span>
-                          {isActive && <div className="orb-marker" />}
-                        </div>
-
-                        <div className={`flex-1 flex flex-col justify-center border-y my-4 py-4 opacity-80 ${isLight ? "border-neutral-900/5" : "border-white/5"}`}>
-                          <div className={`text-[9px] tracking-widest uppercase font-bold ${isLight ? "text-neutral-900/40" : "text-white/40"}`}>Terminal Coordinates</div>
-                          <div className={`font-mono text-xs mt-1 ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>{loc.coordinates}</div>
-                          <p className={`text-xs mt-3 leading-relaxed font-light line-clamp-3 select-none ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>
-                            {loc.desc}
-                          </p>
-                        </div>
-
-                        <div className={`text-xs font-semibold truncate ${isLight ? "text-neutral-900/90" : "text-white/90"}`}>
-                          {loc.subtitle}
-                        </div>
+                        {cityImg ? (
+                          // the location on its OWN — a big floating-island render, no card
+                          <>
+                            <div className="relative min-h-0 w-[120%] flex-1">
+                              <Image
+                                src={isLight ? cityImg.light : cityImg.dark}
+                                alt={loc.name}
+                                fill
+                                sizes="(max-width: 640px) 90vw, 480px"
+                                draggable={false}
+                                className="select-none object-contain"
+                                style={{ filter: `drop-shadow(0 16px 28px rgba(0,0,0,${isLight ? 0.25 : 0.55}))` }}
+                              />
+                            </div>
+                            <div className={`shrink-0 pt-1.5 text-center ${isLight ? "text-neutral-900" : "text-white"}`}>
+                              <div className="text-sm font-semibold">{loc.name}</div>
+                              <div className={`mt-0.5 text-[11px] font-light ${isLight ? "text-neutral-900/55" : "text-white/55"}`}>{loc.subtitle}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className={`text-4xl font-extrabold tracking-widest select-none ${isLight ? "text-neutral-900/10" : "text-white/10"}`}>
+                                {loc.code}
+                              </span>
+                              {isActive && <div className="orb-marker" />}
+                            </div>
+                            <div className={`flex-1 flex flex-col justify-center border-y my-4 py-4 opacity-80 ${isLight ? "border-neutral-900/5" : "border-white/5"}`}>
+                              <div className={`text-[9px] tracking-widest uppercase font-bold ${isLight ? "text-neutral-900/40" : "text-white/40"}`}>Terminal Coordinates</div>
+                              <div className={`font-mono text-xs mt-1 ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>{loc.coordinates}</div>
+                              <p className={`text-xs mt-3 leading-relaxed font-light line-clamp-3 select-none ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>
+                                {loc.desc}
+                              </p>
+                            </div>
+                            <div className={`text-xs font-semibold truncate ${isLight ? "text-neutral-900/90" : "text-white/90"}`}>
+                              {loc.subtitle}
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })}
@@ -1587,7 +1650,7 @@ export default function BookingForm() {
                 {/* Right arrow */}
                 <button
                   onClick={() => setActiveIndex((idx) => (idx + 1) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                  className={`pointer-events-auto absolute right-1 sm:right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                   aria-label="Next Location"
                 >
@@ -1600,7 +1663,7 @@ export default function BookingForm() {
 
             {/* Step 3: Destination */}
             {currentStep === 2 && (
-              <div className={`w-full max-w-md mt-8 p-8 rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
+              <div className={`w-full max-w-md mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
                 <div className="flex flex-col">
                   <label className={labelStyle}>Destination (Optional)</label>
                   <input
@@ -1617,7 +1680,10 @@ export default function BookingForm() {
             {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
             {currentStep === 3 && (
               <div className="w-full flex flex-col items-center">
-                <div className="relative w-full h-[220px] md:h-[280px] lg:h-[320px] xl:h-[350px] flex items-center justify-center mt-2">
+                <div
+                  className="relative w-full h-[220px] md:h-[280px] lg:h-[320px] xl:h-[350px] flex items-center justify-center mt-2"
+                  {...makeSwipeHandlers((dir) => spinCar(dir))}
+                >
 
                   {/* Left arrow */}
                   <button
@@ -2046,7 +2112,7 @@ export default function BookingForm() {
       </div>
 
       {/* 3. Stepper progress tracker floating glass-morphic dock (Exactly 7 indicators matching strict requirements) */}
-      <div className="pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[70vw] px-0 z-20 select-none">
+      <div className="pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[88vw] sm:max-w-[70vw] px-0 z-20 select-none">
         <div className="relative px-0 py-5 transition-all duration-300">
           <div className="relative grid grid-cols-7 items-start">
             {/* The horizontal connecting line */}
@@ -2088,7 +2154,7 @@ export default function BookingForm() {
                     <button
                       onClick={() => currentStep <= 6 && setCurrentStep(idx)}
                       disabled={currentStep > 6}
-                      className={`transition-all duration-300 focus:outline-none ${isActive
+                      className={`relative transition-all duration-300 focus:outline-none before:absolute before:content-[''] before:inset-[-11px] ${isActive
                         ? "w-3.5 h-3.5 border rounded-full shadow-md scale-110 cursor-pointer"
                         : "w-2.5 h-2.5 border-2 rounded-full cursor-pointer"
                         }`}
@@ -2107,7 +2173,7 @@ export default function BookingForm() {
                       }}
                     />
                   </div>
-                  <span className={`mt-2.5 text-[11px] font-semibold tracking-wide font-sans transition-colors duration-300 ${isActive
+                  <span className={`mt-2.5 hidden sm:block text-[11px] font-semibold tracking-wide font-sans transition-colors duration-300 ${isActive
                     ? (isLight ? "text-neutral-900 font-bold" : "text-white font-bold")
                     : (isLight ? "text-neutral-900/80" : "text-white/75")
                     }`}>
@@ -2121,7 +2187,7 @@ export default function BookingForm() {
       </div>
 
       {/* 4. Headlights theme toggle (bottom left) */}
-      <div className="pointer-events-auto fixed bottom-5 left-12 z-20 select-none">
+      <div className="pointer-events-auto fixed bottom-16 sm:bottom-5 left-4 sm:left-12 z-20 select-none">
         <div className={`relative flex rounded-full border p-1 shadow-lg backdrop-blur-md transition-all duration-300 ${isLight
           ? "border-neutral-900/15 bg-transparent shadow-neutral-900/5"
           : "border-white/10 bg-transparent shadow-black/40"
@@ -2171,7 +2237,7 @@ export default function BookingForm() {
           role="dialog"
           aria-modal="true"
           aria-label="Contact ApexRide"
-          className={`relative w-full max-w-md rounded-[2.5rem] border p-8 shadow-lg backdrop-blur-xl ${isLight
+          className={`relative w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] border p-6 sm:p-8 shadow-lg backdrop-blur-xl ${isLight
             ? "bg-white/80 border-neutral-900/10 text-neutral-900 shadow-neutral-900/5"
             : "bg-neutral-950/70 border-white/10 text-white shadow-black/30"
             }`}
@@ -2257,7 +2323,7 @@ export default function BookingForm() {
           role="dialog"
           aria-modal="true"
           aria-label="Other Options Search"
-          className={`relative w-full max-w-md rounded-[2.5rem] border p-8 shadow-lg backdrop-blur-xl ${
+          className={`relative w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] border p-6 sm:p-8 shadow-lg backdrop-blur-xl ${
             isLight
               ? "bg-white/80 border-neutral-900/10 text-neutral-900 shadow-neutral-900/5"
               : "bg-neutral-950/70 border-white/10 text-white shadow-black/30"
