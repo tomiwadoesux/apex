@@ -72,7 +72,16 @@ export function createNavigator(): Navigator | null {
     const scored = opts.map((eid) => ({ eid, turn: turnBetween(headingOf(eid, at), inDeg) }));
     let allowed = scored.filter((s) => s.turn <= MAX_TURN_DEG);
     if (!allowed.length) allowed = scored;
-    if (!committed) {
+    // Roundabout discipline: the moment we're driving ON the ring, leave by the
+    // first usable EXIT (a non-ring road) rather than staying on it. Without this
+    // the "prefer-straight / commit-before-turning" rules treat going around the
+    // island as the straight option and the marker can lap it forever (it gets
+    // "stuck in the roundabout"). Off the ring, keep the normal commit-to-straight.
+    const onRing = edges[arrived]?.ring;
+    if (onRing) {
+      const exits = allowed.filter((s) => !edges[s.eid].ring);
+      if (exits.length) allowed = exits;
+    } else if (!committed) {
       const straight = allowed.filter((s) => s.turn <= STRAIGHT_DEG);
       if (straight.length) allowed = straight;
     }

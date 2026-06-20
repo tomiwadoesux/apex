@@ -38,31 +38,26 @@ function makeRng(seed: number) {
 type Line = { v: number; name: string; rank: 1 | 2 | 3 };
 
 const AVENUES: Line[] = [
-  { v: 65, name: "Birch Avenue", rank: 3 },
-  { v: 175, name: "Cedar Avenue", rank: 2 },
-  { v: 300, name: "Apex Avenue", rank: 1 },
-  { v: 425, name: "Vine Avenue", rank: 2 },
-  { v: 535, name: "Harbor Avenue", rank: 3 },
+  { v: 65, name: "Bourdillon Rd", rank: 3 },
+  { v: 175, name: "Akin Adesola St", rank: 2 },
+  { v: 300, name: "Ahmadu Bello Way", rank: 1 },
+  { v: 425, name: "Adeola Odeku St", rank: 2 },
+  { v: 535, name: "Ozumba Mbadiwe Ave", rank: 3 },
 ];
 const STREETS: Line[] = [
-  { v: 65, name: "Bay Street", rank: 3 },
-  { v: 175, name: "Park Street", rank: 2 },
-  { v: 300, name: "Market Street", rank: 1 },
-  { v: 425, name: "Sunset Street", rank: 2 },
-  { v: 535, name: "Pier Street", rank: 3 },
+  { v: 65, name: "Ribadu Rd", rank: 3 },
+  { v: 175, name: "Kofo Abayomi St", rank: 2 },
+  { v: 300, name: "Awolowo Rd", rank: 1 },
+  { v: 425, name: "Sanusi Fafunwa St", rank: 2 },
+  { v: 535, name: "Adeyemo Alakija St", rank: 3 },
 ];
 const XS = AVENUES.map((a) => a.v);
 const YS = STREETS.map((s) => s.v);
 
 // One grand diagonal for character; endpoints sit exactly on grid nodes so it
 // joins the network cleanly. Avoids the park block and the roundabout.
-const GRAND: [Pt, Pt] = [
-  { x: 175, y: 425 },
-  { x: 425, y: 65 },
-];
-
 // Roundabout(s): a ring road with a fountain island in the middle.
-export const ROUNDABOUTS = [{ cx: 300, cy: 300, r: 28 }];
+export const ROUNDABOUTS = [{ cx: 300, cy: 300, r: 38 }];
 
 // Reserved blocks (col,row) get a feature instead of generic buildings.
 const MALL = { col: 1, row: 0 };
@@ -95,6 +90,56 @@ function ringPts(cx: number, cy: number, r: number, n = 24): Pt[] {
   }
   return pts;
 }
+
+// Split a polyline into the sub-polylines that lie OUTSIDE every roundabout, so a
+// straight arterial STOPS at the ring instead of drawing across the island.
+function clipRoundabouts(pts: Pt[]): Pt[][] {
+  const insidePt = (p: Pt) =>
+    ROUNDABOUTS.some((rb) => Math.hypot(p.x - rb.cx, p.y - rb.cy) < rb.r);
+  const out: Pt[][] = [];
+  let cur: Pt[] = [];
+  const push = (p: Pt) => {
+    const last = cur[cur.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1e-4) cur.push(p);
+  };
+  const flush = () => {
+    if (cur.length >= 2) out.push(cur);
+    cur = [];
+  };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const ts: number[] = [0, 1];
+    for (const rb of ROUNDABOUTS) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const fx = a.x - rb.cx, fy = a.y - rb.cy;
+      const A = dx * dx + dy * dy;
+      const B = 2 * (fx * dx + fy * dy);
+      const C = fx * fx + fy * fy - rb.r * rb.r;
+      const disc = B * B - 4 * A * C;
+      if (A === 0 || disc <= 0) continue;
+      const sq = Math.sqrt(disc);
+      for (const t of [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]) {
+        if (t > 1e-6 && t < 1 - 1e-6) ts.push(t);
+      }
+    }
+    ts.sort((u, v) => u - v);
+    for (let k = 0; k < ts.length - 1; k++) {
+      const p0 = { x: a.x + dxAt(a, b, ts[k]), y: a.y + dyAt(a, b, ts[k]) };
+      const p1 = { x: a.x + dxAt(a, b, ts[k + 1]), y: a.y + dyAt(a, b, ts[k + 1]) };
+      const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+      if (insidePt(mid)) flush();
+      else {
+        push(p0);
+        push(p1);
+      }
+    }
+  }
+  flush();
+  return out;
+}
+const dxAt = (a: Pt, b: Pt, t: number) => (b.x - a.x) * t;
+const dyAt = (a: Pt, b: Pt, t: number) => (b.y - a.y) * t;
 
 function roundRectD(x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2);
@@ -168,9 +213,13 @@ function buildCity(): City {
     const w = rankWidth(rank);
     roads.push({ d, w, casing: w + 3.5, arterial: rank === 1 });
   };
-  for (const a of AVENUES) addRoad(polyD(YS.map((y) => ({ x: a.v, y }))), a.rank);
-  for (const s of STREETS) addRoad(polyD(XS.map((x) => ({ x, y: s.v }))), s.rank);
-  addRoad(polyD(GRAND), 2);
+  // arterials are clipped at the roundabout so they don't draw across the island
+  for (const a of AVENUES)
+    for (const seg of clipRoundabouts(YS.map((y) => ({ x: a.v, y }))))
+      addRoad(polyD(seg), a.rank);
+  for (const s of STREETS)
+    for (const seg of clipRoundabouts(XS.map((x) => ({ x, y: s.v }))))
+      addRoad(polyD(seg), s.rank);
   // smooth 48-gon for drawing
   for (const rb of ROUNDABOUTS) addRoad(polyD(ringPts(rb.cx, rb.cy, rb.r, 48)), 2);
 
@@ -214,8 +263,7 @@ function buildCity(): City {
           if (w < 7 || h < 7) continue;
           const mx = x + w / 2;
           const my = y + h / 2;
-          if (nearRoundabout(mx, my, 8)) continue;
-          if (distToSeg(mx, my, GRAND[0], GRAND[1]) < 13) continue; // keep off the boulevard
+          if (nearRoundabout(mx, my, 22)) continue; // keep buildings clear of the ring road
           buildings.push({ x, y, w, h });
         }
       }
@@ -235,7 +283,7 @@ function buildCity(): City {
       label: {
         x: mx + mw / 2,
         y: my + mh / 2,
-        text: "Apexride Mall",
+        text: "The Palms Mall",
         rot: 0,
         kind: "poi",
         size: 9.5,
@@ -257,7 +305,7 @@ function buildCity(): City {
     labels.push({
       x: px + pw * 0.34,
       y: py + ph * 0.62 + 18,
-      text: "Civic Plaza",
+      text: "Eko Hotel",
       rot: 0,
       kind: "poi",
       size: 8.5,
@@ -286,7 +334,7 @@ function buildCity(): City {
     labels.push({
       x: gx + gw * 0.5,
       y: gy + gh * 0.2,
-      text: "Greenwood Park",
+      text: "Freedom Park",
       rot: 0,
       kind: "park",
       size: 9,
@@ -305,37 +353,34 @@ function buildCity(): City {
     labels.push({
       x: cx,
       y: cy,
-      text: "Crescent Lake",
+      text: "Lagos Lagoon",
       rot: 0,
       kind: "water",
       size: 9,
     });
   }
 
-  // Roundabout island + fountain + name.
+  // Roundabout island + fountain (no label — it sat on the avenue and crossed it).
   for (const rb of ROUNDABOUTS) {
     islands.push({ cx: rb.cx, cy: rb.cy, r: rb.r - 7 });
     fountains.push({ cx: rb.cx, cy: rb.cy, r: 9 });
-    labels.push({
-      x: rb.cx,
-      y: rb.cy + rb.r + 11,
-      text: "Apex Circle",
-      rot: 0,
-      kind: "poi",
-      size: 8,
-    });
   }
 
   // --- street name labels (Google-Maps style, on the road) ----------------
   const street = (x: number, y: number, text: string, rot: number, size = 8) =>
     labels.push({ x, y, text, rot, kind: "street", size });
-  street(300, 365, "Apex Avenue", -90, 9);
-  street(112, 300, "Market Street", 0, 9);
-  street(175, 240, "Cedar Avenue", -90);
-  street(255, 425, "Sunset Street", 0);
-  street(425, 205, "Vine Avenue", -90);
-  street(235, 65, "Bay Street", 0);
-  street(300, 250, "Grand Boulevard", -55);
+  // one name per road, each on a clear stretch of its OWN line, spread apart so
+  // no two labels cross. Avenues run vertically (rot -90), streets horizontally.
+  street(300, 132, "Ahmadu Bello Way", -90, 9); // arterial, north of the roundabout
+  street(132, 300, "Awolowo Rd", 0, 9); // arterial, west of the roundabout
+  street(65, 240, "Bourdillon Rd", -90, 7);
+  street(175, 470, "Akin Adesola St", -90, 7);
+  street(425, 360, "Adeola Odeku St", -90, 7);
+  street(535, 240, "Ozumba Mbadiwe Ave", -90, 7);
+  street(360, 65, "Ribadu Rd", 0, 7);
+  street(470, 175, "Kofo Abayomi St", 0, 7);
+  street(255, 425, "Sanusi Fafunwa St", 0, 7);
+  street(300, 535, "Adeyemo Alakija St", 0, 7);
 
   return {
     roads,
@@ -357,7 +402,7 @@ export const CITY: City = buildCity();
 // ---------------------------------------------------------------------------
 // Routable street graph
 // ---------------------------------------------------------------------------
-export type GEdge = { a: number; b: number; len: number };
+export type GEdge = { a: number; b: number; len: number; ring: boolean };
 export type Graph = { nodes: Pt[]; edges: GEdge[]; adj: number[][] };
 
 // Insert a vertex at every interior crossing between road polylines, so the
@@ -410,7 +455,6 @@ function navRoads(): { pts: Pt[]; ring: boolean }[] {
   const out: { pts: Pt[]; ring: boolean }[] = [];
   for (const a of AVENUES) out.push({ pts: YS.map((y) => ({ x: a.v, y })), ring: false });
   for (const s of STREETS) out.push({ pts: XS.map((x) => ({ x, y: s.v })), ring: false });
-  out.push({ pts: [GRAND[0], GRAND[1]], ring: false });
   // 22 segments (not a multiple of 4) so no ring vertex lands exactly on the
   // N/S/E/W arterials — that would be a vertex-touch, which planarize skips,
   // leaving the ring unconnected and roads cutting through the island.
@@ -511,7 +555,7 @@ export function buildStreetGraph(): Graph {
     c++;
   }
 
-  const edges2 = kept.filter((e) => comp[e.a] === best).map((e) => ({ a: e.a, b: e.b, len: e.len }));
+  const edges2 = kept.filter((e) => comp[e.a] === best).map((e) => ({ a: e.a, b: e.b, len: e.len, ring: e.ring }));
   const adj: number[][] = nodes.map(() => []);
   edges2.forEach((e, i) => {
     adj[e.a].push(i);

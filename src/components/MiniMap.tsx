@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import styles from "@/app/map-trail/MapTrail.module.css";
 import { CITY } from "@/app/map-trail/city";
 import { createNavigator } from "@/app/map-trail/streetGraph";
@@ -11,6 +11,79 @@ const VIEW = 220; // Zoomed in slightly more for the mini map
 const SPEED = 25; // Speed of travel (units/sec)
 const CAM_SMOOTH = 2.6; // camera catch-up smoothing
 const CAM_LEAD = VIEW * 0.55;
+
+// The widget blends into the page backdrop: its ground/surround, drop shadow and
+// caption all derive from the page's BG_GRADIENT tone (mirror those values), so
+// only the roads, buildings and the (untouched) pulse read on top.
+const SURFACE: Record<"light" | "dark", string> = {
+  light: "#cbd5e1", // mirrors page BG_GRADIENT light
+  dark: "#26262b", // mirrors page BG_GRADIENT dark
+};
+const CAPTION_INK: Record<"light" | "dark", string> = {
+  light: "#64748b", // slate, reads on the light backdrop
+  dark: "#9aa1ac", // soft grey, reads on the dark backdrop
+};
+
+// Value-prop one-liners the caption types out (and deletes) on a loop.
+const PITCHES = [
+  "Always on time",
+  "Private chauffeurs",
+  "An executive fleet",
+  "Airport to anywhere",
+  "Discreet & seamless",
+];
+
+// Typewriter caption: types a pitch, holds, deletes, types the next — looping
+// through PITCHES. Reduced-motion shows the first one static.
+function RotatingCaption({ color }: { color: string }) {
+  const reduced = useReducedMotion();
+  const [display, setDisplay] = useState(PITCHES[0]);
+  const idx = useRef(0);
+  const len = useRef(PITCHES[0].length);
+  const phase = useRef<"type" | "hold" | "del">("hold");
+
+  useEffect(() => {
+    if (reduced) {
+      setDisplay(PITCHES[0]);
+      return;
+    }
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const full = PITCHES[idx.current % PITCHES.length];
+      if (phase.current === "type") {
+        len.current += 1;
+        setDisplay(full.slice(0, len.current));
+        if (len.current >= full.length) {
+          phase.current = "hold";
+          t = setTimeout(tick, 1600);
+        } else t = setTimeout(tick, 58);
+      } else if (phase.current === "hold") {
+        phase.current = "del";
+        t = setTimeout(tick, 60);
+      } else {
+        len.current -= 1;
+        setDisplay(full.slice(0, Math.max(0, len.current)));
+        if (len.current <= 0) {
+          idx.current = (idx.current + 1) % PITCHES.length;
+          phase.current = "type";
+          t = setTimeout(tick, 320);
+        } else t = setTimeout(tick, 30);
+      }
+    };
+    t = setTimeout(tick, 1600); // hold the first pitch, then start cycling
+    return () => clearTimeout(t);
+  }, [reduced]);
+
+  return (
+    <span
+      aria-hidden
+      className="flex h-[12px] items-center text-[9px] font-bold uppercase tracking-widest opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+      style={{ color }}
+    >
+      {display}
+    </span>
+  );
+}
 
 const MARK_SCALE = 0.12 * (VIEW / 175);
 const MARK_AX = 69;
@@ -114,11 +187,22 @@ export default function MiniMap({
           height: "112px",
           borderRadius: "9999px",
           overflow: "hidden",
-          border: `2px solid ${isLight ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.15)"}`,
-          boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
-          background: isLight ? "#eceee9" : "#19212e",
+          border: "none",
+          boxShadow: "none",
+          background: SURFACE[mode],
+          // feather the circular edge into transparency so the widget melts into
+          // the page backdrop instead of reading as a hard-edged disc.
+          WebkitMaskImage:
+            "radial-gradient(closest-side, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%)",
+          maskImage:
+            "radial-gradient(closest-side, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%)",
+          // override the map's ground/surround (and the gradient behind it) to the
+          // page backdrop tone — minimap only, the shared CSS module is untouched.
+          ["--c-land" as string]: SURFACE[mode],
+          ["--bg-1" as string]: SURFACE[mode],
+          ["--bg-2" as string]: SURFACE[mode],
           transition: "transform 0.3s ease, border-color 0.3s ease",
-        }}
+        } as CSSProperties}
         className={`${styles.wrap} group-hover:scale-105`}
       >
         <svg
@@ -198,13 +282,7 @@ export default function MiniMap({
           </g>
         </svg>
       </div>
-      <span
-        className={`text-[9px] font-bold tracking-widest uppercase opacity-50 transition-opacity duration-300 group-hover:opacity-90 ${
-          isLight ? "text-neutral-600" : "text-white/60"
-        }`}
-      >
-        Live District Map
-      </span>
+      <RotatingCaption color={CAPTION_INK[mode]} />
     </a>
   );
 }
