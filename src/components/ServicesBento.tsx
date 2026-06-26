@@ -204,7 +204,12 @@ export default function ServicesBento({
       const u = p * TOTAL_BANDS; // one equal scroll band per service + footer
       const i0 = Math.min(TOTAL_BANDS - 1, Math.floor(u));
       const f = u - i0;
-      const segT = smooth(clamp01((f - SERVICE_DWELL) / (1 - SERVICE_DWELL)));
+      // Match CarStage's mobile dwell so the panel morph stays in lockstep with the
+      // camera move. Phones use a shorter dwell, but because their tour bands are
+      // also shorter (page.tsx), the morph's scroll window stays ≈ desktop — so the
+      // card transition reads at a comfortable speed, not rushed.
+      const dwell = mobile ? 0.62 : SERVICE_DWELL;
+      const segT = smooth(clamp01((f - dwell) / (1 - dwell)));
       const circleness = Math.sin(clamp01(segT) * Math.PI); // 0 at rest, 1 mid-move
 
       // The panel travels between anchors; as it leaves the LAST service (Executive)

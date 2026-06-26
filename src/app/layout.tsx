@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Josefin_Sans, Inter } from "next/font/google";
 import "./globals.css";
+import SmoothScroll from "@/components/SmoothScroll";
 
 const josefinSans = Josefin_Sans({
   variable: "--font-josefin-sans",
@@ -28,7 +29,9 @@ export default function RootLayout({
       lang="en"
       className={`${josefinSans.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SmoothScroll>{children}</SmoothScroll>
+      </body>
     </html>
   );
 }

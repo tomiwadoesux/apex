@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, Fisheye, Grid, useGLTF } from "@react-three/drei";
+import { AdaptiveDpr, ContactShadows, Environment, Fisheye, Grid, useGLTF } from "@react-three/drei";
 import {
   Component,
   Suspense,
@@ -9,6 +9,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import * as THREE from "three";
@@ -109,6 +110,11 @@ const SWING_START = 4.8; // camera begins swinging to the side faster
 const SWING_END = 8.0; // camera settles on the side
 const WHEEL = 1.6; // wheel roll speed (rad/s) - runs constantly
 const SERVICE_DWELL = 0.65;
+// Phones hold each framing for slightly LESS of the band before moving, so the
+// camera engages sooner — but still long enough to READ the service card (paired
+// with shorter tour bands on mobile in page.tsx). Kept in sync with ServicesBento
+// so the card morph and the camera move stay aligned.
+const MOBILE_DWELL = 0.62;
 // On the LANDING tour the wheels are STILL over the hero/Airport, then ramp up to
 // full roll once the camera reaches the WEDDING section and keep rolling for the
 // rest of the tour. Wedding is band 1 of the 7-band tour (6 services + footer):
@@ -475,6 +481,8 @@ function Car({
       x = c01(x);
       return x * x * x * (x * (x * 6 - 15) + 10);
     };
+    // shorter hold on phones → camera leaves each framing sooner (see MOBILE_DWELL)
+    const dwell = state.size.width < 640 ? MOBILE_DWELL : SERVICE_DWELL;
 
     if (introStart.current === null) introStart.current = state.clock.elapsedTime;
     const now = state.clock.elapsedTime;
@@ -554,6 +562,10 @@ function Car({
     smoothTourP.current += (targetP - smoothTourP.current) * (1 - Math.exp(-4.5 * dt));
     if (targetP === 0 && smoothTourP.current < 0.0005) smoothTourP.current = 0;
     const p = smoothTourP.current;
+    // While the camera is still travelling to the scroll target, tell R3F to
+    // regress — <AdaptiveDpr> drops the render resolution for smoother motion,
+    // then restores full sharpness once it settles (idle reading/looking).
+    if (Math.abs(targetP - smoothTourP.current) > 0.0006) state.performance.regress();
     let w = 0; // tour blend weight: 0 = idle animation, 1 = tour camera
     let tourFov = BASE_FOV; // lens at the tour position
     const tunePoses = cameraTuning.poses;
@@ -578,7 +590,7 @@ function Car({
         A = tunePoses[i0];
         B = tunePoses[Math.min(nPoses - 1, i0 + 1)];
         const f = u - i0; // progress within this pose's band
-        segT = sm(Math.max(0, f - SERVICE_DWELL) / (1 - SERVICE_DWELL));
+        segT = sm(Math.max(0, f - dwell) / (1 - dwell));
       }
       const th = g.rotation.y;
       tourFov = A.fov + (B.fov - A.fov) * segT;
@@ -706,7 +718,7 @@ function Car({
       const uSteer = smoothTourP.current * nPoses;
       // progress of the Wedding→Corporate move: 0 during the Wedding dwell, ramps
       // to 1 across the transition (u 1.65→2), then holds at 1 from Corporate on.
-      const moveT = c01((uSteer - 1 - SERVICE_DWELL) / (1 - SERVICE_DWELL));
+      const moveT = c01((uSteer - 1 - dwell) / (1 - dwell));
       const steer = sm(moveT) * 0.5; // ~28° left, complete as it reaches Corporate
       for (const p of pivots.current) {
         if (p.userData.front) p.rotation.y = steer;
@@ -959,9 +971,12 @@ function LogoFloorTiles({ mode }: { mode: Mode }) {
 function FloorField({
   mode,
   anchor,
+  shadowReady,
 }: {
   mode: Mode;
   anchor: { current: THREE.Vector3 };
+  /** true once the car has loaded → bake the contact shadow once, then freeze. */
+  shadowReady?: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const isMobile =
@@ -977,9 +992,13 @@ function FloorField({
       <Floor mode={mode} />
       <LogoFloorTiles mode={mode} />
       {/* soft contact shadow the car casts on the floor (sits just above the
-          grid/logos so it grounds the car). Half-res shadow map on phones — it's
-          re-rendered every frame, so this is a meaningful per-frame saving. */}
+          grid/logos so it grounds the car). The car is STATIC (only the camera
+          moves), so once it's loaded we bake the shadow a single frame and FREEZE
+          it (key flip → remount → frames=1) — no more per-frame shadow render +
+          blur during the whole scroll tour. Half-res map on phones. */}
       <ContactShadows
+        key={shadowReady ? "baked" : "pending"}
+        frames={1}
         position={[0, 0.02, 0]}
         scale={11}
         far={5}
@@ -1072,17 +1091,23 @@ export default function CarStage({
     window.matchMedia("(max-width: 639px)").matches;
   // phone downgrades apply only OUTSIDE capture mode (posters stay crisp)
   const lowQuality = isMobile && !capture;
+  // latches true once the (static) car has loaded → lets FloorField BAKE the
+  // contact shadow and stop re-rendering it every frame during the scroll tour.
+  const [loaded, setLoaded] = useState(false);
   // the car's parked world centre — written by Car's setup, read by FloorField so
   // the grid/tiles centre their (empty) box under the parked car.
   const floorAnchor = useRef(new THREE.Vector3());
   const scene = (
     <>
       <StageLights mode={mode} />
-      <FloorField mode={mode} anchor={floorAnchor} />
+      <FloorField mode={mode} anchor={floorAnchor} shadowReady={loaded} />
       <Car
         mode={mode}
         fit={fit}
-        onLoaded={onLoaded}
+        onLoaded={() => {
+          setLoaded(true);
+          onLoaded?.();
+        }}
         tourProgress={tourProgress}
         reduced={reduced}
         staticView={staticView}
@@ -1092,15 +1117,20 @@ export default function CarStage({
           (64 vs the 256 default) cuts GPU memory + PMREM processing — reflections
           are slightly softer but the lighting/tone match the poster. */}
       <Environment preset="city" resolution={lowQuality ? 64 : 256} />
+      {/* drop render resolution to dpr-min WHILE scrolling (Car's loop calls
+          performance.regress() as the camera moves), then back to full when idle —
+          smooth motion without permanently softening the still image. */}
+      {!capture && <AdaptiveDpr />}
     </>
   );
   return (
     <GLErrorBoundary>
       <Canvas
-        dpr={capture ? 2 : isMobile ? 1 : [1, 1.5]}
+        dpr={capture ? 2 : [1, 1.5]}
         camera={{ fov: 30, position: [8, 1.6, 1] }}
+        performance={{ min: 0.6 }}
         gl={{
-          antialias: !lowQuality,
+          antialias: true,
           powerPreference: "high-performance",
           alpha: true,
           preserveDrawingBuffer: capture,

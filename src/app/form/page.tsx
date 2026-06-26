@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type ReactNode, type CSSProperties, type T
 import Logo from "@/components/Logo";
 import Image from "next/image";
 import { gsap } from "gsap";
+import PickupMapEmbed from "@/components/map/PickupMapEmbed";
 
 type Mode = "light" | "dark";
 
@@ -34,14 +35,6 @@ const LOCATIONS: LocationItem[] = [
     coordinates: "9.0068° N, 7.2631° E",
   },
   {
-    id: "lekki",
-    name: "Lekki Luxury Haven Hub",
-    subtitle: "Admiralty Way Gateway · Lekki Phase 1",
-    code: "LEK",
-    desc: "Coastal luxury terminal catering to corporate executives, high-end shoppers, and Lekki residents.",
-    coordinates: "6.4478° N, 3.4735° E",
-  },
-  {
     id: "vi",
     name: "Victoria Island Business Hub",
     subtitle: "Adeola Odeku Center · Victoria Island",
@@ -53,7 +46,6 @@ const LOCATIONS: LocationItem[] = [
 
 // Floating-island renders for the pickup-location cards (public/images/city):
 // a DAY cut-out for light mode, a NIGHT/dusk one for dark. Keyed by location id.
-// (Lekki has no render yet, so it keeps the coordinates/description block.)
 const LOCATION_CITY_IMG: Record<string, { light: string; dark: string }> = {
   lagos: {
     light: "/images/city/hf_20260609_191835_10382fac-98f4-4f3f-bbc5-b18661d9cd13.webp",
@@ -179,13 +171,29 @@ interface ServiceItem {
   id: string;
   name: string;
   desc: string;
+  // Which of the two service screens this tier lives on:
+  //  "duration" → Step 5 (6h / 12h / 24h / Multiple Days)
+  //  "type"     → Step 6 (Custom / Interstate / Airport / Point-to-Point)
+  // The booking is ONE pick overall — choosing on either screen replaces the other.
+  group: "duration" | "type";
+  // Length in hours for the fixed-duration tiers (used to auto-compute drop-off).
+  // "multiday" has no fixed length — its drop-off comes from the day count input.
+  durationHours?: number;
 }
 
 const SERVICES: ServiceItem[] = [
-  { id: "hourly", name: "Hourly Charter", desc: "Chauffeur-driven luxury billed by the hour (minimum 3 hours)" },
-  { id: "airport", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals" },
-  { id: "point", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates" },
+  { id: "6h", name: "6 Hours", desc: "Half-day chauffeur, billed as a fixed 6-hour block.", group: "duration", durationHours: 6 },
+  { id: "12h", name: "12 Hours", desc: "Full-day chauffeur across a fixed 12-hour block.", group: "duration", durationHours: 12 },
+  { id: "24h", name: "24 Hours", desc: "Round-the-clock chauffeur on call for a full day.", group: "duration", durationHours: 24 },
+  { id: "multiday", name: "Multiple Days", desc: "Dedicated chauffeur across the number of days you choose.", group: "duration" },
+  { id: "custom", name: "Custom", desc: "Bespoke itinerary — tell us exactly what you need.", group: "type" },
+  { id: "interstate", name: "Interstate", desc: "Long-distance executive transit between states.", group: "type" },
+  { id: "airport", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals.", group: "type" },
+  { id: "point", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates.", group: "type" },
 ];
+
+const DURATION_SERVICES = SERVICES.filter((s) => s.group === "duration");
+const TYPE_SERVICES = SERVICES.filter((s) => s.group === "type");
 
 // Contact channels shown in the "Contact Us" overlay.
 // Editable placeholders — swap the value/href for the real handles when available.
@@ -222,6 +230,36 @@ function ArrowLeftIcon() {
   );
 }
 
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="17" rx="2.5" />
+      <line x1="3" y1="9.5" x2="21" y2="9.5" />
+      <line x1="8" y1="2.5" x2="8" y2="6.5" />
+      <line x1="16" y1="2.5" x2="16" y2="6.5" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7.5 12 12 15 14" />
+    </svg>
+  );
+}
+
+function RouteIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="6" cy="19" r="2.4" />
+      <circle cx="18" cy="5" r="2.4" />
+      <path d="M8.4 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.6" />
+    </svg>
+  );
+}
+
 function HeadlampOnIcon() {
   const BODY = "M31.875 1.875C37.7083 2.29167 49.375 7.5 49.375 19.375C49.375 31.25 37.7083 36.4583 31.875 36.875C27.5 36.875 25.625 34.75 25.625 26.25L25.625 12.5C25.625 4 27.5 1.875 31.875 1.875Z";
   const BEAMS = "M17.5 8.125L1.875 8.125M17.5 15.625L1.875 15.625M17.5 23.125L1.875 23.125M17.5 30.625L1.875 30.625";
@@ -254,14 +292,16 @@ const EDGE_FADE = "linear-gradient(to right, transparent 0%, #000 22%, #000 78%,
 // 2. Pickup Location (3D carousel of black squares)
 // 3. Destination (Destination input)
 // 4. Car Type (Vehicle select)
-// 5. Service Type (Service select)
-// 6. Schedule (Pickup Date, Time, Passengers)
-// 7. Special Requests
+// 5. Duration (6h / 12h / 24h / Multiple Days + day count)
+// 6. Service (Trip type: Custom / Interstate / Airport / Point-to-Point)
+// 7. Schedule (Pickup Date & Time; drop-off auto-derived from any duration)
+// 8. Special Requests
 const STEPS = [
   "Contact",
   "Pickup Location",
   "Destination",
   "Car Type",
+  "Duration",
   "Service",
   "Schedule",
   "Requests"
@@ -358,7 +398,7 @@ const CtaButton = ({
     <button
       onClick={onClick}
       className={`group pointer-events-auto relative overflow-hidden rounded-full h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] flex items-center justify-center ${themeClasses} ${className}`}
-      style={style}
+      style={{ boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)", ...style }} // soft white top sheen
     >
       <span className="relative z-10">{children}</span>
     </button>
@@ -367,7 +407,7 @@ const CtaButton = ({
 
 export default function BookingForm() {
   const [mode, setMode] = useState<Mode>("light");
-  const [currentStep, setCurrentStep] = useState(0); // 0 to 6
+  const [currentStep, setCurrentStep] = useState(0); // 0–7 form steps, 8 = success
   const [activeIndex, setActiveIndex] = useState(0); // Location carousel active index
   const [carIndex, setCarIndex] = useState(0); // Car-type carousel active index
   const [displayedVehicleName, setDisplayedVehicleName] = useState(VEHICLES[0].name);
@@ -429,7 +469,11 @@ export default function BookingForm() {
   const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
   const [destination, setDestination] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState(VEHICLES[0]);
-  const [selectedService, setSelectedService] = useState(SERVICES[0]);
+  // ONE service choice overall, spread across two screens (Duration + Trip Type).
+  // null until the user picks; choosing on either screen replaces the other.
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [multiDayCount, setMultiDayCount] = useState(""); // # of days for "Multiple Days"
+  const [customTripText, setCustomTripText] = useState(""); // free text for "Custom"
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
@@ -445,6 +489,19 @@ export default function BookingForm() {
   const [apiModels, setApiModels] = useState<string[]>([]);
   const [isCustomCar, setIsCustomCar] = useState(false);
   const [customCarName, setCustomCarName] = useState("");
+
+  // Custom pickup location ("Customize" popup on Step 2 — like the car "Other Options")
+  const [customLocationOpen, setCustomLocationOpen] = useState(false);
+  const [customLocationInput, setCustomLocationInput] = useState("");
+  const [isCustomLocation, setIsCustomLocation] = useState(false);
+  const [locationResults, setLocationResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
+  const [locationPicked, setLocationPicked] = useState<{ name: string; full: string; lat: number; lng: number } | null>(null);
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [customLocationLandmark, setCustomLocationLandmark] = useState(""); // nearby popular landmark (optional)
+  const [locationLocating, setLocationLocating] = useState(false); // geolocation in progress
+  const [locationError, setLocationError] = useState("");
+  const customLocationInputRef = useRef<HTMLInputElement>(null);
+  const skipLocationSearchRef = useRef(false);
 
   const customOverlayRef = useRef<HTMLDivElement>(null);
   const customCardRef = useRef<HTMLDivElement>(null);
@@ -488,10 +545,6 @@ export default function BookingForm() {
   const textareaStyle = isLight
     ? "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
     : "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
-
-  const carouselCardStyle = isLight
-    ? "bg-white/45 border border-neutral-900/10 shadow-[0_25px_60px_rgba(0,0,0,0.06)] text-neutral-900 backdrop-blur-md"
-    : "bg-neutral-950/20 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.6)] text-white backdrop-blur-md";
 
   const formatDateInput = (date: Date) => {
     const year = date.getFullYear();
@@ -542,9 +595,82 @@ export default function BookingForm() {
     { label: "Next Sunday", helper: "Weekend 12:00", date: nextWeekendAt(1, 12) },
   ];
 
-  const scheduleSummary = bookingDate && bookingTime ? `${bookingDate} @ ${bookingTime}` : "Not selected";
+  // The drop-off is derived from the chosen duration: fixed tiers add their hours
+  // to the pickup; "Multiple Days" adds the day count. Trip-type tiers (custom /
+  // interstate / airport / point) have no duration, so there's no auto drop-off.
+  const multiDayNum = parseInt(multiDayCount, 10);
+  const hasMultiDay = selectedService?.id === "multiday" && !Number.isNaN(multiDayNum) && multiDayNum >= 1;
+  const isFixedDuration = selectedService?.group === "duration" && typeof selectedService.durationHours === "number";
+  const computeAutoEnd = () => {
+    if (!bookingDate || !bookingTime) return null;
+    const start = new Date(`${bookingDate}T${bookingTime}`);
+    if (Number.isNaN(start.getTime())) return null;
+    if (isFixedDuration && selectedService?.durationHours) {
+      return new Date(start.getTime() + selectedService.durationHours * 60 * 60 * 1000);
+    }
+    if (hasMultiDay) {
+      const end = new Date(start.getTime());
+      end.setDate(end.getDate() + multiDayNum);
+      return end;
+    }
+    return null;
+  };
+  const autoEnd = computeAutoEnd();
 
-  const [displayedStepText, setDisplayedStepText] = useState("Step 1 of 7");
+  const scheduleSummary = (() => {
+    if (!bookingDate || !bookingTime) return "Not selected";
+    const start = `${bookingDate} @ ${bookingTime}`;
+    if (autoEnd && hasMultiDay) return `${start} → ${formatDateInput(autoEnd)} (${multiDayNum} day${multiDayNum > 1 ? "s" : ""})`;
+    if (autoEnd && isFixedDuration) return `${start} → ${formatDateInput(autoEnd)} @ ${formatTimeInput(autoEnd)} (${selectedService?.durationHours}h)`;
+    return start;
+  })();
+
+  // One-line label for the chosen service across both screens (used in the review).
+  const serviceSummary = !selectedService
+    ? "Not selected"
+    : selectedService.id === "multiday"
+      ? `Multiple Days${multiDayCount.trim() ? ` · ${multiDayCount.trim()} day${multiDayNum > 1 ? "s" : ""}` : ""}`
+      : selectedService.id === "custom"
+        ? `Custom${customTripText.trim() ? ` · ${customTripText.trim()}` : ""}`
+        : selectedService.name;
+
+  // Shared renderer for a service tier card (used by both the Duration and Trip
+  // Type screens). The booking is one pick overall, so selection is keyed on the
+  // single `selectedService` — choosing a card on either screen replaces the other.
+  const renderTierCard = (srv: ServiceItem) => {
+    const isSelected = selectedService?.id === srv.id;
+    const badgeLabel = srv.group === "duration"
+      ? (srv.id === "multiday" ? "Extended" : "Fixed Duration")
+      : (srv.id === "custom" ? "Flexible" : "Trip Type");
+    const cardStyle = isSelected
+      ? isLight
+        ? "bg-[#00209C] border-[#00209C] text-white shadow-xl shadow-indigo-500/10 scale-[1.03]"
+        : "bg-neutral-900 border-[#FDBA16] text-white shadow-2xl scale-[1.03]"
+      : isLight
+        ? "bg-white/45 border-neutral-900/10 text-neutral-800 hover:border-neutral-900/25 hover:scale-[1.01] backdrop-blur-md"
+        : "bg-neutral-950/20 border-white/10 text-white/70 hover:border-white/30 hover:scale-[1.01] backdrop-blur-md";
+    const badgeStyle = isSelected ? "text-white/70" : isLight ? "text-neutral-900/40" : "text-white/40";
+    const nameStyle = `font-light ${isSelected ? "text-white" : isLight ? "text-neutral-900" : "text-white"}`;
+    const descStyle = `font-light ${isSelected ? "text-white/60" : isLight ? "text-neutral-900/50" : "text-white/50"}`;
+    return (
+      <button
+        key={srv.id}
+        onClick={() => setSelectedService(srv)}
+        className={`relative flex h-full flex-col p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 shadow-lg ${cardStyle}`}
+      >
+        <div className={`text-[9px] sm:text-[10px] uppercase font-bold tracking-widest ${badgeStyle}`}>{badgeLabel}</div>
+        <h2 className={`text-base sm:text-lg tracking-tight mt-1.5 ${nameStyle}`}>{srv.name}</h2>
+        <p className={`text-[11px] leading-relaxed mt-2 ${descStyle}`}>{srv.desc}</p>
+        {isSelected && (
+          <span className={`absolute right-3 top-3 rounded-full p-1 ${isLight ? "bg-white text-[#00209C]" : "bg-[#FDBA16] text-neutral-950"}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const [displayedStepText, setDisplayedStepText] = useState("Step 1 of 8");
   const [displayedSubLabel, setDisplayedSubLabel] = useState("Provide Your Contact Information");
 
   const getSubLabelText = (step: number) => {
@@ -553,16 +679,17 @@ export default function BookingForm() {
       case 1: return selectedLocation?.name || "Lagos International Airport";
       case 2: return "Enter Booking Destination";
       case 3: return "Select Your Premium Vehicle";
-      case 4: return "Choose Luxury Service Level";
-      case 5: return "Choose Pickup Date & Time";
-      case 6: return "Any Special Requests?";
+      case 4: return "Choose Service Duration";
+      case 5: return "Choose Trip Type";
+      case 6: return "Choose Pickup Date & Time";
+      case 7: return "Any Special Requests?";
       default: return "";
     }
   };
 
   useEffect(() => {
-    if (currentStep <= 6) {
-      const newText = currentStep === 3 ? "Step 4 of 7 | Select a Car" : `Step ${currentStep + 1} of 7`;
+    if (currentStep <= 7) {
+      const newText = currentStep === 3 ? "Step 4 of 8 | Select a Car" : `Step ${currentStep + 1} of 8`;
       const newSubLabel = getSubLabelText(currentStep);
 
       if (displayedStepText === newText && displayedSubLabel === newSubLabel) return;
@@ -616,7 +743,7 @@ export default function BookingForm() {
     const div = headerDividerRef.current;
     if (!btn || !div) return;
 
-    const hasBack = currentStep > 0 && currentStep <= 6;
+    const hasBack = currentStep > 0 && currentStep <= 7;
 
     if (hasBack) {
       gsap.killTweensOf([btn, div]);
@@ -655,12 +782,50 @@ export default function BookingForm() {
     }
   }, [currentStep]);
 
-  // Sync selected location state to active carousel card
+  // Sync selected location state to active carousel card (unless a custom one is set)
   useEffect(() => {
-    if (currentStep === 1) {
+    if (currentStep === 1 && !isCustomLocation) {
       setSelectedLocation(LOCATIONS[activeIndex]);
     }
-  }, [activeIndex, currentStep]);
+  }, [activeIndex, currentStep, isCustomLocation]);
+
+  // Focus the address field when the Customize popup opens
+  useEffect(() => {
+    if (customLocationOpen) {
+      customLocationInputRef.current?.focus();
+    }
+  }, [customLocationOpen]);
+
+  // Live address search via our OpenStreetMap proxy (/api/geocode), debounced.
+  // Same-origin so it isn't blocked by CORS or ad-blockers; min 3 chars, aborts.
+  useEffect(() => {
+    if (!customLocationOpen) return;
+    if (skipLocationSearchRef.current) {
+      skipLocationSearchRef.current = false; // change came from picking a result
+      return;
+    }
+    const q = customLocationInput.trim();
+    const controller = new AbortController();
+    // All state updates happen inside the debounced callback (async), so the
+    // effect body itself never calls setState synchronously.
+    const t = setTimeout(() => {
+      if (q.length < 3) {
+        setLocationResults([]);
+        setLocationSearching(false);
+        return;
+      }
+      setLocationSearching(true);
+      fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+        .then((res) => res.json())
+        .then((data) => setLocationResults(Array.isArray(data) ? data : []))
+        .catch(() => { /* aborted or network error — leave prior results */ })
+        .finally(() => setLocationSearching(false));
+    }, 300);
+    return () => {
+      controller.abort();
+      clearTimeout(t);
+    };
+  }, [customLocationInput, customLocationOpen]);
 
   useEffect(() => {
     if (currentStep === 3) {
@@ -1215,7 +1380,20 @@ export default function BookingForm() {
         validateEmail(contactEmail)
       );
     }
+    if (currentStep === 4) {
+      // Duration is optional on this screen — the user may instead pick a trip type
+      // on the next screen. But if "Multiple Days" is chosen, require a valid count.
+      if (selectedService?.id === "multiday") return multiDayNum >= 1;
+      return true;
+    }
     if (currentStep === 5) {
+      // By the end of the two service screens, exactly one tier must be chosen.
+      if (!selectedService) return false;
+      if (selectedService.id === "multiday") return multiDayNum >= 1;
+      if (selectedService.id === "custom") return customTripText.trim() !== "";
+      return true;
+    }
+    if (currentStep === 6) {
       return bookingDate !== "" && bookingTime !== "";
     }
     return true;
@@ -1223,11 +1401,11 @@ export default function BookingForm() {
 
   const nextStep = () => {
     if (!isStepValid()) return;
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep((s) => s + 1);
     } else {
       setBookingId("APX-" + Math.floor(100000 + Math.random() * 900000));
-      setCurrentStep(7);
+      setCurrentStep(8);
     }
   };
 
@@ -1250,7 +1428,9 @@ export default function BookingForm() {
     setEmailBlurred(false);
     setDestination("");
     setSelectedVehicle(VEHICLES[0]);
-    setSelectedService(SERVICES[0]);
+    setSelectedService(null);
+    setMultiDayCount("");
+    setCustomTripText("");
     setBookingDate("");
     setBookingTime("");
     setSpecialRequests("");
@@ -1361,6 +1541,75 @@ export default function BookingForm() {
     nextStep();
   };
 
+  // Take an OpenStreetMap search hit and pin it (updates the input + map preview).
+  const pickLocationResult = (r: { display_name: string; lat: string; lon: string }) => {
+    const name = r.display_name.split(",").slice(0, 2).join(", ").trim();
+    skipLocationSearchRef.current = true; // input update below shouldn't re-search
+    setCustomLocationInput(r.display_name);
+    setLocationPicked({ name, full: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+    setLocationResults([]);
+  };
+
+  // Drop the device's current position as the pickup (reverse-geocoded to an address).
+  const useCurrentLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationError("Location isn't available on this device.");
+      return;
+    }
+    setLocationError("");
+    setLocationLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          if (Array.isArray(data) && data[0]) {
+            pickLocationResult(data[0]);
+          } else {
+            // No address match — pin the raw coordinates anyway.
+            const coords = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+            skipLocationSearchRef.current = true;
+            setCustomLocationInput(coords);
+            setLocationPicked({ name: "Current location", full: coords, lat: latitude, lng: longitude });
+            setLocationResults([]);
+          }
+        } catch {
+          setLocationError("Couldn't look up that location.");
+        } finally {
+          setLocationLocating(false);
+        }
+      },
+      () => {
+        setLocationLocating(false);
+        setLocationError("Location permission denied.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Commit the pinned OpenStreetMap location as the selected pickup (Step 2 popup)
+  const selectCustomLocation = () => {
+    if (!locationPicked) return;
+    const landmark = customLocationLandmark.trim();
+    setIsCustomLocation(true);
+    setSelectedLocation({
+      id: "custom",
+      name: landmark ? `${locationPicked.name} — ${landmark}` : locationPicked.name,
+      subtitle: locationPicked.full,
+      code: "PIN",
+      desc: "",
+      coordinates: `${locationPicked.lat.toFixed(5)}, ${locationPicked.lng.toFixed(5)}`,
+    });
+    setCustomLocationOpen(false);
+  };
+
+  // Move the location carousel; leaving any custom pickup so presets take over again
+  const moveLocation = (updater: (i: number) => number) => {
+    setIsCustomLocation(false);
+    setActiveIndex(updater);
+  };
+
   const getSuggestions = () => {
     if (!customCarInput.trim()) return [];
     const query = customCarInput.toLowerCase();
@@ -1443,7 +1692,7 @@ export default function BookingForm() {
       </header>
 
       {/* Floating step progress text, positioned constantly at the top */}
-      {currentStep <= 6 && (
+      {currentStep <= 7 && (
         <div className="fixed top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
             <p className={`step-text text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] ${sub}`}>
@@ -1470,7 +1719,7 @@ export default function BookingForm() {
       {/* 2. Main content container */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 pt-8 pb-44 z-10">
 
-        {currentStep <= 6 && (
+        {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
             }`}>
             {/* Spacer to preserve form placement where h1 used to be */}
@@ -1552,15 +1801,15 @@ export default function BookingForm() {
             {/* Step 2: Pickup Location Carousel (Black Squares) */}
             {currentStep === 1 && (
               <div
-                className="relative w-full h-[370px] sm:h-[450px] flex items-center justify-center mt-6"
+                className="relative w-full h-[500px] sm:h-[620px] flex items-center justify-center mt-6"
                 {...makeSwipeHandlers((dir) =>
-                  setActiveIndex((idx) => (idx + dir + LOCATIONS.length) % LOCATIONS.length)
+                  moveLocation((idx) => (idx + dir + LOCATIONS.length) % LOCATIONS.length)
                 )}
               >
 
                 {/* Left arrow */}
                 <button
-                  onClick={() => setActiveIndex((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
+                  onClick={() => moveLocation((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
                   className={`pointer-events-auto absolute left-1 sm:left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                   aria-label="Previous Location"
@@ -1581,11 +1830,11 @@ export default function BookingForm() {
 
                     let transformClass = "";
                     if (isActive) {
-                      transformClass = "translate-x-0 translate-y-0 scale-100 z-10 opacity-100 rotate-0";
+                      transformClass = "translate-x-0 translate-y-0 scale-[1.5] z-10 opacity-100 rotate-0";
                     } else if (isPrev) {
-                      transformClass = "-translate-x-[13rem] sm:-translate-x-[22rem] lg:-translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 -rotate-6 pointer-events-auto cursor-pointer";
+                      transformClass = "-translate-x-[14rem] sm:-translate-x-[26rem] lg:-translate-x-[31rem] translate-y-12 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
                     } else if (isNext) {
-                      transformClass = "translate-x-[13rem] sm:translate-x-[22rem] lg:translate-x-[26rem] translate-y-12 scale-[0.62] z-0 opacity-40 rotate-6 pointer-events-auto cursor-pointer";
+                      transformClass = "translate-x-[14rem] sm:translate-x-[26rem] lg:translate-x-[31rem] translate-y-12 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
                     } else {
                       transformClass = "translate-y-24 scale-50 z-0 opacity-0 pointer-events-none";
                     }
@@ -1594,54 +1843,25 @@ export default function BookingForm() {
                       <div
                         key={loc.id}
                         onClick={() => {
-                          if (isPrev) setActiveIndex((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
-                          if (isNext) setActiveIndex((i) => (i + 1) % LOCATIONS.length);
+                          if (isPrev) moveLocation((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
+                          if (isNext) moveLocation((i) => (i + 1) % LOCATIONS.length);
                         }}
-                        className={`absolute w-[17rem] h-[17rem] sm:w-80 sm:h-80 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform ${transformClass} ${
-                          cityImg
-                            ? "flex flex-col items-center justify-center"
-                            : `rounded-2xl flex flex-col justify-between p-6 sm:p-7 text-left ${carouselCardStyle}`
-                        }`}
+                        className={`absolute w-[19rem] h-[19rem] sm:w-96 sm:h-96 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform flex flex-col items-center justify-center ${transformClass}`}
                       >
-                        {cityImg ? (
-                          // the location on its OWN — a big floating-island render, no card
-                          <>
-                            <div className="relative min-h-0 w-[120%] flex-1">
-                              <Image
-                                src={isLight ? cityImg.light : cityImg.dark}
-                                alt={loc.name}
-                                fill
-                                sizes="(max-width: 640px) 90vw, 480px"
-                                draggable={false}
-                                className="select-none object-contain"
-                                style={{ filter: `drop-shadow(0 16px 28px rgba(0,0,0,${isLight ? 0.25 : 0.55}))` }}
-                              />
-                            </div>
-                            <div className={`shrink-0 pt-1.5 text-center ${isLight ? "text-neutral-900" : "text-white"}`}>
-                              <div className="text-sm font-semibold">{loc.name}</div>
-                              <div className={`mt-0.5 text-[11px] font-light ${isLight ? "text-neutral-900/55" : "text-white/55"}`}>{loc.subtitle}</div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex justify-between items-center">
-                              <span className={`text-4xl font-extrabold tracking-widest select-none ${isLight ? "text-neutral-900/10" : "text-white/10"}`}>
-                                {loc.code}
-                              </span>
-                              {isActive && <div className="orb-marker" />}
-                            </div>
-                            <div className={`flex-1 flex flex-col justify-center border-y my-4 py-4 opacity-80 ${isLight ? "border-neutral-900/5" : "border-white/5"}`}>
-                              <div className={`text-[9px] tracking-widest uppercase font-bold ${isLight ? "text-neutral-900/40" : "text-white/40"}`}>Terminal Coordinates</div>
-                              <div className={`font-mono text-xs mt-1 ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>{loc.coordinates}</div>
-                              <p className={`text-xs mt-3 leading-relaxed font-light line-clamp-3 select-none ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>
-                                {loc.desc}
-                              </p>
-                            </div>
-                            <div className={`text-xs font-semibold truncate ${isLight ? "text-neutral-900/90" : "text-white/90"}`}>
-                              {loc.subtitle}
-                            </div>
-                          </>
-                        )}
+                        {/* code badge on top, the floating-island render, then the name — no card */}
+                        <div className={`shrink-0 pb-2 text-center text-sm font-bold tracking-[0.3em] ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>
+                          {loc.code}
+                        </div>
+                        <div className="relative min-h-0 w-[120%] flex-1">
+                          <Image
+                            src={isLight ? cityImg.light : cityImg.dark}
+                            alt={loc.name}
+                            fill
+                            sizes="(max-width: 640px) 90vw, 480px"
+                            draggable={false}
+                            className="select-none object-contain"
+                          />
+                        </div>
                       </div>
                     );
                   })}
@@ -1649,7 +1869,7 @@ export default function BookingForm() {
 
                 {/* Right arrow */}
                 <button
-                  onClick={() => setActiveIndex((idx) => (idx + 1) % LOCATIONS.length)}
+                  onClick={() => moveLocation((idx) => (idx + 1) % LOCATIONS.length)}
                   className={`pointer-events-auto absolute right-1 sm:right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
                     }`}
                   aria-label="Next Location"
@@ -1854,63 +2074,60 @@ export default function BookingForm() {
               </div>
             )}
 
-            {/* Step 5: Service Type */}
+            {/* Step 5: Duration (6h / 12h / 24h / Multiple Days) */}
             {currentStep === 4 && (
-              <div className="w-full max-w-3xl mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                {SERVICES.map((srv) => {
-                  const isSelected = selectedService.id === srv.id;
-                  const cardStyle = isSelected
-                    ? isLight
-                      ? "bg-[#00209C] border-[#00209C] text-white shadow-xl shadow-indigo-500/10 scale-[1.03]"
-                      : "bg-neutral-900 border-[#FDBA16] text-white shadow-2xl scale-[1.03]"
-                    : isLight
-                      ? "bg-white/45 border-neutral-900/10 text-neutral-800 hover:border-neutral-900/25 hover:scale-[1.01] backdrop-blur-md"
-                      : "bg-neutral-950/20 border-white/10 text-white/70 hover:border-white/30 hover:scale-[1.01] backdrop-blur-md";
+              <div className="w-full max-w-3xl mt-8 flex flex-col items-center gap-6">
+                <div className="grid w-full grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {DURATION_SERVICES.map(renderTierCard)}
+                </div>
 
-                  const badgeStyle = isSelected
-                    ? "text-white/70"
-                    : isLight
-                      ? "text-neutral-900/40"
-                      : "text-white/40";
-
-                  const nameStyle = isSelected
-                    ? "text-white font-light"
-                    : isLight
-                      ? "text-neutral-900 font-light"
-                      : "text-white font-light";
-
-                  const descStyle = isSelected
-                    ? "text-white/60 font-light"
-                    : isLight
-                      ? "text-neutral-900/50 font-light"
-                      : "text-white/50 font-light";
-
-                  return (
-                    <button
-                      key={srv.id}
-                      onClick={() => setSelectedService(srv)}
-                      className={`p-6 rounded-2xl border text-left transition-all duration-300 shadow-lg ${cardStyle}`}
-                    >
-                      <div className={`text-[10px] uppercase font-bold tracking-widest ${badgeStyle}`}>Service Tier</div>
-                      <h2 className={`text-lg tracking-tight mt-2 ${nameStyle}`}>{srv.name}</h2>
-                      <p className={`text-xs leading-relaxed mt-3 ${descStyle}`}>{srv.desc}</p>
-                      {isSelected && (
-                        <div className="mt-5 flex justify-end">
-                          <span className={`rounded-full p-1 ${isLight ? "bg-white text-[#00209C]" : "bg-[#FDBA16] text-neutral-950"}`}><CheckIcon /></span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                {/* Multiple Days → ask how many days. Plain text box per spec. */}
+                {selectedService?.id === "multiday" && (
+                  <div className={`w-full max-w-xs p-5 rounded-2xl border ${cardBgStyle} text-left`}>
+                    <label className={labelStyle}>Number of Days *</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={multiDayCount}
+                      onChange={(e) => setMultiDayCount(e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="Put a number"
+                      className={`${inputStyle} font-mono`}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Step 6: Schedule (Date & Time) */}
+            {/* Step 6: Trip / Service Type (Custom / Interstate / Airport / Point) */}
             {currentStep === 5 && (
-              <div className={`w-full max-w-xl mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
+              <div className="w-full max-w-3xl mt-8 flex flex-col items-center gap-6">
+                <div className="grid w-full grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {TYPE_SERVICES.map(renderTierCard)}
+                </div>
+
+                {/* Custom → free-text description of the trip. */}
+                {selectedService?.id === "custom" && (
+                  <div className={`w-full max-w-md p-5 rounded-2xl border ${cardBgStyle} text-left`}>
+                    <label className={labelStyle}>Tell us about your custom trip *</label>
+                    <textarea
+                      maxLength={300}
+                      value={customTripText}
+                      onChange={(e) => setCustomTripText(e.target.value)}
+                      placeholder="Describe your route, stops, dates or anything special…"
+                      className={`${textareaStyle} h-24`}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 7: Schedule (Date & Time) */}
+            {currentStep === 6 && (
+              <div className={`w-full max-w-xl mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-7`}>
+                {/* Quick pickup presets */}
                 <div>
-                  <div className={labelStyle}>Quick Pickup Options</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className={labelStyle}>Quick Pickup</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {pickupOptions.map((option) => {
                       const optionDate = formatDateInput(option.date);
                       const optionTime = formatTimeInput(option.date);
@@ -1920,18 +2137,18 @@ export default function BookingForm() {
                           key={`${option.label}-${optionDate}-${optionTime}`}
                           type="button"
                           onClick={() => applyPickupDate(option.date)}
-                          className={`rounded-2xl border p-3 text-left transition-all duration-300 ${
+                          className={`rounded-2xl border px-3.5 py-3 text-left transition-all duration-300 ${
                             active
                               ? isLight
-                                ? "border-[#00209C] bg-[#00209C] text-white shadow-lg shadow-[#00209C]/15"
-                                : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 shadow-lg shadow-[#FDBA16]/10"
+                                ? "border-[#00209C] bg-[#00209C] text-white shadow-lg shadow-[#00209C]/20"
+                                : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 shadow-lg shadow-[#FDBA16]/15"
                               : isLight
-                                ? "border-neutral-900/10 bg-white/35 text-neutral-900 hover:border-[#00209C]/40 hover:bg-white/70"
+                                ? "border-neutral-900/10 bg-white/40 text-neutral-900 hover:border-[#00209C]/40 hover:bg-white/70"
                                 : "border-white/10 bg-white/[0.04] text-white hover:border-[#FDBA16]/40 hover:bg-white/[0.08]"
                           }`}
                         >
-                          <span className="block text-xs font-semibold tracking-wide">{option.label}</span>
-                          <span className={`mt-1 block text-[10px] font-mono ${active ? "opacity-75" : isLight ? "text-neutral-900/45" : "text-white/45"}`}>
+                          <span className="block text-[13px] font-medium tracking-tight">{option.label}</span>
+                          <span className={`mt-0.5 block text-[10.5px] leading-snug ${active ? "opacity-70" : isLight ? "text-neutral-900/45" : "text-white/40"}`}>
                             {option.helper}
                           </span>
                         </button>
@@ -1940,33 +2157,66 @@ export default function BookingForm() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* Date + time — icon-led fields with a themed native picker */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col">
                     <label className={labelStyle}>Pickup Date *</label>
-                    <input
-                      type="date"
-                      value={bookingDate}
-                      min={formatDateInput(new Date())}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                      className={`${inputStyle} font-mono`}
-                    />
+                    <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 h-12 transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/45 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
+                      <span className={isLight ? "text-[#00209C]" : "text-[#FDBA16]"}><CalendarIcon /></span>
+                      <input
+                        type="date"
+                        value={bookingDate}
+                        min={formatDateInput(new Date())}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        style={{ colorScheme: isLight ? "light" : "dark" }}
+                        className={`w-full bg-transparent text-sm font-josefin outline-none ${isLight ? "text-neutral-900" : "text-white"}`}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-col">
                     <label className={labelStyle}>Pickup Time *</label>
-                    <input
-                      type="time"
-                      value={bookingTime}
-                      onChange={(e) => setBookingTime(e.target.value)}
-                      className={`${inputStyle} font-mono`}
-                    />
+                    <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 h-12 transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/45 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
+                      <span className={isLight ? "text-[#00209C]" : "text-[#FDBA16]"}><ClockIcon /></span>
+                      <input
+                        type="time"
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        style={{ colorScheme: isLight ? "light" : "dark" }}
+                        className={`w-full bg-transparent text-sm font-josefin outline-none ${isLight ? "text-neutral-900" : "text-white"}`}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Drop-off — auto-derived from the chosen duration. Fixed tiers
+                    add their hours; "Multiple Days" adds the day count. Trip-type
+                    tiers have no duration, so nothing is shown here. */}
+                {(isFixedDuration || hasMultiDay) && (
+                  <div className={`flex items-start gap-3 rounded-2xl border p-4 ${isLight ? "border-[#00209C]/20 bg-[#00209C]/[0.05]" : "border-[#FDBA16]/20 bg-[#FDBA16]/[0.06]"}`}>
+                    <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
+                      <RouteIcon />
+                    </span>
+                    <div className="min-w-0">
+                      <div className={`text-[11px] font-semibold uppercase tracking-wider ${isLight ? "text-neutral-900/45" : "text-white/45"}`}>Estimated Drop-off</div>
+                      <div className={`mt-0.5 text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                        {autoEnd
+                          ? (hasMultiDay ? formatDateInput(autoEnd) : `${formatDateInput(autoEnd)} · ${formatTimeInput(autoEnd)}`)
+                          : "Set a pickup date & time first"}
+                      </div>
+                      <p className={`mt-1 text-[10.5px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
+                        {hasMultiDay
+                          ? `Auto-calculated from your ${multiDayNum}-day booking.`
+                          : `Auto-calculated from your fixed ${selectedService?.durationHours}-hour ${selectedService?.name} block.`}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Step 7: Special Requests (with Booking Summary Card) */}
-            {currentStep === 6 && (
+            {/* Step 8: Special Requests (with Booking Summary Card) */}
+            {currentStep === 7 && (
               <div className="w-full max-w-xl mt-8 flex flex-col gap-6">
 
                 {/* Booking Summary Recap Card */}
@@ -1990,8 +2240,8 @@ export default function BookingForm() {
                       { label: "Pickup", value: selectedLocation.name, step: 1 },
                       { label: "Destination", value: destination || "Confirm after contact", step: 2 },
                       { label: "Vehicle", value: `${selectedVehicle.name} · ${selectedVehicle.capacity}`, step: 3 },
-                      { label: "Service", value: selectedService.name, step: 4 },
-                      { label: "Schedule", value: scheduleSummary, step: 5 },
+                      { label: "Service", value: serviceSummary, step: 4 },
+                      { label: "Schedule", value: scheduleSummary, step: 6 },
                     ].map((item) => (
                       <div
                         key={item.label}
@@ -2023,21 +2273,19 @@ export default function BookingForm() {
 
                 {/* Special Requests Textarea */}
                 <div className={`p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left`}>
-                  <div className="flex flex-col gap-3">
-                    <div>
-                      <label className={labelStyle}>Request Notes</label>
-                      <p className={`text-xs leading-relaxed ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
-                        Add flight number, waiting instructions, child seat needs, luggage count, or preferred route.
-                      </p>
-                    </div>
+                  <label className={labelStyle}>Request Notes</label>
+                  <p className={`-mt-1 mb-3 text-xs leading-relaxed ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
+                    Add flight number, waiting instructions, child seat needs, luggage count, or preferred route.
+                  </p>
+                  <div className={`relative rounded-2xl border transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/40 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
                     <textarea
                       maxLength={500}
                       placeholder="Example: Flight BA75 lands at 18:20. Please meet me at arrivals with a name sign."
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
-                      className={`${textareaStyle} h-28`}
+                      className={`h-32 w-full resize-none bg-transparent p-4 pb-9 text-sm font-josefin leading-relaxed outline-none ${isLight ? "text-neutral-900 placeholder-neutral-900/35" : "text-white placeholder-white/25"}`}
                     />
-                    <div className={`flex justify-end text-[10px] font-mono mt-2 ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>
+                    <div className={`pointer-events-none absolute bottom-3 right-4 text-[10px] ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>
                       {specialRequests.length} / 500
                     </div>
                   </div>
@@ -2055,11 +2303,11 @@ export default function BookingForm() {
                   onClick={nextStep}
                   style={{ minWidth: "120px" }}
                 >
-                  {currentStep === 3 ? "Select" : currentStep === 6 ? "Submit Request" : "Next"}
+                  {currentStep === 3 ? "Select" : currentStep === 7 ? "Submit Request" : "Next"}
                 </CtaButton>
 
                 <div
-                  className={`transition-all duration-500 ease-out overflow-hidden flex items-center ${
+                  className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
                     currentStep === 3
                       ? "max-w-[200px] opacity-100 translate-x-0"
                       : "max-w-0 opacity-0 translate-x-4 pointer-events-none"
@@ -2080,14 +2328,36 @@ export default function BookingForm() {
                     Other Options
                   </button>
                 </div>
+
+                <div
+                  className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
+                    currentStep === 1
+                      ? "max-w-[240px] opacity-100 translate-x-0"
+                      : "max-w-0 opacity-0 translate-x-4 pointer-events-none"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCustomLocationOpen(true)}
+                    className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
+                      isCustomLocation ? "border-solid" : "border-dashed"
+                    } ${
+                      isLight
+                        ? "border-[#00209C] text-[#00209C] hover:bg-[#00209C]/[0.05]"
+                        : "border-[#FDBA16] text-[#FDBA16] hover:bg-[#FDBA16]/[0.05]"
+                    }`}
+                  >
+                    {isCustomLocation ? "Custom location ✓" : "Customize location"}
+                  </button>
+                </div>
               </div>
             </div>
 
           </div>
         )}
 
-        {/* Step 8: Success Panel */}
-        {currentStep === 7 && (
+        {/* Step 9: Success Panel */}
+        {currentStep === 8 && (
           <div className="w-full max-w-md flex flex-col items-center text-center p-8 rounded-2xl bg-neutral-950 border border-white/15 shadow-2xl text-white">
             <div className="w-16 h-16 bg-white text-neutral-950 rounded-full flex items-center justify-center shadow-lg animate-bounce">
               <CheckIcon />
@@ -2111,17 +2381,17 @@ export default function BookingForm() {
 
       </div>
 
-      {/* 3. Stepper progress tracker floating glass-morphic dock (Exactly 7 indicators matching strict requirements) */}
+      {/* 3. Stepper progress tracker floating glass-morphic dock (8 indicators) */}
       <div className="pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[88vw] sm:max-w-[70vw] px-0 z-20 select-none">
         <div className="relative px-0 py-5 transition-all duration-300">
-          <div className="relative grid grid-cols-7 items-start">
+          <div className="relative grid grid-cols-8 items-start">
             {/* The horizontal connecting line */}
             <div
               className={`absolute top-[8px] h-[1px] -z-10 ${isLight ? "bg-neutral-900/10" : "bg-white/10"
                 }`}
               style={{
-                left: "calc(100% / 14)",
-                right: "calc(100% / 14)",
+                left: "calc(100% / 16)",
+                right: "calc(100% / 16)",
               }}
             />
 
@@ -2129,21 +2399,21 @@ export default function BookingForm() {
             <div
               className="absolute top-[8px] h-[1.5px] -z-10"
               style={{
-                left: "calc(100% / 14)",
-                right: "calc(100% / 14)",
+                left: "calc(100% / 16)",
+                right: "calc(100% / 16)",
               }}
             >
               <div
                 className="h-full transition-all duration-500"
                 style={{
-                  width: `${currentStep <= 6 ? (currentStep / 6) * 100 : 100}%`,
+                  width: `${currentStep <= 7 ? (currentStep / 7) * 100 : 100}%`,
                   background: isLight ? "#171717" : "#ffffff",
                 }}
               />
             </div>
 
             {STEPS.map((stepName, idx) => {
-              const isCompleted = currentStep > idx || currentStep === 7;
+              const isCompleted = currentStep > idx || currentStep === 8;
               const isActive = currentStep === idx;
 
               const accentHex = isLight ? "#00209C" : "#FDBA16";
@@ -2152,8 +2422,8 @@ export default function BookingForm() {
                 <div key={stepName} className="flex flex-col items-center">
                   <div className="h-4 flex items-center justify-center">
                     <button
-                      onClick={() => currentStep <= 6 && setCurrentStep(idx)}
-                      disabled={currentStep > 6}
+                      onClick={() => currentStep <= 7 && setCurrentStep(idx)}
+                      disabled={currentStep > 7}
                       className={`relative transition-all duration-300 focus:outline-none before:absolute before:content-[''] before:inset-[-11px] ${isActive
                         ? "w-3.5 h-3.5 border rounded-full shadow-md scale-110 cursor-pointer"
                         : "w-2.5 h-2.5 border-2 rounded-full cursor-pointer"
@@ -2443,6 +2713,156 @@ export default function BookingForm() {
                 disabled={!customCarInput.trim()}
                 onClick={() => selectCustomCar(customCarInput)}
               >
+                Confirm
+              </CtaButton>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom pickup location popup (Step 2 "Customize location") */}
+      <div
+        onClick={() => setCustomLocationOpen(false)}
+        aria-hidden={!customLocationOpen}
+        className={`fixed inset-0 z-[60] flex items-center justify-center px-4 transition-opacity duration-300 ${
+          customLocationOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        style={{
+          backgroundColor: customLocationOpen ? "rgba(0,0,0,0.30)" : "transparent",
+          backdropFilter: customLocationOpen ? "blur(4px)" : "blur(0px)",
+          WebkitBackdropFilter: customLocationOpen ? "blur(4px)" : "blur(0px)",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Custom Pickup Location"
+          className={`relative w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] border p-6 sm:p-8 shadow-lg backdrop-blur-xl transition-all duration-300 ${
+            customLocationOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-2"
+          } ${
+            isLight
+              ? "bg-white/80 border-neutral-900/10 text-neutral-900 shadow-neutral-900/5"
+              : "bg-neutral-950/70 border-white/10 text-white shadow-black/30"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setCustomLocationOpen(false)}
+            className={`absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-widest transition-colors duration-200 ${
+              isLight ? "text-neutral-900/40 hover:text-neutral-900" : "text-white/40 hover:text-white"
+            }`}
+          >
+            Close
+          </button>
+
+          <div className="text-center mb-6">
+            <div
+              className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2"
+              style={{ color: isLight ? "#00209C" : "#FDBA16" }}
+            >
+              Customize
+            </div>
+            <h2 className={`text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
+              Enter your pickup spot
+            </h2>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="relative flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className={labelStyle}>Street / Area Address *</label>
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  disabled={locationLocating}
+                  className="flex items-center gap-1 text-[11px] font-semibold tracking-wide transition-opacity duration-200 hover:opacity-80 disabled:opacity-50"
+                  style={{ color: isLight ? "#00209C" : "#FDBA16" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                  </svg>
+                  {locationLocating ? "Locating…" : "Use current location"}
+                </button>
+              </div>
+              <input
+                ref={customLocationInputRef}
+                type="text"
+                value={customLocationInput}
+                autoComplete="off"
+                onChange={(e) => {
+                  setCustomLocationInput(e.target.value);
+                  setLocationPicked(null);
+                }}
+                placeholder="Search a street or area — e.g. Bourdillon Road, Ikoyi"
+                className={modalInputStyle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && locationResults.length > 0) {
+                    e.preventDefault();
+                    pickLocationResult(locationResults[0]);
+                  }
+                }}
+              />
+
+              {/* OpenStreetMap search suggestions — translucent, blurred, compact */}
+              {(locationResults.length > 0 || locationSearching) && (
+                <div
+                  className={`absolute left-0 right-0 top-full z-30 mt-2 max-h-44 overflow-y-auto rounded-xl border backdrop-blur-xl ${
+                    isLight ? "bg-white/55 border-neutral-900/10" : "bg-neutral-900/40 border-white/10"
+                  }`}
+                >
+                  {locationSearching && locationResults.length === 0 && (
+                    <div className={`px-3 py-2 text-[11px] ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
+                      Searching…
+                    </div>
+                  )}
+                  {locationResults.map((r, i) => (
+                    <button
+                      key={`${r.lat}-${r.lon}-${i}`}
+                      type="button"
+                      onClick={() => pickLocationResult(r)}
+                      className={`block w-full text-left px-3 py-2 text-[11px] leading-snug transition-colors duration-150 ${
+                        isLight ? "text-neutral-800 hover:bg-[#00209C]/[0.08]" : "text-neutral-200 hover:bg-[#FDBA16]/[0.10]"
+                      }`}
+                    >
+                      {r.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {locationError && (
+              <div className={`-mt-2 text-[11px] ${isLight ? "text-red-600" : "text-red-400"}`}>{locationError}</div>
+            )}
+
+            {/* Live satellite preview — lit to the location's current Nigeria time, accent pin */}
+            {customLocationOpen && (
+              <PickupMapEmbed
+                lng={locationPicked?.lng ?? null}
+                lat={locationPicked?.lat ?? null}
+                isLight={isLight}
+                accent={isLight ? "#00209C" : "#FDBA16"}
+              />
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label className={labelStyle}>Nearby Landmark (Optional)</label>
+              <input
+                type="text"
+                value={customLocationLandmark}
+                onChange={(e) => setCustomLocationLandmark(e.target.value)}
+                placeholder="e.g. opposite Eko Hotel, beside Shoprite"
+                className={modalInputStyle}
+              />
+              <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
+                A well-known spot nearby helps your chauffeur find you — maps can&apos;t always pin an exact house number.
+              </p>
+            </div>
+
+            <div className="mt-1 flex justify-center">
+              <CtaButton isLight={isLight} disabled={!locationPicked} onClick={selectCustomLocation}>
                 Confirm
               </CtaButton>
             </div>
