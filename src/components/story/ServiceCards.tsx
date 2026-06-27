@@ -7,7 +7,7 @@
 // crossfade. Scroll up and the whole thing runs in reverse for free.
 //
 // The card visual matches the standalone /services page so the two stay in sync.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Logo from "@/components/Logo";
 import {
@@ -168,6 +168,9 @@ export default function ServiceCards({ progress }: { progress: number }) {
   const cardW = Math.min(vw * 0.9, 520);
   const leftX = MARGIN; // leftmost card: its LEFT edge sits at the header's x
   const rightX = Math.max(MARGIN, vw - MARGIN - cardW); // rightmost: RIGHT edge at Contact's x
+  // Phones: there isn't room to march cards across, so the card stays CENTRED and the
+  // whole service (photo + panel) wipes top→down instead of left→right.
+  const isMobile = vw < 640;
 
   // Each service owns a slot of 1/N. Cards wipe in from the left / out to the right,
   // and consecutive cards OVERLAP by 25% of a slot (the next starts as the current
@@ -178,9 +181,8 @@ export default function ServiceCards({ progress }: { progress: number }) {
   return (
     <div className="absolute inset-0">
       {/* background photos — each service's photo WIPES with a clip mask instead of
-          crossfading. The image draws in from the RIGHT and sweeps to the LEFT: the
-          incoming photo's left edge recedes as it reveals, then its right edge collapses
-          left on exit. (The card panel wipes the opposite way, off to the right.) */}
+          crossfading. Desktop: draws in from the RIGHT, sweeps to the LEFT. Phones:
+          draws in from the TOP, sweeps DOWN. (The card panel wipes the same axis.) */}
       <div className="absolute inset-0">
         {SERVICES.map((s, j) => {
           const inS = j * slot - tw;
@@ -190,14 +192,13 @@ export default function ServiceCards({ progress }: { progress: number }) {
           const outAmt = j === N - 1 ? 0 : smooth(win(g, (j + 1) * slot - tw, outE));
           // photo 0 is the hero photo handed off from the reveal — keep it fully shown
           // (no in-wipe) so the join stays seamless; it only wipes OUT when service 2 lands.
-          const leftInset = j === 0 ? 0 : (1 - inAmt) * 100; // revealed from the right
-          const rightInset = outAmt * 100; // collapses to the left as it leaves
+          const recede = j === 0 ? 0 : (1 - inAmt) * 100; // reveal edge recedes (in)
+          const collapse = outAmt * 100; // far edge collapses in (out)
+          const clip = isMobile
+            ? `inset(${collapse.toFixed(2)}% 0% ${recede.toFixed(2)}% 0%)` // top→down
+            : `inset(0% ${collapse.toFixed(2)}% 0% ${recede.toFixed(2)}%)`; // right→left
           return (
-            <div
-              key={s.bg}
-              className="absolute inset-0"
-              style={{ clipPath: `inset(0% ${rightInset.toFixed(2)}% 0% ${leftInset.toFixed(2)}%)` }}
-            >
+            <div key={s.bg} className="absolute inset-0" style={{ clipPath: clip }}>
               <Image src={s.bg} alt="" fill priority={j === 0} sizes="100vw" className="object-cover" />
             </div>
           );
@@ -206,9 +207,9 @@ export default function ServiceCards({ progress }: { progress: number }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
       </div>
 
-      {/* one card per service — marches left→right across services (leftmost aligns
-          with the header, rightmost with Contact), sits in the lower part of the
-          page, and wipes IN from the left / OUT to the right with 25% overlap. */}
+      {/* one card per service. Desktop: marches left→right across services (leftmost
+          aligns with the header, rightmost with Contact) and wipes in from the left /
+          out to the right. Phones: stays CENTRED and wipes top→down. */}
       {SERVICES.map((s, j) => {
         const inS = j * slot - tw; // wipe-in window (centred on this slot's start)
         const outE = (j + 1) * slot + tw; // wipe-out window end (next slot's start)
@@ -218,23 +219,29 @@ export default function ServiceCards({ progress }: { progress: number }) {
         // half-revealed because its in-window straddles 0.
         const inAmt = j === 0 ? smooth(win(g, 0, 2 * tw)) : smooth(win(g, inS, j * slot + tw));
         const outAmt = j === N - 1 ? 0 : smooth(win(g, (j + 1) * slot - tw, outE));
-        const rightInset = (1 - inAmt) * 100; // hidden from the right until revealed
-        const leftInset = outAmt * 100; // collapses to the right as it leaves
+        const reveal = (1 - inAmt) * 100; // hidden until revealed (in)
+        const collapse = outAmt * 100; // collapses away as it leaves (out)
         // the PREVIOUS card softens as the next one clip-masks in over it: blur ramps
         // up with its wipe-out so the outgoing panel goes out of focus while it leaves.
         const blurPx = outAmt * 12;
         const x = N > 1 ? lerp(leftX, rightX, j / (N - 1)) : leftX;
-        return (
-          <div
-            key={s.index}
-            className="absolute bottom-[16%] w-[90vw] max-w-[520px]"
-            style={{
+        const blur = blurPx > 0.01 ? `blur(${blurPx.toFixed(2)}px)` : undefined;
+        const cardStyle: CSSProperties = isMobile
+          ? {
+              left: "50%",
+              transform: "translateX(-50%)", // stay centred, no horizontal march
+              clipPath: `inset(${collapse.toFixed(2)}% 0% ${reveal.toFixed(2)}% 0%)`, // top→down
+              filter: blur,
+              willChange: blur ? "filter" : undefined,
+            }
+          : {
               left: `${x.toFixed(1)}px`,
-              clipPath: `inset(0% ${rightInset.toFixed(2)}% 0% ${leftInset.toFixed(2)}%)`,
-              filter: blurPx > 0.01 ? `blur(${blurPx.toFixed(2)}px)` : undefined,
-              willChange: blurPx > 0.01 ? "filter" : undefined,
-            }}
-          >
+              clipPath: `inset(0% ${reveal.toFixed(2)}% 0% ${collapse.toFixed(2)}%)`, // right→left
+              filter: blur,
+              willChange: blur ? "filter" : undefined,
+            };
+        return (
+          <div key={s.index} className="absolute bottom-[16%] w-[90vw] max-w-[520px]" style={cardStyle}>
             <ServicePanel service={s} />
           </div>
         );

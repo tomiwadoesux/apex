@@ -40,24 +40,24 @@ const CARS: Car[] = [
     name: "Rolls-Royce Phantom",
     klass: "Ultra Luxury",
     side: {
-      dark: "rollsroyce phantom Side black-silver.webp",
-      light: "rollsroyce phantom Side white-black.webp",
+      dark: "cars/Rolls Royce Phantom/rollsroyce phantom Side black-silver.webp",
+      light: "cars/Rolls Royce Phantom/rollsroyce phantom Side white-black.webp",
     },
   },
   {
     name: "Lexus LX 600",
     klass: "Luxury SUV",
-    side: { dark: "lexus lx Side black.webp", light: "lexus lx Side white.webp" },
+    side: { dark: "cars/Lexus LX 570 2024/lexus lx Side black.webp", light: "cars/Lexus LX 570 2024/lexus lx Side white.webp" },
   },
   {
     name: "Toyota Corolla",
     klass: "Executive Sedan",
-    side: { dark: "toyota corolla Side black.webp", light: "toyota corolla Side white.webp" },
+    side: { dark: "cars/Toyota Corolla/toyota corolla Side black.webp", light: "cars/Toyota Corolla/toyota corolla Side white.webp" },
   },
   {
     name: "Toyota Hiace",
     klass: "Group Van",
-    side: { dark: "toyota hiace Side black.webp", light: "toyota hiace Side white.webp" },
+    side: { dark: "buses/Toyota Hiace/toyota hiace Side black.webp", light: "buses/Toyota Hiace/toyota hiace Side white.webp" },
   },
 ];
 

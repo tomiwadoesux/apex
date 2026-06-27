@@ -91,14 +91,14 @@ const VEHICLES: VehicleItem[] = [
     details: "Extended wheelbase, bespoke leather interior, starlight headliner, and active roll stabilization for maximum passenger comfort.",
     img: {
       light: {
-        front: "rollsroyce phantom Front black-silver.webp",
-        side: "rollsroyce phantom Side black-silver.webp",
-        rear: "rollsroyce phantom Rear black-silver.webp",
+        front: "cars/Rolls Royce Phantom/rollsroyce phantom Front black-silver.webp",
+        side: "cars/Rolls Royce Phantom/rollsroyce phantom Side black-silver.webp",
+        rear: "cars/Rolls Royce Phantom/rollsroyce phantom Rear black-silver.webp",
       },
       dark: {
-        front: "rollsroyce phantom Front silver-black.webp",
-        side: "rollsroyce phantom Side white-black.webp",
-        rear: "rollsroyce phantom Rear black-silver 2.webp",
+        front: "cars/Rolls Royce Phantom/rollsroyce phantom Front silver-black.webp",
+        side: "cars/Rolls Royce Phantom/rollsroyce phantom Side white-black.webp",
+        rear: "cars/Rolls Royce Phantom/rollsroyce phantom Rear black-silver 2.webp",
       },
     },
   },
@@ -112,14 +112,14 @@ const VEHICLES: VehicleItem[] = [
     details: "Flagship luxury SUV featuring active height control, premium Mark Levinson surround sound system, and executive second-row seating.",
     img: {
       light: {
-        front: "lexus lx Front black.webp",
-        side: "lexus lx Side black.webp",
-        rear: "lexus lx Rear black.webp",
+        front: "cars/Lexus LX 570 2024/lexus lx Front black.webp",
+        side: "cars/Lexus LX 570 2024/lexus lx Side black.webp",
+        rear: "cars/Lexus LX 570 2024/lexus lx Rear black.webp",
       },
       dark: {
-        front: "lexus lx Front white.webp",
-        side: "lexus lx Side white.webp",
-        rear: "lexus lx Rear white.webp",
+        front: "cars/Lexus LX 570 2024/lexus lx Front white.webp",
+        side: "cars/Lexus LX 570 2024/lexus lx Side white.webp",
+        rear: "cars/Lexus LX 570 2024/lexus lx Rear white.webp",
       },
     },
   },
@@ -133,14 +133,14 @@ const VEHICLES: VehicleItem[] = [
     details: "Modern executive sedan offering a smooth hybrid powertrain, spacious cabin, advanced safety systems, and dual-zone climate control.",
     img: {
       light: {
-        front: "toyota corolla Front black.webp",
-        side: "toyota corolla Side black.webp",
-        rear: "toyota corolla Rear black.webp",
+        front: "cars/Toyota Corolla/toyota corolla Front black.webp",
+        side: "cars/Toyota Corolla/toyota corolla Side black.webp",
+        rear: "cars/Toyota Corolla/toyota corolla Rear black.webp",
       },
       dark: {
-        front: "toyota corolla Front white.webp",
-        side: "toyota corolla Side white.webp",
-        rear: "toyota corolla Rear silver.webp",
+        front: "cars/Toyota Corolla/toyota corolla Front white.webp",
+        side: "cars/Toyota Corolla/toyota corolla Side white.webp",
+        rear: "cars/Toyota Corolla/toyota corolla Rear silver.webp",
       },
     },
   },
@@ -154,14 +154,14 @@ const VEHICLES: VehicleItem[] = [
     details: "Premium high-occupancy executive van with custom plush leather seating, rear air conditioning, and generous luggage space.",
     img: {
       light: {
-        front: "toyota hiace Front black.webp",
-        side: "toyota hiace Side black.webp",
-        rear: "toyota hiace Rear black.webp",
+        front: "buses/Toyota Hiace/toyota hiace Front black.webp",
+        side: "buses/Toyota Hiace/toyota hiace Side black.webp",
+        rear: "buses/Toyota Hiace/toyota hiace Rear black.webp",
       },
       dark: {
-        front: "toyota hiace Front white.webp",
-        side: "toyota hiace Side white.webp",
-        rear: "toyota hiace Rear white.webp",
+        front: "buses/Toyota Hiace/toyota hiace Front white.webp",
+        side: "buses/Toyota Hiace/toyota hiace Side white.webp",
+        rear: "buses/Toyota Hiace/toyota hiace Rear white.webp",
       },
     },
   },

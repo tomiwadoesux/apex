@@ -6,8 +6,9 @@
 // 3-per-row grid of every car (vertically centred in the panel), each using its own
 // front photo; clicking a cell (or using the arrows) selects it into the featured view.
 //
-// Each car in CARS points at its own shot in /public/images (e.g. "lexus lx Front
-// black.webp"); swap to the white / side / rear variants on disk as needed.
+// Each car in CARS points at its own shot in /public/images/cars/<model>/ (e.g.
+// "cars/Lexus LX 570 2024/lexus lx Front black.webp"); swap to the white / side /
+// rear variants on disk as needed.
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -29,10 +30,10 @@ type Car = {
 // Each car points at its OWN front shot in /public/images (black trims, to match the
 // landing fleet). Swap to the white / side / rear variants on disk if you prefer.
 const CARS: Car[] = [
-  { id: "lx600", name: "Lexus LX 600", year: 2024, type: "Full size SUV", specs: ["7 seats", "AWD", "Twin turbo V6"], image: "/images/lexus lx Front black.webp" },
-  { id: "phantom", name: "Rolls Royce Phantom", year: 2023, type: "Ultra luxury sedan", specs: ["5 seats", "Auto", "V12"], image: "/images/rollsroyce phantom Front black-silver.webp" },
-  { id: "corolla", name: "Toyota Corolla", year: 2024, type: "Executive sedan", specs: ["5 seats", "Auto", "Hybrid"], image: "/images/toyota corolla Front black.webp" },
-  { id: "hiace", name: "Toyota Hiace", year: 2023, type: "Passenger van", specs: ["14 seats", "Diesel", "Manual"], image: "/images/toyota hiace Front black.webp" },
+  { id: "lx600", name: "Lexus LX 600", year: 2024, type: "Full size SUV", specs: ["7 seats", "AWD", "Twin turbo V6"], image: "/images/cars/Lexus LX 570 2024/lexus lx Front black.webp" },
+  { id: "phantom", name: "Rolls Royce Phantom", year: 2023, type: "Ultra luxury sedan", specs: ["5 seats", "Auto", "V12"], image: "/images/cars/Rolls Royce Phantom/rollsroyce phantom Front black-silver.webp" },
+  { id: "corolla", name: "Toyota Corolla", year: 2024, type: "Executive sedan", specs: ["5 seats", "Auto", "Hybrid"], image: "/images/cars/Toyota Corolla/toyota corolla Front black.webp" },
+  { id: "hiace", name: "Toyota Hiace", year: 2023, type: "Passenger van", specs: ["14 seats", "Diesel", "Manual"], image: "/images/buses/Toyota Hiace/toyota hiace Front black.webp" },
 ];
 
 // ease-out — the featured car enters quickly then settles (entering element).
