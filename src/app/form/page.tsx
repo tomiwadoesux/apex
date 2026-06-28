@@ -2,9 +2,15 @@
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties, type TouchEvent as ReactTouchEvent } from "react";
 import Logo from "@/components/Logo";
+import { ContactPopup, ContactButton } from "@/components/ContactPopup";
 import Image from "next/image";
+import Link from "next/link";
 import { gsap } from "gsap";
+import { toPng } from "html-to-image";
 import PickupMapEmbed from "@/components/map/PickupMapEmbed";
+import { CARS as FLEET_CARS } from "@/components/fleet/data";
+import { RidePass, type RideBooking } from "@/components/RideCard";
+import type { Booking } from "@/lib/bookings";
 
 type Mode = "light" | "dark";
 
@@ -80,92 +86,66 @@ interface VehicleItem {
   img: { light: VehicleAngles; dark: VehicleAngles };
 }
 
-const VEHICLES: VehicleItem[] = [
-  {
-    name: "Rolls-Royce Phantom",
-    year: "2025",
-    class: "Ultra Luxury",
-    rate: "$650 / hr",
-    capacity: "Can carry up to 3 passengers",
-    specs: "V12 · Chauffeured",
-    details: "Extended wheelbase, bespoke leather interior, starlight headliner, and active roll stabilization for maximum passenger comfort.",
-    img: {
-      light: {
-        front: "cars/Rolls Royce Phantom/rollsroyce phantom Front black-silver.webp",
-        side: "cars/Rolls Royce Phantom/rollsroyce phantom Side black-silver.webp",
-        rear: "cars/Rolls Royce Phantom/rollsroyce phantom Rear black-silver.webp",
-      },
-      dark: {
-        front: "cars/Rolls Royce Phantom/rollsroyce phantom Front silver-black.webp",
-        side: "cars/Rolls Royce Phantom/rollsroyce phantom Side white-black.webp",
-        rear: "cars/Rolls Royce Phantom/rollsroyce phantom Rear black-silver 2.webp",
-      },
-    },
-  },
-  {
-    name: "Lexus LX 600",
-    year: "2025",
-    class: "Luxury SUV",
-    rate: "$240 / hr",
-    capacity: "Can carry up to 6 passengers",
-    specs: "V6 Twin-Turbo · AWD",
-    details: "Flagship luxury SUV featuring active height control, premium Mark Levinson surround sound system, and executive second-row seating.",
-    img: {
-      light: {
-        front: "cars/Lexus LX 570 2024/lexus lx Front black.webp",
-        side: "cars/Lexus LX 570 2024/lexus lx Side black.webp",
-        rear: "cars/Lexus LX 570 2024/lexus lx Rear black.webp",
-      },
-      dark: {
-        front: "cars/Lexus LX 570 2024/lexus lx Front white.webp",
-        side: "cars/Lexus LX 570 2024/lexus lx Side white.webp",
-        rear: "cars/Lexus LX 570 2024/lexus lx Rear white.webp",
-      },
-    },
-  },
-  {
-    name: "Toyota Corolla",
-    year: "2025",
-    class: "Executive Sedan",
-    rate: "$90 / hr",
-    capacity: "Can carry up to 4 passengers",
-    specs: "Hybrid · Efficient",
-    details: "Modern executive sedan offering a smooth hybrid powertrain, spacious cabin, advanced safety systems, and dual-zone climate control.",
-    img: {
-      light: {
-        front: "cars/Toyota Corolla/toyota corolla Front black.webp",
-        side: "cars/Toyota Corolla/toyota corolla Side black.webp",
-        rear: "cars/Toyota Corolla/toyota corolla Rear black.webp",
-      },
-      dark: {
-        front: "cars/Toyota Corolla/toyota corolla Front white.webp",
-        side: "cars/Toyota Corolla/toyota corolla Side white.webp",
-        rear: "cars/Toyota Corolla/toyota corolla Rear silver.webp",
-      },
-    },
-  },
-  {
-    name: "Toyota Hiace",
-    year: "2024",
-    class: "Group Van",
-    rate: "$140 / hr",
-    capacity: "Can carry up to 14 passengers",
-    specs: "14 Seats · Spacious",
-    details: "Premium high-occupancy executive van with custom plush leather seating, rear air conditioning, and generous luggage space.",
-    img: {
-      light: {
-        front: "buses/Toyota Hiace/toyota hiace Front black.webp",
-        side: "buses/Toyota Hiace/toyota hiace Side black.webp",
-        rear: "buses/Toyota Hiace/toyota hiace Rear black.webp",
-      },
-      dark: {
-        front: "buses/Toyota Hiace/toyota hiace Front white.webp",
-        side: "buses/Toyota Hiace/toyota hiace Side white.webp",
-        rear: "buses/Toyota Hiace/toyota hiace Rear white.webp",
-      },
-    },
-  },
-];
+// The bookable fleet, sourced from the shared roster (src/components/fleet/data.ts)
+// so the form always shows the REAL cars. The picker is image-led, so only cars
+// that have photos are bookable here. Each folder has front/side/rear.webp (the
+// odd one missing falls back to an angle that exists); there are no per-theme
+// colour variants anymore, so light and dark share the same image.
+const FLEET_NO_FRONT = new Set(["Mercedes S-Class"]);
+const FLEET_NO_SIDE = new Set(["Rolls Royce Phantom", "Mercedes GLE 53 2023 Coupe"]);
+
+function buildFleetVehicles(): VehicleItem[] {
+  return FLEET_CARS.filter((c) => c.image).map((c) => {
+    // "/images/cars/Range Rover Velar/side.webp" → "cars/Range Rover Velar"
+    const dir = c.image!.replace(/^\/images\//, "").replace(/\/[^/]+$/, "");
+    const folder = dir.split("/").pop() ?? "";
+    const angles: VehicleAngles = {
+      front: `${dir}/${FLEET_NO_FRONT.has(folder) ? "side" : "front"}.webp`,
+      side: `${dir}/${FLEET_NO_SIDE.has(folder) ? "front" : "side"}.webp`,
+      rear: `${dir}/rear.webp`,
+    };
+    const seatSpec = c.specs.find((s) => /seat/i.test(s));
+    const seats = seatSpec ? parseInt(seatSpec, 10) : null;
+    const otherSpecs = c.specs.filter((s) => !/seat/i.test(s));
+    return {
+      name: c.name,
+      year: String(c.year),
+      class: c.type,
+      rate: c.type,
+      capacity: seats ? `Can carry up to ${seats} passengers` : "Chauffeured",
+      specs: otherSpecs.join(" · ") || c.type,
+      details: `${c.type}. ${c.specs.join(", ")}.`,
+      img: { light: angles, dark: angles },
+    };
+  });
+}
+
+const VEHICLES: VehicleItem[] = buildFleetVehicles();
+
+// "2026-06-28" → "Sat, 28 Jun 2026" for the ride-pass card.
+function formatCardDate(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+// A saved booking → the shape the ride-pass card renders.
+function bookingToRide(b: Booking): RideBooking {
+  return {
+    service: b.service,
+    pickup: b.pickup,
+    dropoff: b.dropoff,
+    duration: b.duration,
+    date: b.date,
+    time: b.time,
+    bookingRef: b.id,
+    car: { name: b.car.name, klass: b.car.klass, side: { light: b.car.image ?? "", dark: b.car.image ?? "" } },
+    passengerName: b.passenger.name || undefined,
+    phone: b.passenger.phone || undefined,
+    email: b.passenger.email || undefined,
+  };
+}
 
 interface ServiceItem {
   id: string;
@@ -195,13 +175,22 @@ const SERVICES: ServiceItem[] = [
 const DURATION_SERVICES = SERVICES.filter((s) => s.group === "duration");
 const TYPE_SERVICES = SERVICES.filter((s) => s.group === "type");
 
-// Contact channels shown in the "Contact Us" overlay.
-// Editable placeholders — swap the value/href for the real handles when available.
-const CONTACTS = [
-  { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
-  { label: "WhatsApp", value: "+234 800 000 0000", href: "https://wa.me/2348000000000" },
-  { label: "X (Twitter)", value: "@apexride", href: "https://x.com/apexride" },
-  { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
+// Quick-add chips for the final step. Tapping one toggles a short line in the
+// request notes so guests can fill in the common asks without typing.
+const QUICK_REQUESTS = [
+  "Meet and greet at arrivals",
+  "Child seat needed",
+  "Quiet ride preferred",
+  "Bottled water on board",
+  "Extra stop along the way",
+  "Help with my luggage",
+];
+
+// Labels for the custom date/time picker on the Schedule step.
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 // --- Simple Icon Pack ---
@@ -250,6 +239,20 @@ function ClockIcon() {
   );
 }
 
+// One chevron used for the calendar month nav and the time spinners.
+function Chevron({ dir, size = 16 }: { dir: "up" | "down" | "left" | "right"; size?: number }) {
+  const points =
+    dir === "up" ? "6 15 12 9 18 15"
+      : dir === "down" ? "6 9 12 15 18 9"
+        : dir === "left" ? "15 18 9 12 15 6"
+          : "9 18 15 12 9 6";
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points={points} />
+    </svg>
+  );
+}
+
 function RouteIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -287,6 +290,12 @@ const BG_GRADIENT: Record<Mode, string> = {
 // Fades the outer left/right edges of the flanking car images so they melt away.
 const EDGE_FADE = "linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%)";
 
+// Car-Type carousel sizing. The active (center) car rests a touch smaller than
+// full size; when a car arrives in the center it pops in larger first, then
+// settles down to the resting scale.
+const CAR_REST_SCALE = 0.85;
+const CAR_POP_SCALE = 1.2;
+
 // STEPS strictly matching user requirements:
 // 1. Contact (Name, Phone, Email)
 // 2. Pickup Location (3D carousel of black squares)
@@ -316,49 +325,6 @@ const validateNigerianPhone = (phone: string) => {
 const validateEmail = (email: string) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return regex.test(email.trim());
-};
-
-// Vector "extruded" 3D mark: stacked copies of the flat <Logo> glyph offset
-// along Z. Being SVG it's instant (no load flash) and razor-crisp at any size,
-// and under a CSS-perspective rotateY the offset layers read as the logo's
-// solid side wall. `.logo-3d-wrapper` is the hook the contact fly-animation
-// rotates. More layers + wider spread = more weight at the sides.
-const ExtrudedLogo = ({ size, color, isLight }: { size: number; color: string; isLight: boolean }) => {
-  const COUNT = 16;
-  const SPREAD = 8; // total extrusion depth in px
-  const layers = Array.from({ length: COUNT }, (_, i) => -SPREAD / 2 + (SPREAD * i) / (COUNT - 1));
-
-  return (
-    <div
-      className="logo-3d-wrapper relative"
-      style={{
-        width: `${(size * 139) / 152}px`,
-        height: `${size}px`,
-        transformStyle: "preserve-3d",
-        backfaceVisibility: "visible",
-      }}
-    >
-      {layers.map((z, idx) => {
-        // outermost layers are the bright front/back faces; the inner stack is a
-        // darker shade so the extruded side reads as a solid wall, not slats.
-        const isFace = idx === 0 || idx === COUNT - 1;
-        const layerColor = isFace ? color : isLight ? "#001460" : "#b0800c";
-        return (
-          <div
-            key={idx}
-            className="absolute inset-0"
-            style={{
-              transform: `translateZ(${z}px)`,
-              transformStyle: "preserve-3d",
-              backfaceVisibility: "visible",
-            }}
-          >
-            <Logo size={size} color={layerColor} />
-          </div>
-        );
-      })}
-    </div>
-  );
 };
 
 // Modern, clean, flat CTA button. Shadow and tactile textures have been removed
@@ -477,8 +443,19 @@ export default function BookingForm() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
+  // Schedule step: which path the guest chose, and which month the calendar shows.
+  const [scheduleMode, setScheduleMode] = useState<"quick" | "custom" | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
   const [bookingId, setBookingId] = useState("");
+  // After a successful submit we hold the saved booking + render its ride-pass card.
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const passCardRef = useRef<HTMLDivElement>(null); // the confirmation ride-pass card (for image export)
 
   const [contactOpen, setContactOpen] = useState(false);
 
@@ -489,6 +466,9 @@ export default function BookingForm() {
   const [apiModels, setApiModels] = useState<string[]>([]);
   const [isCustomCar, setIsCustomCar] = useState(false);
   const [customCarName, setCustomCarName] = useState("");
+  // Car handed over from the fleet page via /form?car=…&year=… — pre-selected on mount
+  // and announced near the Next button until the user reaches the Car Type step.
+  const [preselectedCar, setPreselectedCar] = useState<string | null>(null);
 
   // Custom pickup location ("Customize" popup on Step 2 — like the car "Other Options")
   const [customLocationOpen, setCustomLocationOpen] = useState(false);
@@ -506,18 +486,11 @@ export default function BookingForm() {
   const customOverlayRef = useRef<HTMLDivElement>(null);
   const customCardRef = useRef<HTMLDivElement>(null);
   const customBlurProxyRef = useRef({ v: 0 });
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const blurProxyRef = useRef({ v: 0 });
-  const didMountRef = useRef(false);
-  const modeRef = useRef<Mode>(mode);
-  modeRef.current = mode;
-
-  // Logo 3D floating animation refs
+  // The header logo the shared contact popup's clone flies from / back to.
   const logoContainerRef = useRef<HTMLDivElement>(null);
-  const logoTargetRef = useRef<HTMLDivElement>(null);
 
   const isLight = mode === "light";
+  const accent = "#2A4FD0"; // brand blue — matches the landing page lockup + popup
 
   const selectedVehicleObj = isCustomCar ? selectedVehicle : VEHICLES[carIndex];
   const nextVehicleObj = VEHICLES[(carIndex + 1) % VEHICLES.length];
@@ -559,6 +532,23 @@ export default function BookingForm() {
     return `${hours}:${minutes}`;
   };
 
+  // Friendly, readable versions for confirmation summaries (the inputs stay ISO).
+  const formatHumanDate = (value: string) => {
+    if (!value) return "";
+    const d = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  };
+
+  const formatHumanTime = (value: string) => {
+    if (!value) return "";
+    const [h, m] = value.split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return "";
+    const period = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+  };
+
   const roundedHoursFromNow = (hours: number) => {
     const date = new Date();
     date.setHours(date.getHours() + hours, 0, 0, 0);
@@ -584,6 +574,80 @@ export default function BookingForm() {
   const applyPickupDate = (date: Date) => {
     setBookingDate(formatDateInput(date));
     setBookingTime(formatTimeInput(date));
+  };
+
+  // --- Custom date/time picker (Schedule step) ---
+
+  // Switching into the "Choose Date & Time" path: seed a sensible default time so
+  // the summary can resolve, and jump the calendar to the already-chosen month.
+  const enterCustomSchedule = () => {
+    setScheduleMode("custom");
+    if (!bookingTime) setBookingTime("12:00");
+    if (bookingDate) {
+      const d = new Date(`${bookingDate}T00:00:00`);
+      if (!Number.isNaN(d.getTime())) setCalendarMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  };
+
+  const todayStart = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  // Cells for the visible month: leading nulls pad the first week to the weekday.
+  const calendarCells = (() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const startOffset = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+    return cells;
+  })();
+
+  // Don't let the calendar page back past the current month.
+  const canGoPrevMonth = (() => {
+    const now = new Date();
+    return calendarMonth > new Date(now.getFullYear(), now.getMonth(), 1);
+  })();
+  const shiftMonth = (delta: number) =>
+    setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+
+  // Time spinner — wheels are independent (no carry), composed back to "HH:MM".
+  const parsedTime = (() => {
+    const [h, m] = (bookingTime || "12:00").split(":").map(Number);
+    return { h: Number.isNaN(h) ? 12 : h, m: Number.isNaN(m) ? 0 : m };
+  })();
+  const timePeriod: "AM" | "PM" = parsedTime.h >= 12 ? "PM" : "AM";
+  const timeHour12 = parsedTime.h % 12 === 0 ? 12 : parsedTime.h % 12;
+  const commitTime = (h24: number, m: number) =>
+    setBookingTime(`${String((h24 + 24) % 24).padStart(2, "0")}:${String((m + 60) % 60).padStart(2, "0")}`);
+  const to24 = (h12: number, period: "AM" | "PM") => (period === "PM" ? (h12 % 12) + 12 : h12 % 12);
+  const stepHour = (delta: number) => {
+    const next = ((timeHour12 - 1 + delta + 12) % 12) + 1;
+    commitTime(to24(next, timePeriod), parsedTime.m);
+  };
+  const stepMinute = (delta: number) => commitTime(parsedTime.h, parsedTime.m + delta * 5);
+  const setPeriod = (period: "AM" | "PM") => commitTime(to24(timeHour12, period), parsedTime.m);
+
+  // Quick-request chips: each toggles its phrase as one line in the notes field,
+  // staying within the 500-char cap shared with free-typed text.
+  const isQuickRequestActive = (phrase: string) =>
+    specialRequests.split("\n").some((l) => l.trim().toLowerCase() === phrase.toLowerCase());
+
+  const toggleQuickRequest = (phrase: string) => {
+    setSpecialRequests((prev) => {
+      const lines = prev.split("\n").map((l) => l.trim()).filter(Boolean);
+      const idx = lines.findIndex((l) => l.toLowerCase() === phrase.toLowerCase());
+      if (idx !== -1) {
+        lines.splice(idx, 1);
+        return lines.join("\n");
+      }
+      const next = [...lines, phrase].join("\n");
+      return next.length > 500 ? prev : next;
+    });
   };
 
   const pickupOptions = [
@@ -633,6 +697,26 @@ export default function BookingForm() {
       : selectedService.id === "custom"
         ? `Custom${customTripText.trim() ? ` · ${customTripText.trim()}` : ""}`
         : selectedService.name;
+
+  // Per-section completeness for the Review step (Step 8). Red = needs attention,
+  // green = done. Pickup / Vehicle default to a value, so they read as done.
+  const contactComplete =
+    contactName.trim() !== "" && validateNigerianPhone(contactPhone) && validateEmail(contactEmail);
+  const pickupComplete = !!(selectedLocation?.name || (isCustomLocation && locationPicked));
+  const vehicleComplete = !!selectedVehicle?.name;
+  const serviceComplete =
+    !!selectedService &&
+    (selectedService.id === "multiday"
+      ? multiDayNum >= 1
+      : selectedService.id === "custom"
+        ? customTripText.trim() !== ""
+        : true);
+  const scheduleComplete = bookingDate !== "" && bookingTime !== "";
+  const allRequiredComplete =
+    contactComplete && pickupComplete && vehicleComplete && serviceComplete && scheduleComplete;
+  // Status colours for the review chips.
+  const okColor = isLight ? "#15803d" : "#4ade80";
+  const badColor = isLight ? "#dc2626" : "#f87171";
 
   // Shared renderer for a service tier card (used by both the Duration and Trip
   // Type screens). The booking is one pick overall, so selection is keyed on the
@@ -839,7 +923,7 @@ export default function BookingForm() {
       if (isCustomCar) {
         // Active space is empty (opacity 0)
         gsap.set(centerCarRef.current, {
-          transform: "translateX(0%) scale(1) scaleX(-1)",
+          transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`,
           opacity: 0,
           filter: "blur(0px)",
           webkitFilter: "blur(0px)"
@@ -872,7 +956,7 @@ export default function BookingForm() {
       } else {
         // Unilateral layout (original)
         gsap.set(centerCarRef.current, {
-          transform: "translateX(0%) scale(1) scaleX(-1)",
+          transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`,
           opacity: 1,
           filter: "blur(0px)",
           webkitFilter: "blur(0px)"
@@ -902,6 +986,52 @@ export default function BookingForm() {
     }
   }, [carIndex, currentStep, isCustomCar]);
 
+  // Pre-select a car passed in from the fleet page (/form?car=Name&year=2024). If the
+  // name matches one of our standard VEHICLES we lock the carousel onto it; otherwise we
+  // treat it as a bespoke "fleet selection" via the existing custom-car path. Either way
+  // the car is already chosen by the time the user reaches the Car Type step.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const carParam = params.get("car");
+    if (!carParam) return;
+    const yearParam = params.get("year") || "";
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const target = norm(carParam);
+    const matchIdx = VEHICLES.findIndex((v) => {
+      const vn = norm(v.name);
+      return vn === target || target.startsWith(vn) || vn.startsWith(target);
+    });
+    if (matchIdx >= 0) {
+      setCarIndex(matchIdx);
+      setIsCustomCar(false);
+      setDisplayedVehicleName(VEHICLES[matchIdx].name);
+      setDisplayedVehicleDetails(VEHICLES[matchIdx]);
+      setSelectedVehicle(VEHICLES[matchIdx]);
+      setPreselectedCar(VEHICLES[matchIdx].name);
+    } else {
+      const nameWithYear = yearParam ? `${carParam} (${yearParam})` : carParam;
+      const customObj = {
+        name: nameWithYear,
+        year: yearParam || "2025",
+        class: "From Our Fleet",
+        rate: "Quote on Request",
+        capacity: "Capacity confirmed after review",
+        specs: "Fleet Selection",
+        details: `Selected from our fleet: ${carParam}.`,
+        img: {
+          light: { front: "", side: "", rear: "" },
+          dark: { front: "", side: "", rear: "" },
+        },
+      };
+      setIsCustomCar(true);
+      setCustomCarName(nameWithYear);
+      setDisplayedVehicleName(nameWithYear);
+      setSelectedVehicle(customObj);
+      setDisplayedVehicleDetails(customObj);
+      setPreselectedCar(nameWithYear);
+    }
+  }, []);
+
   // Animate the car details (name and specifications) when entering the vehicle selection step (Step 4)
   useEffect(() => {
     if (currentStep === 3) {
@@ -923,8 +1053,16 @@ export default function BookingForm() {
           ease: "power2.out"
         });
       }
+      // The main car pops in large, then settles to its resting size.
+      if (centerCarRef.current && !isCustomCar) {
+        gsap.fromTo(
+          centerCarRef.current,
+          { transform: `translateX(0%) scale(${CAR_POP_SCALE}) scaleX(-1)`, opacity: 0 },
+          { transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`, opacity: 1, duration: 0.6, ease: "power3.out" }
+        );
+      }
     }
-  }, [currentStep]);
+  }, [currentStep, isCustomCar]);
 
   // Transition between cars: Symmetrical bidirectional sliding
   const spinCar = (dir: number) => {
@@ -1005,14 +1143,17 @@ export default function BookingForm() {
       ease: "power2.inOut"
     }, 0);
 
-    // Animate left car into the center (scaling up, losing blur/opacity)
+    // Animate the left car into the center in one continuous motion. A single
+    // tween with a back ease gives a punchy, springy entrance (a subtle overshoot
+    // past the resting size, then settle) without the old two-tween "pop big to a
+    // hard stop, hang, then drop" that read as a double scale-down.
     tl.to(L, {
-      transform: "translateX(0%) scale(1) scaleX(-1)",
+      transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`,
       opacity: 1,
       filter: "blur(0px)",
       webkitFilter: "blur(0px)",
       duration: 0.55,
-      ease: "power2.inOut"
+      ease: "back.out(1.4)"
     }, 0);
 
     // Animate far-left car into the left background position (scaling up, losing some blur, opacity stays at 0.9)
@@ -1066,211 +1207,6 @@ export default function BookingForm() {
     if (stored === "light" || stored === "dark") setMode(stored);
     else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setMode("dark");
   }, []);
-
-
-
-  // Animate the contact overlay: the page blur builds up, then the card reveals, with smooth logo flying transition
-  useEffect(() => {
-    const overlay = overlayRef.current;
-    const card = cardRef.current;
-    if (!overlay || !card) return;
-
-    const rows = Array.from(overlay.querySelectorAll(".contact-row"));
-    const proxy = blurProxyRef.current;
-    const firstRun = !didMountRef.current;
-    didMountRef.current = true;
-
-    const isDark = modeRef.current === "dark";
-    const scrim = (v: number) =>
-      isDark ? `rgba(2,2,2,${v * 0.55})` : `rgba(226,232,240,${v * 0.5})`;
-    const applyBlur = (v: number) => {
-      const b = v * 12;
-      overlay.style.setProperty("backdrop-filter", `blur(${b}px)`);
-      overlay.style.setProperty("-webkit-backdrop-filter", `blur(${b}px)`);
-      overlay.style.backgroundColor = v <= 0 ? "transparent" : scrim(v);
-    };
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-    const headerLogoContainer = logoContainerRef.current;
-    const modalLogoContainer = logoTargetRef.current;
-
-    gsap.killTweensOf(proxy);
-    gsap.killTweensOf([card, ...rows]);
-
-    if (contactOpen) {
-      overlay.style.display = "flex";
-      overlay.style.pointerEvents = "auto";
-
-      if (reduce) {
-        proxy.v = 1;
-        applyBlur(1);
-        gsap.set(card, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)" });
-        gsap.set(rows, { opacity: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)" });
-        if (headerLogoContainer) gsap.set(headerLogoContainer, { opacity: 0 });
-        if (modalLogoContainer) gsap.set(modalLogoContainer, { opacity: 1, x: 0, y: 0, scale: 1.4 });
-        return;
-      }
-
-      // Start the blur and background overlay animation
-      gsap.to(proxy, {
-        v: 1,
-        duration: 0.5,
-        ease: "power2.out",
-        onUpdate: () => applyBlur(proxy.v),
-      });
-      gsap.fromTo(
-        card,
-        { opacity: 0, scale: 0.92, y: 16, filter: "blur(8px)", webkitFilter: "blur(8px)" },
-        { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)", duration: 0.5, ease: "power3.out", delay: 0.05 }
-      );
-      gsap.fromTo(
-        rows,
-        { opacity: 0, y: 10, filter: "blur(4px)", webkitFilter: "blur(4px)" },
-        { opacity: 1, y: 0, filter: "blur(0px)", webkitFilter: "blur(0px)", duration: 0.4, stagger: 0.06, delay: 0.15, ease: "power2.out" }
-      );
-
-      // Smooth Logo fly-to-modal animation
-      if (headerLogoContainer && modalLogoContainer) {
-        requestAnimationFrame(() => {
-          const headerRect = headerLogoContainer.getBoundingClientRect();
-          const modalRect = modalLogoContainer.getBoundingClientRect();
-
-          const deltaX = headerRect.left - modalRect.left;
-          const deltaY = headerRect.top - modalRect.top;
-
-          // Hide header logo
-          gsap.set(headerLogoContainer, { opacity: 0 });
-
-          // check if currently animating to avoid snaps/glitches
-          const isCurrentlyActive = gsap.isTweening(modalLogoContainer);
-
-          // Place modal logo exactly over header logo's position if starting fresh
-          if (!isCurrentlyActive && modalLogoContainer.style.opacity === "0") {
-            gsap.set(modalLogoContainer, {
-              x: deltaX,
-              y: deltaY,
-              scale: 1,
-              opacity: 1
-            });
-          }
-
-          const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
-
-          // Smoothly animate modal logo to center-top of the modal card.
-          gsap.killTweensOf(modalLogoContainer);
-          gsap.to(modalLogoContainer, {
-            x: 0,
-            y: 0,
-            scale: 1.4,
-            opacity: 1,
-            duration: 0.9,
-            ease: "power2.out",
-          });
-
-          // Spin one full turn as it flies in, then settle at a slight tilt so the
-          // extruded side layers stay visible while it sits open in the card.
-          if (modal3d) {
-            gsap.killTweensOf(modal3d);
-            gsap.set(modal3d, { transformPerspective: 500, transformOrigin: "center" });
-            gsap.to(modal3d, {
-              rotationY: "+=360",
-              rotationX: 12,
-              duration: 0.9,
-              ease: "power2.out",
-            });
-          }
-        });
-      }
-    } else {
-      if (firstRun || reduce) {
-        proxy.v = 0;
-        overlay.style.pointerEvents = "none";
-        overlay.style.display = "none";
-        applyBlur(0);
-        gsap.set(card, { opacity: 0, scale: 0.92, y: 16, filter: "blur(8px)", webkitFilter: "blur(8px)" });
-        if (headerLogoContainer) gsap.set(headerLogoContainer, { opacity: 1 });
-        if (modalLogoContainer) gsap.set(modalLogoContainer, { opacity: 0, x: 0, y: 0, scale: 1 });
-        return;
-      }
-
-      gsap.to(proxy, {
-        v: 0,
-        duration: 0.35,
-        ease: "power2.in",
-        onUpdate: () => applyBlur(proxy.v),
-        onComplete: () => {
-          overlay.style.pointerEvents = "none";
-          overlay.style.display = "none";
-        },
-      });
-      gsap.to(card, {
-        opacity: 0,
-        scale: 0.96,
-        y: 10,
-        filter: "blur(6px)",
-        webkitFilter: "blur(6px)",
-        duration: 0.3,
-        ease: "power2.in",
-      });
-
-      // Smooth Logo fly-back-to-header animation
-      if (headerLogoContainer && modalLogoContainer) {
-        const headerRect = headerLogoContainer.getBoundingClientRect();
-        const modalRect = modalLogoContainer.getBoundingClientRect();
-
-        const deltaX = headerRect.left - modalRect.left;
-        const deltaY = headerRect.top - modalRect.top;
-
-        const modal3d = modalLogoContainer.querySelector(".logo-3d-wrapper");
-
-        // Fly back to the header while spinning exactly one more full cycle. Both
-        // the travel and the spin decelerate (power2.out) over 1.15s and the
-        // rotation lands on a multiple of 360° with the tilt back to 0 — so it
-        // eases to a stop flat and front-facing just as it reaches the header.
-        if (modal3d) {
-          gsap.killTweensOf(modal3d);
-          gsap.set(modal3d, { transformPerspective: 500, transformOrigin: "center" });
-          gsap.to(modal3d, {
-            rotationY: "+=360",
-            rotationX: 0,
-            duration: 1.15,
-            ease: "power2.out",
-          });
-        }
-
-        gsap.killTweensOf(modalLogoContainer);
-        gsap.to(modalLogoContainer, {
-          x: deltaX,
-          y: deltaY,
-          scale: 1,
-          duration: 1.15,
-          ease: "power2.out",
-          onComplete: () => {
-            // Restore header logo visibility only if the modal is still closed
-            if (!overlayRef.current || overlayRef.current.style.display === "none") {
-              gsap.set(headerLogoContainer, { opacity: 1 });
-              gsap.set(modalLogoContainer, { opacity: 0, x: 0, y: 0, scale: 1 });
-            }
-          }
-        });
-      }
-    }
-  }, [contactOpen]);
-
-  // Close the contact overlay on Escape; lock body scroll while it's open
-  useEffect(() => {
-    if (!contactOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setContactOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [contactOpen]);
 
   // Smooth custom vehicle search overlay animations (backdrop blur & center card morphing)
   useEffect(() => {
@@ -1396,16 +1332,101 @@ export default function BookingForm() {
     if (currentStep === 6) {
       return bookingDate !== "" && bookingTime !== "";
     }
+    if (currentStep === 7) {
+      // The review step: only let the request send when every required section is done.
+      return allRequiredComplete;
+    }
     return true;
+  };
+
+  // Build the booking from the form, save it (unique reference via /api/bookings),
+  // then move to the confirmation step where the ride-pass card is shown. Falls back
+  // to a local reference if the API is unreachable, so the guest always gets a card.
+  const submitBooking = async () => {
+    const v = selectedVehicle;
+    const isType = selectedService?.group === "type";
+    const dropoff = isType ? destination.trim() || null : null;
+    const duration =
+      !isType && selectedService
+        ? selectedService.id === "multiday"
+          ? `${multiDayNum} day${multiDayNum > 1 ? "s" : ""}`
+          : `${selectedService.durationHours} hours`
+        : null;
+    const payload = {
+      passenger: { name: contactName.trim(), phone: contactPhone.trim(), email: contactEmail.trim() },
+      car: { name: v.name, klass: v.class, image: v.img.light.side },
+      service: selectedService?.name ?? "Chauffeur service",
+      pickup: selectedLocation.name,
+      dropoff,
+      duration,
+      date: formatCardDate(bookingDate),
+      time: bookingTime,
+      light: isLight,
+    };
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.booking) {
+        const b = data.booking as Booking;
+        setConfirmedBooking(b);
+        setBookingId(b.id);
+      } else {
+        throw new Error("save failed");
+      }
+    } catch {
+      // Offline / API down: still show the pass with a local reference (it just
+      // won't be retrievable at /check-booking until saved server-side).
+      const fallbackId = "APX-" + Math.floor(100000 + Math.random() * 900000);
+      setConfirmedBooking({ ...payload, id: fallbackId, createdAt: Date.now() });
+      setBookingId(fallbackId);
+    } finally {
+      setSubmitting(false);
+      setCurrentStep(8);
+    }
   };
 
   const nextStep = () => {
     if (!isStepValid()) return;
     if (currentStep < 7) {
       setCurrentStep((s) => s + 1);
-    } else {
-      setBookingId("APX-" + Math.floor(100000 + Math.random() * 900000));
-      setCurrentStep(8);
+    } else if (!submitting) {
+      void submitBooking();
+    }
+  };
+
+  // Render the card to a PNG, then share it (phones → Photos) or download it (laptop).
+  const saveCard = async () => {
+    const node = passCardRef.current?.querySelector("[data-ride-card]") as HTMLElement | null;
+    if (!node || saving) return;
+    setSaving(true);
+    try {
+      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
+      const fileName = `apexride-pass-${bookingId.replace(/[^a-z0-9]/gi, "")}.png`;
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], fileName, { type: "image/png" });
+        const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+        if (nav.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: "ApexRide pass", text: `Booking ${bookingId}` });
+          return;
+        }
+      } catch {
+        /* sharing unavailable — fall through to a normal download */
+      }
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = fileName;
+      a.click();
+    } catch (err) {
+      console.error("card export failed", err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1435,6 +1456,7 @@ export default function BookingForm() {
     setBookingTime("");
     setSpecialRequests("");
     setBookingId("");
+    setConfirmedBooking(null);
     setIsCustomCar(false);
     setCustomCarName("");
     setCustomCarYear("");
@@ -1638,7 +1660,7 @@ export default function BookingForm() {
 
   return (
     <main
-      className={`relative min-h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between ${mode}`}
+      className={`relative h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between ${mode}`}
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
       {/* 1. Header component */}
@@ -1670,25 +1692,16 @@ export default function BookingForm() {
 
           {/* Logo and text wrapper */}
           <div className={`flex items-center gap-2.5 ${heading}`}>
-            <div ref={logoContainerRef}>
-              <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
+            <div ref={logoContainerRef} className="inline-flex">
+              <Logo size={28} color={isLight ? "#0c1222" : "#f3f5fa"} accent={accent} />
             </div>
             <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
-              Apex<span className="font-semibold opacity-85">Ride</span>
+              Apex<span className="font-semibold" style={{ color: accent }}>Ride</span>
             </h4>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setContactOpen(true)}
-          className={`pointer-events-auto rounded-full border px-4 sm:px-6 py-2 sm:py-2.5 text-xs font-semibold tracking-wider transition-all duration-300 whitespace-nowrap ${isLight
-            ? "border-neutral-900/40 hover:bg-neutral-900/[0.08] text-neutral-900"
-            : "border-white/30 hover:bg-white/[0.08] text-white"
-            }`}
-        >
-          Contact Us
-        </button>
+        <ContactButton onClick={() => setContactOpen(true)} />
       </header>
 
       {/* Floating step progress text, positioned constantly at the top */}
@@ -1716,8 +1729,11 @@ export default function BookingForm() {
         </div>
       )}
 
-      {/* 2. Main content container */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-8 pb-44 z-10">
+      {/* 2. Main content container — bounded to the viewport so the page never scrolls.
+          The Schedule step (6) carries a calendar + time picker that can exceed the
+          viewport, so there it top-aligns and scrolls within the band between the
+          fixed heading and footer instead of centering. */}
+      <div className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-8 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -1801,7 +1817,7 @@ export default function BookingForm() {
             {/* Step 2: Pickup Location Carousel (Black Squares) */}
             {currentStep === 1 && (
               <div
-                className="relative w-full h-[500px] sm:h-[620px] flex items-center justify-center mt-6"
+                className="relative w-full h-[340px] sm:h-[420px] flex items-center justify-center mt-2"
                 {...makeSwipeHandlers((dir) =>
                   moveLocation((idx) => (idx + dir + LOCATIONS.length) % LOCATIONS.length)
                 )}
@@ -1810,7 +1826,7 @@ export default function BookingForm() {
                 {/* Left arrow */}
                 <button
                   onClick={() => moveLocation((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute left-1 sm:left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                  className={`pointer-events-auto absolute left-1 sm:left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-300 ${isLight ? "border-neutral-900/40 bg-white/70 text-neutral-900 hover:bg-neutral-900/[0.08]" : "border-white/30 bg-white/5 text-white hover:bg-white/[0.12]"
                     }`}
                   aria-label="Previous Location"
                 >
@@ -1830,11 +1846,11 @@ export default function BookingForm() {
 
                     let transformClass = "";
                     if (isActive) {
-                      transformClass = "translate-x-0 translate-y-0 scale-[1.5] z-10 opacity-100 rotate-0";
+                      transformClass = "translate-x-0 translate-y-0 scale-[1.15] z-10 opacity-100 rotate-0";
                     } else if (isPrev) {
-                      transformClass = "-translate-x-[14rem] sm:-translate-x-[26rem] lg:-translate-x-[31rem] translate-y-12 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
+                      transformClass = "-translate-x-[9rem] sm:-translate-x-[15rem] lg:-translate-x-[19rem] translate-y-8 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
                     } else if (isNext) {
-                      transformClass = "translate-x-[14rem] sm:translate-x-[26rem] lg:translate-x-[31rem] translate-y-12 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
+                      transformClass = "translate-x-[9rem] sm:translate-x-[15rem] lg:translate-x-[19rem] translate-y-8 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
                     } else {
                       transformClass = "translate-y-24 scale-50 z-0 opacity-0 pointer-events-none";
                     }
@@ -1846,18 +1862,15 @@ export default function BookingForm() {
                           if (isPrev) moveLocation((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
                           if (isNext) moveLocation((i) => (i + 1) % LOCATIONS.length);
                         }}
-                        className={`absolute w-[19rem] h-[19rem] sm:w-96 sm:h-96 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform flex flex-col items-center justify-center ${transformClass}`}
+                        className={`absolute w-52 h-52 sm:w-64 sm:h-64 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform flex flex-col items-center justify-center ${transformClass}`}
                       >
-                        {/* code badge on top, the floating-island render, then the name — no card */}
-                        <div className={`shrink-0 pb-2 text-center text-sm font-bold tracking-[0.3em] ${isLight ? "text-neutral-900/70" : "text-white/70"}`}>
-                          {loc.code}
-                        </div>
-                        <div className="relative min-h-0 w-[120%] flex-1">
+                        {/* the floating-island render, centered (no code badge / card) */}
+                        <div className="relative min-h-0 w-full flex-1">
                           <Image
                             src={isLight ? cityImg.light : cityImg.dark}
                             alt={loc.name}
                             fill
-                            sizes="(max-width: 640px) 90vw, 480px"
+                            sizes="(max-width: 640px) 80vw, 360px"
                             draggable={false}
                             className="select-none object-contain"
                           />
@@ -1870,7 +1883,7 @@ export default function BookingForm() {
                 {/* Right arrow */}
                 <button
                   onClick={() => moveLocation((idx) => (idx + 1) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute right-1 sm:right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 shadow-md ${isLight ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/20" : "bg-white/10 text-white hover:bg-white/20"
+                  className={`pointer-events-auto absolute right-1 sm:right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-300 ${isLight ? "border-neutral-900/40 bg-white/70 text-neutral-900 hover:bg-neutral-900/[0.08]" : "border-white/30 bg-white/5 text-white hover:bg-white/[0.12]"
                     }`}
                   aria-label="Next Location"
                 >
@@ -1901,7 +1914,7 @@ export default function BookingForm() {
             {currentStep === 3 && (
               <div className="w-full flex flex-col items-center">
                 <div
-                  className="relative w-full h-[220px] md:h-[280px] lg:h-[320px] xl:h-[350px] flex items-center justify-center mt-2"
+                  className="relative w-full h-[28vh] max-h-[290px] flex items-center justify-center mt-2"
                   {...makeSwipeHandlers((dir) => spinCar(dir))}
                 >
 
@@ -2017,7 +2030,7 @@ export default function BookingForm() {
                       ref={centerCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-30"
                       style={{
-                        transform: "translateX(0%) scale(1) scaleX(-1)",
+                        transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`,
                         opacity: isCustomCar ? 0 : 1,
                         willChange: "transform, opacity, filter",
                         pointerEvents: "none"
@@ -2031,7 +2044,7 @@ export default function BookingForm() {
                           height={450}
                           priority
                           draggable={false}
-                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                          className="w-full h-auto max-h-[24vh] object-contain select-none pointer-events-none drop-shadow-2xl"
                           sizes="(max-width: 768px) 100vw, 800px"
                         />
                       )}
@@ -2054,7 +2067,7 @@ export default function BookingForm() {
                 </div>
 
                 {/* Details layout under the carousel */}
-                <div className="mt-10 sm:mt-14 flex flex-col items-center text-center px-4 max-w-xl transition-all duration-300 pointer-events-auto">
+                <div className="mt-3 sm:mt-4 flex flex-col items-center text-center px-4 max-w-xl transition-all duration-300 pointer-events-auto">
                   <h2 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLight ? "text-neutral-900" : "text-white"} min-h-[40px] flex items-center justify-center text-center`}>
                     <span className="car-name-text inline-block">
                       {displayedVehicleName}
@@ -2123,10 +2136,47 @@ export default function BookingForm() {
 
             {/* Step 7: Schedule (Date & Time) */}
             {currentStep === 6 && (
-              <div className={`w-full max-w-xl mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-7`}>
+              <div className={`w-full max-w-lg shrink-0 mt-2 p-4 sm:p-5 rounded-3xl border ${cardBgStyle} text-left flex flex-col gap-3`}>
+                {/* How would you like to set the pickup? Two clear paths. */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { key: "quick" as const, title: "Quick Pickup", sub: "Ready made times", Icon: ClockIcon },
+                    { key: "custom" as const, title: "Choose Date & Time", sub: "Pick on a calendar", Icon: CalendarIcon },
+                  ].map((opt) => {
+                    const active = scheduleMode === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => (opt.key === "custom" ? enterCustomSchedule() : setScheduleMode("quick"))}
+                        className={`flex items-center gap-2.5 rounded-2xl border p-2.5 text-left transition-all duration-300 ${
+                          active
+                            ? isLight
+                              ? "border-[#00209C] bg-[#00209C] text-white shadow-lg shadow-[#00209C]/20"
+                              : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 shadow-lg shadow-[#FDBA16]/15"
+                            : isLight
+                              ? "border-neutral-900/10 bg-white/40 text-neutral-900 hover:border-[#00209C]/40 hover:bg-white/70"
+                              : "border-white/10 bg-white/[0.04] text-white hover:border-[#FDBA16]/40 hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+                          active
+                            ? isLight ? "bg-white/20 text-white" : "bg-neutral-950/15 text-neutral-950"
+                            : isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"
+                        }`}>
+                          <opt.Icon />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium tracking-tight">{opt.title}</span>
+                          <span className={`block text-[11px] leading-snug ${active ? "opacity-75" : isLight ? "text-neutral-900/45" : "text-white/40"}`}>{opt.sub}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* Quick pickup presets */}
-                <div>
-                  <div className={labelStyle}>Quick Pickup</div>
+                {scheduleMode === "quick" && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {pickupOptions.map((option) => {
                       const optionDate = formatDateInput(option.date);
@@ -2155,72 +2205,173 @@ export default function BookingForm() {
                       );
                     })}
                   </div>
-                </div>
+                )}
 
-                {/* Date + time — icon-led fields with a themed native picker */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col">
-                    <label className={labelStyle}>Pickup Date *</label>
-                    <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 h-12 transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/45 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
-                      <span className={isLight ? "text-[#00209C]" : "text-[#FDBA16]"}><CalendarIcon /></span>
-                      <input
-                        type="date"
-                        value={bookingDate}
-                        min={formatDateInput(new Date())}
-                        onChange={(e) => setBookingDate(e.target.value)}
-                        style={{ colorScheme: isLight ? "light" : "dark" }}
-                        className={`w-full bg-transparent text-sm font-josefin outline-none ${isLight ? "text-neutral-900" : "text-white"}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label className={labelStyle}>Pickup Time *</label>
-                    <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 h-12 transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/45 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
-                      <span className={isLight ? "text-[#00209C]" : "text-[#FDBA16]"}><ClockIcon /></span>
-                      <input
-                        type="time"
-                        value={bookingTime}
-                        onChange={(e) => setBookingTime(e.target.value)}
-                        style={{ colorScheme: isLight ? "light" : "dark" }}
-                        className={`w-full bg-transparent text-sm font-josefin outline-none ${isLight ? "text-neutral-900" : "text-white"}`}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Drop-off — auto-derived from the chosen duration. Fixed tiers
-                    add their hours; "Multiple Days" adds the day count. Trip-type
-                    tiers have no duration, so nothing is shown here. */}
-                {(isFixedDuration || hasMultiDay) && (
-                  <div className={`flex items-start gap-3 rounded-2xl border p-4 ${isLight ? "border-[#00209C]/20 bg-[#00209C]/[0.05]" : "border-[#FDBA16]/20 bg-[#FDBA16]/[0.06]"}`}>
-                    <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
-                      <RouteIcon />
-                    </span>
-                    <div className="min-w-0">
-                      <div className={`text-[11px] font-semibold uppercase tracking-wider ${isLight ? "text-neutral-900/45" : "text-white/45"}`}>Estimated Drop-off</div>
-                      <div className={`mt-0.5 text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
-                        {autoEnd
-                          ? (hasMultiDay ? formatDateInput(autoEnd) : `${formatDateInput(autoEnd)} · ${formatTimeInput(autoEnd)}`)
-                          : "Set a pickup date & time first"}
+                {/* Custom path — a tappable calendar plus an easy time spinner */}
+                {scheduleMode === "custom" && (
+                  <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+                    {/* Calendar */}
+                    <div>
+                      <label className={labelStyle}>Select Date</label>
+                      <div className={`rounded-2xl border p-3 ${isLight ? "border-neutral-900/10 bg-white/40" : "border-white/10 bg-white/[0.03]"}`}>
+                        <div className="mb-3 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => shiftMonth(-1)}
+                            disabled={!canGoPrevMonth}
+                            aria-label="Previous month"
+                            className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${canGoPrevMonth ? (isLight ? "text-neutral-700 hover:bg-neutral-900/[0.06]" : "text-white/70 hover:bg-white/10") : "cursor-not-allowed opacity-25"}`}
+                          >
+                            <Chevron dir="left" />
+                          </button>
+                          <span className={`text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                            {MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => shiftMonth(1)}
+                            aria-label="Next month"
+                            className={`grid h-8 w-8 place-items-center rounded-full transition-colors ${isLight ? "text-neutral-700 hover:bg-neutral-900/[0.06]" : "text-white/70 hover:bg-white/10"}`}
+                          >
+                            <Chevron dir="right" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1">
+                          {WEEKDAYS.map((w) => (
+                            <div key={w} className={`pb-1 text-center text-[10px] font-semibold uppercase ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>{w}</div>
+                          ))}
+                          {calendarCells.map((date, i) => {
+                            if (!date) return <div key={`pad-${i}`} />;
+                            const iso = formatDateInput(date);
+                            const selected = bookingDate === iso;
+                            const past = date < todayStart();
+                            const isToday = iso === formatDateInput(new Date());
+                            return (
+                              <button
+                                key={iso}
+                                type="button"
+                                disabled={past}
+                                onClick={() => setBookingDate(iso)}
+                                className={`aspect-square rounded-lg text-[13px] font-medium tabular-nums transition-all duration-200 ${
+                                  selected
+                                    ? isLight ? "bg-[#00209C] text-white shadow-md shadow-[#00209C]/25" : "bg-[#FDBA16] text-neutral-950 shadow-md shadow-[#FDBA16]/20"
+                                    : past
+                                      ? isLight ? "cursor-not-allowed text-neutral-900/20" : "cursor-not-allowed text-white/15"
+                                      : isLight ? "text-neutral-800 hover:bg-[#00209C]/10" : "text-white/80 hover:bg-[#FDBA16]/15"
+                                } ${isToday && !selected ? (isLight ? "ring-1 ring-inset ring-[#00209C]/40" : "ring-1 ring-inset ring-[#FDBA16]/40") : ""}`}
+                              >
+                                {date.getDate()}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <p className={`mt-1 text-[10.5px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
-                        {hasMultiDay
-                          ? `Auto-calculated from your ${multiDayNum}-day booking.`
-                          : `Auto-calculated from your fixed ${selectedService?.durationHours}-hour ${selectedService?.name} block.`}
-                      </p>
+                    </div>
+
+                    {/* Time spinner — hour / minute wheels plus an AM·PM toggle */}
+                    <div>
+                      <label className={labelStyle}>Select Time</label>
+                      <div className={`flex items-center justify-center gap-2 sm:gap-3 rounded-2xl border p-3 ${isLight ? "border-neutral-900/10 bg-white/40" : "border-white/10 bg-white/[0.03]"}`}>
+                        {[
+                          { label: "Hour", value: String(timeHour12).padStart(2, "0"), up: () => stepHour(1), down: () => stepHour(-1) },
+                          { label: "Min", value: String(parsedTime.m).padStart(2, "0"), up: () => stepMinute(1), down: () => stepMinute(-1) },
+                        ].map((col, idx) => (
+                          <div key={col.label} className="flex items-center gap-2 sm:gap-3">
+                            {idx === 1 && <span className={`text-2xl font-light ${isLight ? "text-neutral-900/30" : "text-white/25"}`}>:</span>}
+                            <div className="flex flex-col items-center gap-0.5">
+                              <button type="button" onClick={col.up} aria-label={`${col.label} up`} className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${isLight ? "text-[#00209C] hover:bg-[#00209C]/10" : "text-[#FDBA16] hover:bg-[#FDBA16]/15"}`}>
+                                <Chevron dir="up" />
+                              </button>
+                              <div className={`w-12 text-center text-2xl font-light tabular-nums ${isLight ? "text-neutral-900" : "text-white"}`}>{col.value}</div>
+                              <button type="button" onClick={col.down} aria-label={`${col.label} down`} className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${isLight ? "text-[#00209C] hover:bg-[#00209C]/10" : "text-[#FDBA16] hover:bg-[#FDBA16]/15"}`}>
+                                <Chevron dir="down" />
+                              </button>
+                              <span className={`text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>{col.label}</span>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="ml-1 flex flex-col gap-1.5">
+                          {(["AM", "PM"] as const).map((p) => {
+                            const on = timePeriod === p;
+                            return (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => setPeriod(p)}
+                                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-all ${
+                                  on
+                                    ? isLight ? "bg-[#00209C] text-white" : "bg-[#FDBA16] text-neutral-950"
+                                    : isLight ? "bg-neutral-900/[0.05] text-neutral-600 hover:bg-neutral-900/10" : "bg-white/[0.05] text-white/60 hover:bg-white/10"
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Confirmation timeline. Once a date & time are chosen we echo
+                    them back in a readable form, and append the auto-derived
+                    drop-off when the chosen service has a duration. */}
+                {bookingDate && bookingTime ? (
+                  <div className={`rounded-2xl border p-3.5 ${isLight ? "border-[#00209C]/20 bg-[#00209C]/[0.05]" : "border-[#FDBA16]/20 bg-[#FDBA16]/[0.06]"}`}>
+                    <div className="flex items-start gap-3">
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
+                        <CalendarIcon />
+                      </span>
+                      <div className="min-w-0">
+                        <div className={`text-[11px] font-semibold uppercase tracking-wider ${isLight ? "text-neutral-900/45" : "text-white/45"}`}>Pickup</div>
+                        <div className={`mt-0.5 text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>{formatHumanDate(bookingDate)}</div>
+                        <div className={`text-xs ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>{formatHumanTime(bookingTime)}</div>
+                      </div>
+                    </div>
+
+                    {(isFixedDuration || hasMultiDay) && (
+                      <>
+                        <div className={`my-1.5 ml-[15px] h-3.5 border-l border-dashed ${isLight ? "border-[#00209C]/30" : "border-[#FDBA16]/30"}`} />
+                        <div className="flex items-start gap-3">
+                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
+                            <RouteIcon />
+                          </span>
+                          <div className="min-w-0">
+                            <div className={`text-[11px] font-semibold uppercase tracking-wider ${isLight ? "text-neutral-900/45" : "text-white/45"}`}>Estimated Drop Off</div>
+                            <div className={`mt-0.5 text-sm font-medium ${isLight ? "text-neutral-900" : "text-white"}`}>
+                              {autoEnd ? formatHumanDate(formatDateInput(autoEnd)) : "Set a pickup first"}
+                            </div>
+                            {autoEnd && !hasMultiDay && (
+                              <div className={`text-xs ${isLight ? "text-neutral-900/60" : "text-white/55"}`}>{formatHumanTime(formatTimeInput(autoEnd))}</div>
+                            )}
+                            <p className={`mt-1 text-[10.5px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
+                              {hasMultiDay
+                                ? `Auto calculated from your ${multiDayNum} day booking.`
+                                : `Auto calculated from your fixed ${selectedService?.name} block.`}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : scheduleMode ? (
+                  <div className={`flex items-center gap-2.5 rounded-2xl border border-dashed p-4 text-xs leading-relaxed ${isLight ? "border-neutral-900/15 text-neutral-900/45" : "border-white/15 text-white/40"}`}>
+                    <span className={`shrink-0 ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}><CalendarIcon /></span>
+                    {scheduleMode === "quick"
+                      ? "Tap a quick option above to set your pickup."
+                      : "Pick a date and time above to set your pickup."}
+                  </div>
+                ) : null}
               </div>
             )}
 
             {/* Step 8: Special Requests (with Booking Summary Card) */}
             {currentStep === 7 && (
-              <div className="w-full max-w-xl mt-8 flex flex-col gap-6">
+              <div className="w-full max-w-xl mt-8 flex flex-col gap-6 lg:max-w-5xl lg:flex-row lg:items-start">
 
                 {/* Booking Summary Recap Card */}
-                <div className={`p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left`}>
+                <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
                   <div className="mb-5 flex items-start justify-between gap-4">
                     <div>
                       <div
@@ -2230,53 +2381,92 @@ export default function BookingForm() {
                         Review Request
                       </div>
                       <p className={`mt-2 text-xs leading-relaxed ${isLight ? "text-neutral-900/55" : "text-white/50"}`}>
-                        Confirm the ride details before sending. Every section can be edited.
+                        Green sections are ready. Red still needs your attention. Tap any section to edit it.
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                     {[
-                      { label: "Contact", value: `${contactName} · ${contactPhone}`, step: 0 },
-                      { label: "Pickup", value: selectedLocation.name, step: 1 },
-                      { label: "Destination", value: destination || "Confirm after contact", step: 2 },
-                      { label: "Vehicle", value: `${selectedVehicle.name} · ${selectedVehicle.capacity}`, step: 3 },
-                      { label: "Service", value: serviceSummary, step: 4 },
-                      { label: "Schedule", value: scheduleSummary, step: 6 },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className={`rounded-2xl border p-4 ${isLight ? "border-neutral-900/10 bg-white/35" : "border-white/10 bg-white/[0.04]"}`}
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className={`text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>
-                            {item.label}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(item.step)}
-                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                              isLight
-                                ? "bg-[#00209C]/10 text-[#00209C] hover:bg-[#00209C]/15"
-                                : "bg-[#FDBA16]/10 text-[#FDBA16] hover:bg-[#FDBA16]/15"
-                            }`}
+                      { label: "Contact", value: `${contactName} · ${contactPhone}`, step: 0, required: true, done: contactComplete },
+                      { label: "Pickup", value: selectedLocation.name, step: 1, required: true, done: pickupComplete },
+                      { label: "Destination", value: destination.trim() || "Optional", step: 2, required: false, done: destination.trim() !== "" },
+                      { label: "Vehicle", value: `${selectedVehicle.name} · ${selectedVehicle.capacity}`, step: 3, required: true, done: vehicleComplete },
+                      { label: "Service", value: serviceSummary, step: 4, required: true, done: serviceComplete },
+                      { label: "Schedule", value: scheduleSummary, step: 6, required: true, done: scheduleComplete },
+                    ].map((item) => {
+                      const incomplete = item.required && !item.done;
+                      const tone = incomplete ? badColor : item.done ? okColor : null;
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => setCurrentStep(item.step)}
+                          aria-label={incomplete ? `${item.label} incomplete, tap to complete` : `Edit ${item.label}`}
+                          className="w-full rounded-2xl border p-3.5 text-left transition-colors hover:brightness-[0.98] active:translate-y-px"
+                          style={{
+                            borderColor: tone ? `${tone}66` : isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)",
+                            backgroundColor: tone ? `${tone}14` : isLight ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <span className={`text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>
+                              {item.label}
+                            </span>
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                              style={{
+                                color: tone ?? (isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.45)"),
+                                backgroundColor: tone ? `${tone}1F` : "transparent",
+                              }}
+                            >
+                              {incomplete ? "! Incomplete" : item.done ? "✓ Done" : "Optional"}
+                            </span>
+                          </div>
+                          <div
+                            className="font-semibold leading-snug"
+                            style={{ color: incomplete ? badColor : isLight ? "#171717" : "#ffffff" }}
                           >
-                            Edit
-                          </button>
-                        </div>
-                        <div className={`font-semibold leading-snug ${isLight ? "text-neutral-900" : "text-white"}`}>
-                          {item.value}
-                        </div>
-                      </div>
-                    ))}
+                            {incomplete ? "Field incomplete. Tap to complete." : item.value}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Special Requests Textarea */}
-                <div className={`p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left`}>
+                <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
                   <label className={labelStyle}>Request Notes</label>
-                  <p className={`-mt-1 mb-3 text-xs leading-relaxed ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
-                    Add flight number, waiting instructions, child seat needs, luggage count, or preferred route.
+                  <p className={`-mt-1 mb-4 text-xs leading-relaxed ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
+                    Tap a common request below, or write your own. Helpful details: flight number, waiting instructions, luggage count, or preferred route.
                   </p>
+
+                  {/* Quick-add chips — toggle a ready-made line into the notes */}
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {QUICK_REQUESTS.map((phrase) => {
+                      const active = isQuickRequestActive(phrase);
+                      return (
+                        <button
+                          key={phrase}
+                          type="button"
+                          onClick={() => toggleQuickRequest(phrase)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-tight transition-all duration-200 ${
+                            active
+                              ? isLight
+                                ? "border-[#00209C] bg-[#00209C] text-white shadow-sm shadow-[#00209C]/20"
+                                : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950 shadow-sm shadow-[#FDBA16]/15"
+                              : isLight
+                                ? "border-neutral-900/15 bg-white/40 text-neutral-700 hover:border-[#00209C]/40 hover:bg-white/70"
+                                : "border-white/15 bg-white/[0.04] text-white/70 hover:border-[#FDBA16]/40 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <span className="text-[13px] leading-none">{active ? "✓" : "+"}</span>
+                          {phrase}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className={`relative rounded-2xl border transition-colors duration-300 ${isLight ? "border-neutral-900/12 bg-white/40 focus-within:border-[#00209C] focus-within:bg-white/80" : "border-white/12 bg-white/[0.04] focus-within:border-[#FDBA16] focus-within:bg-neutral-900/60"}`}>
                     <textarea
                       maxLength={500}
@@ -2313,20 +2503,16 @@ export default function BookingForm() {
                       : "max-w-0 opacity-0 translate-x-4 pointer-events-none"
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomCarOpen(true);
-                      setShowSuggestions(true);
-                    }}
+                  <Link
+                    href="/fleet"
                     className={`pointer-events-auto rounded-full border border-dashed h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
                       isLight
                         ? "border-[#00209C] text-[#00209C] hover:bg-[#00209C]/[0.05]"
                         : "border-[#FDBA16] text-[#FDBA16] hover:bg-[#FDBA16]/[0.05]"
                     }`}
                   >
-                    Other Options
-                  </button>
+                    Explore our fleet
+                  </Link>
                 </div>
 
                 <div
@@ -2351,31 +2537,64 @@ export default function BookingForm() {
                   </button>
                 </div>
               </div>
+
+              {/* Hand-off note from the fleet page — shown until the user reaches Car Type */}
+              {preselectedCar && currentStep < 3 && (
+                <div
+                  className={`pointer-events-none rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-wide ${
+                    isLight
+                      ? "border-[#00209C]/25 bg-white/70 text-[#00209C]"
+                      : "border-[#FDBA16]/30 bg-neutral-950/40 text-[#FDBA16]"
+                  }`}
+                >
+                  {preselectedCar} is already selected in Car Type
+                </div>
+              )}
             </div>
 
           </div>
         )}
 
-        {/* Step 9: Success Panel */}
-        {currentStep === 8 && (
-          <div className="w-full max-w-md flex flex-col items-center text-center p-8 rounded-2xl bg-neutral-950 border border-white/15 shadow-2xl text-white">
-            <div className="w-16 h-16 bg-white text-neutral-950 rounded-full flex items-center justify-center shadow-lg animate-bounce">
-              <CheckIcon />
+        {/* Step 9: Confirmation — the ride-pass card, populated with the booking. */}
+        {currentStep === 8 && confirmedBooking && (
+          <div className="w-full flex flex-col items-center text-center pt-2">
+            <div className="flex items-center gap-2">
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full ${isLight ? "bg-[#00209C] text-white" : "bg-[#FDBA16] text-neutral-950"}`}>
+                <span className="scale-[0.55]"><CheckIcon /></span>
+              </span>
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+                Booking received
+              </p>
             </div>
-
-            <h1 className="text-3xl font-light tracking-tight mt-6">Booking Awaiting Review</h1>
-            <p className="text-xs font-mono text-white/50 mt-1 uppercase tracking-widest">Booking ID: {bookingId}</p>
-
-            <p className="text-sm text-white/60 leading-relaxed font-light mt-4 select-none">
-              Your luxury ride request from **{selectedLocation.name}** has been submitted. Our executive chauffeurs are preparing for your pickup.
+            <p className={`mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
+              Save your ride pass below. Your booking number is{" "}
+              <span className="font-semibold">{confirmedBooking.id}</span>; look it up anytime at{" "}
+              <Link href="/check-booking" className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
+                check booking
+              </Link>.
             </p>
 
-            <button
-              onClick={resetForm}
-              className="mt-8 rounded-full bg-white text-neutral-950 font-bold uppercase tracking-widest text-[10px] px-8 py-3.5 hover:bg-neutral-200 transition-all duration-300"
-            >
-              Book Another Ride
-            </button>
+            <div ref={passCardRef} className="w-full flex justify-center">
+              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} />
+            </div>
+
+            <div className="-mt-1 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={saveCard}
+                disabled={saving}
+                className={`rounded-full px-7 py-3 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 disabled:opacity-60 ${isLight ? "bg-[#00209C] text-white hover:bg-[#001a80]" : "bg-[#FDBA16] text-neutral-950 hover:bg-[#e5a912]"}`}
+              >
+                {saving ? "Preparing…" : "Save card to photos"}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className={`rounded-full border px-7 py-3 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${isLight ? "border-neutral-300 text-neutral-700 hover:bg-neutral-100" : "border-white/20 text-white/80 hover:bg-white/10"}`}
+              >
+                Book another
+              </button>
+            </div>
           </div>
         )}
 
@@ -2487,91 +2706,15 @@ export default function BookingForm() {
         </div>
       </div>
 
-      {/* 5. Contact overlay — blurs the page behind it and reveals contact channels */}
-      <div
-        ref={overlayRef}
-        onClick={() => setContactOpen(false)}
-        aria-hidden={!contactOpen}
-        className="fixed inset-0 z-[60] flex items-center justify-center px-4"
-        style={{
-          pointerEvents: "none",
-          backdropFilter: "blur(0px)",
-          WebkitBackdropFilter: "blur(0px)",
-          backgroundColor: "transparent",
-          display: "none",
-        }}
-      >
-        <div
-          ref={cardRef}
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Contact ApexRide"
-          className={`relative w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] border p-6 sm:p-8 shadow-lg backdrop-blur-xl ${isLight
-            ? "bg-white/80 border-neutral-900/10 text-neutral-900 shadow-neutral-900/5"
-            : "bg-neutral-950/70 border-white/10 text-white shadow-black/30"
-            }`}
-        >
-          {/* Logo container inside the modal card */}
-          <div ref={logoTargetRef} className="w-[25.6px] h-[28px] mx-auto mb-5 relative opacity-0">
-            <ExtrudedLogo size={28} color={isLight ? "#00209C" : "#FDBA16"} isLight={isLight} />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setContactOpen(false)}
-            className={`absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-widest transition-colors duration-200 ${isLight ? "text-neutral-900/40 hover:text-neutral-900" : "text-white/40 hover:text-white"
-              }`}
-          >
-            Close
-          </button>
-
-          <div className="text-center">
-            <div
-              className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2"
-              style={{ color: isLight ? "#00209C" : "#FDBA16" }}
-            >
-              Get in touch
-            </div>
-            <h2 className={`text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
-              Reach ApexRide
-            </h2>
-            <p className={`mt-2 text-xs font-light leading-relaxed ${isLight ? "text-neutral-900/55" : "text-white/55"}`}>
-              Our concierge desk is available around the clock. Reach us on any channel below.
-            </p>
-          </div>
-
-          <div className={`mt-6 border-t ${isLight ? "border-neutral-900/10" : "border-white/10"}`}>
-            {CONTACTS.map((c) => (
-              <a
-                key={c.label}
-                href={c.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`contact-row group flex items-center justify-between gap-4 border-b py-3.5 ${isLight ? "border-neutral-900/10" : "border-white/10"
-                  }`}
-              >
-                <span
-                  className={`text-sm font-semibold tracking-wide transition-all duration-200 group-hover:translate-x-1 ${isLight
-                    ? "text-neutral-900 group-hover:text-[#00209C]"
-                    : "text-white group-hover:text-[#FDBA16]"
-                    }`}
-                >
-                  {c.label}
-                </span>
-                <span
-                  className={`text-xs font-light transition-colors duration-200 ${isLight
-                    ? "text-neutral-900/50 group-hover:text-[#00209C]/70"
-                    : "text-white/50 group-hover:text-[#FDBA16]/70"
-                    }`}
-                >
-                  {c.value}
-                </span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Shared contact popup + flying logo (the same component the landing page uses). */}
+      <ContactPopup
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+        isLight={isLight}
+        accent={accent}
+        headerLogoRef={logoContainerRef}
+        logoSize={28}
+      />
 
       {/* Custom vehicle selection overlay — blurs the page and allows search input */}
       <div

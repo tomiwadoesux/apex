@@ -131,6 +131,15 @@ h4, h5, h6, p, body, button, a {
   }
 }
 
+/* Fleet "select your ride" flourishes — shared by every /fleet design variant.
+   (Honoured by the prefers-reduced-motion block above, which damps all animation.) */
+@keyframes fleet-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.32 } }
+@keyframes fleet-caret { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+@keyframes fleet-spin { to { transform: rotate(360deg) } }
+.fleet-blink { animation: fleet-blink 0.9s steps(2, end) infinite; }
+.fleet-caret { animation: fleet-caret 1.05s steps(1, end) infinite; }
+.fleet-spin { animation: fleet-spin 0.5s linear infinite; }
+
 /* Remove default browser autofill highlights */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 

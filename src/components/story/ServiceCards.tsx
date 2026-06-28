@@ -51,6 +51,23 @@ type Service = {
 const SERVICES: Service[] = [
   {
     index: "01",
+    title: "City Tours",
+    blurb:
+      "Discover Lagos and Abuja with a knowledgeable local guide. Explore the landmarks, hidden corners and culture at your own pace, on a route shaped around what you want to see.",
+    stat: "Local",
+    statLabel: "guides",
+    features: [
+      { label: "Local guides", Icon: Compass },
+      { label: "Custom routes", Icon: MapIcon },
+      { label: "Top landmarks", Icon: Landmark },
+      { label: "Cultural stops", Icon: Camera },
+    ],
+    // the first card lands ON the revealed city scene (same photo), so it's
+    // continuous with the hero reveal rather than cutting to a different image.
+    bg: "/images/FORNT-BG.webp",
+  },
+  {
+    index: "02",
     title: "Airport Transfers",
     blurb:
       "Smooth pickups and arrivals across Lagos and Abuja airports. Your chauffeur tracks every flight and waits at arrivals, so you walk straight into a calm, ready car.",
@@ -62,24 +79,7 @@ const SERVICES: Service[] = [
       { label: "Luggage help", Icon: Luggage },
       { label: "Round the clock", Icon: Clock },
     ],
-    // the first card lands ON the revealed city scene (same photo), so it's
-    // continuous with the hero reveal rather than cutting to a different image.
-    bg: "/images/FORNT-BG.webp",
-  },
-  {
-    index: "02",
-    title: "Wedding Transportation",
-    blurb:
-      "Elegant cars that make the big day feel completely effortless. From the bridal entrance to guest shuttles, every detail is styled and timed so you simply enjoy the moment.",
-    stat: "100%",
-    statLabel: "styled",
-    features: [
-      { label: "Bridal cars", Icon: Heart },
-      { label: "Ribbon styling", Icon: Sparkles },
-      { label: "Trained chauffeurs", Icon: UserCheck },
-      { label: "Guest shuttles", Icon: Users },
-    ],
-    bg: "https://picsum.photos/seed/apexride-wedding/1920/1080",
+    bg: "https://picsum.photos/seed/apexride-airport/1920/1080",
   },
   {
     index: "03",
@@ -113,21 +113,6 @@ const SERVICES: Service[] = [
   },
   {
     index: "05",
-    title: "City Tours",
-    blurb:
-      "Discover Lagos and Abuja with a knowledgeable local guide. Explore the landmarks, hidden corners and culture at your own pace, on a route shaped around what you want to see.",
-    stat: "Local",
-    statLabel: "guides",
-    features: [
-      { label: "Local guides", Icon: Compass },
-      { label: "Custom routes", Icon: MapIcon },
-      { label: "Top landmarks", Icon: Landmark },
-      { label: "Cultural stops", Icon: Camera },
-    ],
-    bg: "https://picsum.photos/seed/apexride-citytours/1920/1080",
-  },
-  {
-    index: "06",
     title: "Executive Travel",
     blurb:
       "Discreet, premium travel for executives and visiting VIPs. A dedicated chauffeur, total privacy and a flawless car come standard on every confidential journey.",
@@ -140,6 +125,21 @@ const SERVICES: Service[] = [
       { label: "VIP service", Icon: Crown },
     ],
     bg: "https://picsum.photos/seed/apexride-executive/1920/1080",
+  },
+  {
+    index: "06",
+    title: "Wedding Transportation",
+    blurb:
+      "Elegant cars that make the big day feel completely effortless. From the bridal entrance to guest shuttles, every detail is styled and timed so you simply enjoy the moment.",
+    stat: "100%",
+    statLabel: "styled",
+    features: [
+      { label: "Bridal cars", Icon: Heart },
+      { label: "Ribbon styling", Icon: Sparkles },
+      { label: "Trained chauffeurs", Icon: UserCheck },
+      { label: "Guest shuttles", Icon: Users },
+    ],
+    bg: "https://picsum.photos/seed/apexride-wedding/1920/1080",
   },
 ];
 

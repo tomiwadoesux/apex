@@ -43,3 +43,6 @@ next-env.d.ts
 # claude
 .claude/
 
+
+# local booking store (dev fallback)
+.data/
