@@ -20,6 +20,7 @@ export type Variant = {
 export type CarGroup = {
   id: string;
   name: string;         // heading shown on the stage
+  short: string;        // compact label for the roster tile captions
   image: string;        // the model's representative photo (always present)
   variants: Variant[];  // one or more year / trim variants
 };
@@ -27,6 +28,7 @@ export type CarGroup = {
 export const GROUPS: CarGroup[] = [
   {
     id: "phantom",
+    short: "Phantom",
     name: "Rolls Royce Phantom",
     image: "/images/cars/Rolls Royce Phantom/front.webp",
     variants: [
@@ -35,6 +37,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "lexus-lx",
+    short: "Lexus LX",
     name: "Lexus LX",
     image: "/images/cars/Lexus LX 570 2024/side.webp",
     variants: [
@@ -44,6 +47,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "g63",
+    short: "AMG G63",
     name: "Mercedes AMG G63",
     image: "/images/cars/Mercedes G63 2022/side.webp",
     variants: [
@@ -52,6 +56,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "rr-hse",
+    short: "RR HSE",
     name: "Range Rover HSE",
     image: "/images/cars/Range Rover HSE 2024/side.webp",
     variants: [
@@ -60,6 +65,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "escalade",
+    short: "Escalade",
     name: "Cadillac Escalade",
     image: "/images/cars/Escalade 2024/side.webp",
     variants: [
@@ -68,6 +74,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "velar",
+    short: "Velar",
     name: "Range Rover Velar",
     image: "/images/cars/Range Rover Velar/side.webp",
     variants: [
@@ -76,6 +83,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "gle53",
+    short: "GLE 53",
     name: "Mercedes AMG GLE 53",
     image: "/images/cars/Mercedes GLE 53 2023 SUV/side.webp",
     variants: [
@@ -85,6 +93,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "gx460",
+    short: "GX 460",
     name: "Lexus GX 460",
     image: "/images/cars/Lexus GX 460 2019/side.webp",
     variants: [
@@ -94,6 +103,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "prado",
+    short: "Prado",
     name: "Toyota Prado Land Cruiser",
     image: "/images/cars/Prado Land Cruiser 2023/side.webp",
     variants: [
@@ -105,6 +115,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "hilux",
+    short: "Hilux",
     name: "Toyota Hilux",
     image: "/images/cars/Hilux 2023/side.webp",
     variants: [
@@ -114,6 +125,7 @@ export const GROUPS: CarGroup[] = [
   },
   {
     id: "sclass",
+    short: "S Class",
     name: "Mercedes Benz S Class",
     image: "/images/cars/Mercedes S-Class/side.webp",
     variants: [

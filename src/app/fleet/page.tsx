@@ -17,7 +17,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import Logo from "@/components/Logo";
 import { GROUPS, EASE, anglesFor, pad2, type Angle } from "@/components/fleet/data";
-import { Chevron, AngleIcon } from "@/components/fleet/icons";
+import { Chevron } from "@/components/fleet/icons";
 
 const ACCENT = "#2A4FD0";
 const COLS = 3; // roster columns (for up / down arrow nav)
@@ -163,18 +163,20 @@ export default function FleetPage() {
             onTouchStart={onStageTouchStart}
             onTouchEnd={onStageTouchEnd}
           >
-            {/* giant index watermark — depth behind the car, never over the details */}
+            {/* giant model-name watermark — configurator-style depth behind the car.
+                Font size scales inversely with the name length so every model fits. */}
             {!isCustom && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-1/2 z-0 -translate-y-1/2 select-none text-center font-josefin font-light leading-none"
-                style={{ fontSize: "min(34vh, 30vw)", color: "rgba(42,79,208,0.06)" }}
+                className="pointer-events-none absolute inset-x-0 top-[44%] z-0 -translate-y-1/2 select-none overflow-hidden whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.06em]"
+                style={{ fontSize: `min(${((100 / group!.name.length) * 1.3).toFixed(2)}vw, 16vh)`, color: "rgba(42,79,208,0.07)" }}
               >
-                {pad2(gi + 1)}
+                {group!.name}
               </div>
             )}
 
-            {/* angle switcher — active car only; dims any angle with no photo */}
+            {/* angle switcher — plain text labels (no ambiguous glyphs); dims any
+                angle with no photo */}
             {!isCustom && angles && (
               <div className="absolute left-1/2 top-0 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-neutral-200 bg-white/80 p-1 shadow-sm backdrop-blur-sm">
                 {(["front", "side", "rear"] as Angle[]).map((a) => {
@@ -186,17 +188,16 @@ export default function FleetPage() {
                       type="button"
                       disabled={!available}
                       onClick={() => pickAngle(a)}
-                      aria-label={`${a[0].toUpperCase()}${a.slice(1)} view`}
                       aria-pressed={on}
                       title={available ? `${a[0].toUpperCase()}${a.slice(1)} view` : `No ${a} view available`}
-                      className="grid h-9 w-9 place-items-center rounded-full transition-colors disabled:cursor-not-allowed"
+                      className="rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition-colors disabled:cursor-not-allowed"
                       style={{
                         background: on ? ACCENT : "transparent",
-                        color: on ? "#ffffff" : "#525252",
-                        opacity: available ? 1 : 0.25,
+                        color: on ? "#ffffff" : "#6b7280",
+                        opacity: available ? 1 : 0.3,
                       }}
                     >
-                      <AngleIcon angle={a} className="h-5 w-5" />
+                      {a}
                     </button>
                   );
                 })}
@@ -261,8 +262,10 @@ export default function FleetPage() {
             ) : (
               <>
                 <motion.div key={`${gi}-name`} initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="flex flex-col items-center">
-                  <h2 className="font-josefin text-3xl font-light leading-[1.04] tracking-tight sm:text-4xl">{group!.name}</h2>
-                  <div className="mt-1 text-sm text-neutral-500">{variant!.year} · {variant!.type}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
+                    {variant!.year} · {variant!.type}
+                  </div>
+                  <h2 className="mt-1 font-josefin text-3xl font-light leading-[1.04] tracking-tight sm:text-4xl">{group!.name}</h2>
                 </motion.div>
 
                 {/* year / variant selector — only when the model has more than one */}
@@ -332,17 +335,26 @@ export default function FleetPage() {
                     aria-label={g.name}
                     aria-pressed={active}
                     title={g.name}
-                    className={`${tileClass(active)} h-[68px] w-[84px] lg:aspect-square lg:h-auto lg:w-auto`}
+                    className={`${tileClass(active)} flex h-[86px] w-[96px] flex-col lg:h-auto lg:w-auto lg:pb-0.5`}
                     style={tileRing(active)}
                   >
-                    <Image
-                      src={g.image}
-                      alt=""
-                      fill
-                      sizes="90px"
-                      className="object-contain p-1.5 transition-transform duration-200 group-hover/tile:scale-105"
-                      style={{ transform: g.variants[0].flip ? "scaleX(-1)" : undefined }}
-                    />
+                    <span className="relative block h-[58px] w-full lg:h-auto lg:flex-1 lg:aspect-[4/3]">
+                      <Image
+                        src={g.image}
+                        alt=""
+                        fill
+                        sizes="96px"
+                        className="object-contain p-1.5 transition-transform duration-200 group-hover/tile:scale-105"
+                        style={{ transform: g.variants[0].flip ? "scaleX(-1)" : undefined }}
+                      />
+                    </span>
+                    <span
+                      className={`block w-full truncate px-1.5 pb-1 text-center text-[9px] font-semibold tracking-wide ${
+                        active ? "text-[#2A4FD0]" : "text-neutral-400"
+                      }`}
+                    >
+                      {g.short}
+                    </span>
                   </button>
                 );
               })}
@@ -355,10 +367,13 @@ export default function FleetPage() {
                 aria-label="Request a car not listed"
                 aria-pressed={isCustom}
                 title="Request a car not listed"
-                className={`${tileClass(isCustom, true)} grid h-[68px] w-[84px] place-items-center lg:aspect-square lg:h-auto lg:w-auto`}
+                className={`${tileClass(isCustom, true)} flex h-[86px] w-[96px] flex-col items-center justify-center gap-0.5 lg:h-auto lg:w-auto lg:aspect-[4/3.6]`}
                 style={tileRing(isCustom)}
               >
                 <span className="text-2xl font-light text-neutral-400">?</span>
+                <span className={`block w-full truncate px-1.5 text-center text-[9px] font-semibold tracking-wide ${isCustom ? "text-[#2A4FD0]" : "text-neutral-400"}`}>
+                  Anything else
+                </span>
               </button>
             </div>
           </div>
