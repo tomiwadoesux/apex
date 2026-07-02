@@ -414,9 +414,6 @@ export default function BookingForm() {
     },
   });
 
-  const backButtonContainerRef = useRef<HTMLDivElement>(null);
-  const headerDividerRef = useRef<HTMLDivElement>(null);
-
   // Contact details
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -820,51 +817,6 @@ export default function BookingForm() {
       });
     }
   }, [displayedStepText, displayedSubLabel]);
-
-  // Header back button sliding and vertical divider clipmask reveal animation
-  useEffect(() => {
-    const btn = backButtonContainerRef.current;
-    const div = headerDividerRef.current;
-    if (!btn || !div) return;
-
-    const hasBack = currentStep > 0 && currentStep <= 7;
-
-    if (hasBack) {
-      gsap.killTweensOf([btn, div]);
-      gsap.to(btn, {
-        width: "60px",
-        opacity: 1,
-        x: 0,
-        duration: 0.45,
-        ease: "power2.out"
-      });
-      gsap.fromTo(div,
-        { clipPath: "inset(0% 0% 100% 0%)", opacity: 0 },
-        {
-          clipPath: "inset(0% 0% 0% 0%)",
-          opacity: 1,
-          duration: 0.45,
-          ease: "power2.out",
-          delay: 0.1
-        }
-      );
-    } else {
-      gsap.killTweensOf([btn, div]);
-      gsap.to(btn, {
-        width: 0,
-        opacity: 0,
-        x: -15,
-        duration: 0.35,
-        ease: "power2.in"
-      });
-      gsap.to(div, {
-        clipPath: "inset(0% 0% 100% 0%)",
-        opacity: 0,
-        duration: 0.35,
-        ease: "power2.in"
-      });
-    }
-  }, [currentStep]);
 
   // Sync selected location state to active carousel card (unless a custom one is set)
   useEffect(() => {
@@ -1665,41 +1617,15 @@ export default function BookingForm() {
     >
       {/* 1. Header component */}
       <header className="flex items-center justify-between px-5 sm:px-8 md:px-12 py-5 z-20">
-        <div className="flex items-center">
-          {/* Back button container with sliding width and fade */}
-          <div
-            ref={backButtonContainerRef}
-            className="overflow-hidden flex items-center"
-            style={{ width: 0, opacity: 0, transform: "translateX(-15px)" }}
-          >
-            <button
-              onClick={prevStep}
-              className={`pointer-events-auto flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors duration-300 pr-1 ${
-                isLight ? "text-neutral-900/60 hover:text-neutral-900" : "text-white/60 hover:text-white"
-              }`}
-            >
-              <ArrowLeftIcon />
-              <span>Back</span>
-            </button>
+        {/* Logo and text wrapper — links back to the landing page */}
+        <Link href="/" className={`flex items-center gap-2.5 ${heading}`}>
+          <div ref={logoContainerRef} className="inline-flex">
+            <Logo size={28} color={isLight ? "#0c1222" : "#f3f5fa"} accent={accent} />
           </div>
-
-          {/* Vertical Divider with Clip Path inset (reveals top to bottom) */}
-          <div
-            ref={headerDividerRef}
-            className={`h-4 w-[1px] mx-4 origin-top ${isLight ? "bg-neutral-900/15" : "bg-white/15"}`}
-            style={{ opacity: 0, clipPath: "inset(0% 0% 100% 0%)" }}
-          />
-
-          {/* Logo and text wrapper */}
-          <div className={`flex items-center gap-2.5 ${heading}`}>
-            <div ref={logoContainerRef} className="inline-flex">
-              <Logo size={28} color={isLight ? "#0c1222" : "#f3f5fa"} accent={accent} />
-            </div>
-            <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
-              Apex<span className="font-semibold" style={{ color: accent }}>Ride</span>
-            </h4>
-          </div>
-        </div>
+          <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
+            Apex<span className="font-semibold" style={{ color: accent }}>Ride</span>
+          </h4>
+        </Link>
 
         <ContactButton onClick={() => setContactOpen(true)} />
       </header>
@@ -2487,6 +2413,28 @@ export default function BookingForm() {
             {/* Stepper Buttons constant position at the bottom */}
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-45 flex flex-col items-center gap-2.5 pointer-events-auto select-none">
               <div className="flex items-center gap-4">
+                {/* Back — slides in beside Next from Step 2 onward (never on the first step) */}
+                <div
+                  className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
+                    currentStep > 0
+                      ? "max-w-[140px] opacity-100 translate-x-0"
+                      : "max-w-0 opacity-0 -translate-x-4 pointer-events-none"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className={`pointer-events-auto rounded-full border h-10 px-6 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                      isLight
+                        ? "border-neutral-900/20 text-neutral-900/70 hover:border-neutral-900/40 hover:text-neutral-900"
+                        : "border-white/20 text-white/70 hover:border-white/40 hover:text-white"
+                    }`}
+                  >
+                    <ArrowLeftIcon />
+                    <span>Back</span>
+                  </button>
+                </div>
+
                 <CtaButton
                   isLight={isLight}
                   disabled={!isStepValid()}

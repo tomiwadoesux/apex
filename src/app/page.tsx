@@ -17,6 +17,7 @@
 // Phase windows live in the timeline block inside Home() — tune them there.
 
 import { useState, useEffect, useRef, type ComponentType, type MouseEvent, type CSSProperties } from "react";
+import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Logo from "@/components/Logo";
@@ -426,17 +427,20 @@ export default function Home() {
             </svg>
           </div>
 
-          {/* brand lockup — top-left (persists; ink turns white over the photo) */}
-          <div className="pointer-events-none absolute left-5 top-5 z-30 flex items-center gap-2.5" style={{ color: headInk }}>
-            <span ref={headerLogoRef} className="inline-flex">
-              <Logo size={HEAD_LOGO} color={headInk} accent={accent} />
-            </span>
-            <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
-              Apex
-              <span className="font-semibold" style={{ color: accent }}>
-                Ride
+          {/* brand lockup — top-left (persists; ink turns white over the photo).
+              Clickable site-wide convention: the logo always leads back home. */}
+          <div className="pointer-events-none absolute left-5 top-5 z-30" style={{ color: headInk }}>
+            <Link href="/" className="pointer-events-auto flex items-center gap-2.5">
+              <span ref={headerLogoRef} className="inline-flex">
+                <Logo size={HEAD_LOGO} color={headInk} accent={accent} />
               </span>
-            </h4>
+              <h4 className="text-sm font-bold uppercase tracking-[0.08em]">
+                Apex
+                <span className="font-semibold" style={{ color: accent }}>
+                  Ride
+                </span>
+              </h4>
+            </Link>
           </div>
 
           {/* Contact — top-right (persists) */}

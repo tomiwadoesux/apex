@@ -5,6 +5,7 @@
 // reveals from the LEFT. One scroll gesture = one step: the current panel wipes
 // away while a new one wipes in at a fresh, non-clashing position.
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Logo from "@/components/Logo";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -257,12 +258,12 @@ export default function ServicesPage() {
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-neutral-950 text-white select-none">
       {/* ── Header (landing-style, light mode, whitened for the dark backdrop) ── */}
-      <div className="pointer-events-none fixed left-5 top-5 z-40 flex items-center gap-2.5">
+      <Link href="/" className="pointer-events-auto fixed left-5 top-5 z-40 flex items-center gap-2.5">
         <Logo size={32} color="#ffffff" accent={ACCENT} />
         <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-white">
           Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
         </h4>
-      </div>
+      </Link>
       <div className="fixed right-5 top-5 z-40">
         <button
           type="button"
