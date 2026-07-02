@@ -2412,7 +2412,10 @@ export default function BookingForm() {
 
             {/* Stepper Buttons constant position at the bottom */}
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-45 flex flex-col items-center gap-2.5 pointer-events-auto select-none">
-              <div className="flex items-center gap-4">
+              {/* Spacing lives INSIDE each collapsible wrapper (margins on the inner
+                  element, clipped with it) — a flex gap would leave phantom slots
+                  around collapsed wrappers, pushing the side buttons away from Next. */}
+              <div className="flex items-center">
                 {/* Back — slides in beside Next from Step 2 onward (never on the first step) */}
                 <div
                   className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
@@ -2424,7 +2427,7 @@ export default function BookingForm() {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className={`pointer-events-auto flex items-center gap-1.5 h-10 pr-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300 ${
+                    className={`pointer-events-auto mr-3 flex items-center gap-1.5 h-10 pr-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300 ${
                       isLight ? "text-neutral-900/60 hover:text-neutral-900" : "text-white/60 hover:text-white"
                     }`}
                   >
@@ -2451,7 +2454,7 @@ export default function BookingForm() {
                 >
                   <Link
                     href="/fleet"
-                    className={`pointer-events-auto rounded-full border border-dashed h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
+                    className={`pointer-events-auto ml-3 rounded-full border border-dashed h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
                       isLight
                         ? "border-[#00209C] text-[#00209C] hover:bg-[#00209C]/[0.05]"
                         : "border-[#FDBA16] text-[#FDBA16] hover:bg-[#FDBA16]/[0.05]"
@@ -2471,7 +2474,7 @@ export default function BookingForm() {
                   <button
                     type="button"
                     onClick={() => setCustomLocationOpen(true)}
-                    className={`pointer-events-auto rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
+                    className={`pointer-events-auto ml-3 rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
                       isCustomLocation ? "border-solid" : "border-dashed"
                     } ${
                       isLight
