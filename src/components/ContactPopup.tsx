@@ -163,7 +163,7 @@ export function ContactButton({
     <button
       type="button"
       onClick={onClick}
-      className={`group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-lg border px-6 text-sm font-semibold tracking-wide transition-transform duration-150 active:translate-y-px ${className ?? ""}`}
+      className={`group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-full border px-6 text-sm font-semibold tracking-wide transition-transform duration-150 active:translate-y-px ${className ?? ""}`}
       style={{
         background: "linear-gradient(180deg, #242424 0%, #090909 100%)",
         color: "#ffffff",

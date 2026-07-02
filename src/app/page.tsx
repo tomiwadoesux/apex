@@ -140,7 +140,7 @@ function HatchButton({
     <a
       href={href}
       onClick={onClick}
-      className="group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-lg border px-6 text-sm font-semibold tracking-wide transition-transform duration-150 active:translate-y-px"
+      className="group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-full border px-6 text-sm font-semibold tracking-wide transition-transform duration-150 active:translate-y-px"
       style={{ background: bg, color: ink, borderColor: border, boxShadow: sheen }}
     >
       {/* diagonal hatch — oversized so it can slide on hover without exposing an edge */}
@@ -527,6 +527,76 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* FOOTER — flows in after the pinned story ends. Dark navy slab, brand lockup,
+          quick links + contact channels, and a final booking CTA. */}
+      <footer className="relative z-10 w-full" style={{ background: "linear-gradient(180deg, #0d1118 0%, #070a0f 100%)", color: "#eef1f6" }}>
+        {/* hairline brand accent along the top edge */}
+        <div aria-hidden className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+
+        <div className="mx-auto w-full max-w-6xl px-6 pb-10 pt-14 sm:px-10">
+          {/* CTA row */}
+          <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-10 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="font-josefin text-3xl font-light leading-tight tracking-tight sm:text-4xl">Ready when you are.</h2>
+              <p className="mt-1.5 text-sm text-white/55">Chauffeur-driven rides across Lagos &amp; Abuja — booked in minutes.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
+              <HatchButton label="Our fleet" href="/fleet" Icon={CarIcon} variant="light" hatch={false} />
+            </div>
+          </div>
+
+          {/* link columns */}
+          <div className="grid grid-cols-2 gap-10 pt-10 sm:grid-cols-4">
+            <div className="col-span-2 sm:col-span-1">
+              <Link href="/" className="inline-flex items-center gap-2.5">
+                <Logo size={26} color="#f3f5fa" accent={accent} />
+                <span className="text-sm font-bold uppercase tracking-[0.08em]">
+                  Apex<span className="font-semibold" style={{ color: accent }}>Ride</span>
+                </span>
+              </Link>
+              <p className="mt-3 max-w-[26ch] text-xs leading-relaxed text-white/45">
+                Ride and arrive in style. Executive chauffeur service for airports, business and beyond.
+              </p>
+            </div>
+
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Explore</div>
+              <ul className="mt-3 flex flex-col gap-2 text-sm">
+                <li><Link href="/fleet" className="text-white/70 transition-colors hover:text-white">Our fleet</Link></li>
+                <li><Link href="/services" className="text-white/70 transition-colors hover:text-white">Services</Link></li>
+                <li><Link href="/form" className="text-white/70 transition-colors hover:text-white">Book a ride</Link></li>
+                <li><Link href="/check-booking" className="text-white/70 transition-colors hover:text-white">Check booking</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Contact</div>
+              <ul className="mt-3 flex flex-col gap-2 text-sm">
+                <li><a href="mailto:contact@apexride.com" className="text-white/70 transition-colors hover:text-white">contact@apexride.com</a></li>
+                <li><a href="https://wa.me/2348000000000" className="text-white/70 transition-colors hover:text-white">WhatsApp</a></li>
+                <li><a href="https://instagram.com/apexride" className="text-white/70 transition-colors hover:text-white">@apexride</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Service</div>
+              <ul className="mt-3 flex flex-col gap-2 text-sm text-white/70">
+                <li>Airport pickup</li>
+                <li>Daily chauffeur</li>
+                <li>Interstate transit</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* base row */}
+          <div className="mt-12 flex flex-col items-start justify-between gap-2 border-t border-white/10 pt-5 text-[11px] tracking-wide text-white/35 sm:flex-row sm:items-center">
+            <span>© {new Date().getFullYear()} ApexRide. All rights reserved.</span>
+            <span>Lagos &amp; Abuja, Nigeria</span>
+          </div>
+        </div>
+      </footer>
 
       {/* Shared contact popup + flying logo (the same component the booking form uses). */}
       <ContactPopup

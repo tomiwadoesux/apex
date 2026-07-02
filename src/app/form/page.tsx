@@ -7,7 +7,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { toPng } from "html-to-image";
-import PickupMapEmbed from "@/components/map/PickupMapEmbed";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import type { Booking } from "@/lib/bookings";
@@ -290,10 +289,10 @@ const BG_GRADIENT: Record<Mode, string> = {
 // Fades the outer left/right edges of the flanking car images so they melt away.
 const EDGE_FADE = "linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%)";
 
-// Car-Type carousel sizing. The active (center) car rests a touch smaller than
-// full size; when a car arrives in the center it pops in larger first, then
-// settles down to the resting scale.
-const CAR_REST_SCALE = 0.85;
+// Car-Type carousel sizing. The active (center) car rests just under full size;
+// cars grow continuously WHILE sliding into the centre (no arrive-then-pop) and
+// shrink continuously while sliding out.
+const CAR_REST_SCALE = 0.95;
 const CAR_POP_SCALE = 1.2;
 
 // STEPS strictly matching user requirements:
@@ -467,18 +466,13 @@ export default function BookingForm() {
   // and announced near the Next button until the user reaches the Car Type step.
   const [preselectedCar, setPreselectedCar] = useState<string | null>(null);
 
-  // Custom pickup location ("Customize" popup on Step 2 — like the car "Other Options")
+  // Custom pickup location ("Customize" popup on Step 2 — like the car "Other Options").
+  // A plain typed address (no lookup assist) plus an optional nearby landmark.
   const [customLocationOpen, setCustomLocationOpen] = useState(false);
   const [customLocationInput, setCustomLocationInput] = useState("");
   const [isCustomLocation, setIsCustomLocation] = useState(false);
-  const [locationResults, setLocationResults] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
-  const [locationPicked, setLocationPicked] = useState<{ name: string; full: string; lat: number; lng: number } | null>(null);
-  const [locationSearching, setLocationSearching] = useState(false);
   const [customLocationLandmark, setCustomLocationLandmark] = useState(""); // nearby popular landmark (optional)
-  const [locationLocating, setLocationLocating] = useState(false); // geolocation in progress
-  const [locationError, setLocationError] = useState("");
   const customLocationInputRef = useRef<HTMLInputElement>(null);
-  const skipLocationSearchRef = useRef(false);
 
   const customOverlayRef = useRef<HTMLDivElement>(null);
   const customCardRef = useRef<HTMLDivElement>(null);
@@ -699,7 +693,7 @@ export default function BookingForm() {
   // green = done. Pickup / Vehicle default to a value, so they read as done.
   const contactComplete =
     contactName.trim() !== "" && validateNigerianPhone(contactPhone) && validateEmail(contactEmail);
-  const pickupComplete = !!(selectedLocation?.name || (isCustomLocation && locationPicked));
+  const pickupComplete = !!selectedLocation?.name;
   const vehicleComplete = !!selectedVehicle?.name;
   const serviceComplete =
     !!selectedService &&
@@ -831,37 +825,6 @@ export default function BookingForm() {
       customLocationInputRef.current?.focus();
     }
   }, [customLocationOpen]);
-
-  // Live address search via our OpenStreetMap proxy (/api/geocode), debounced.
-  // Same-origin so it isn't blocked by CORS or ad-blockers; min 3 chars, aborts.
-  useEffect(() => {
-    if (!customLocationOpen) return;
-    if (skipLocationSearchRef.current) {
-      skipLocationSearchRef.current = false; // change came from picking a result
-      return;
-    }
-    const q = customLocationInput.trim();
-    const controller = new AbortController();
-    // All state updates happen inside the debounced callback (async), so the
-    // effect body itself never calls setState synchronously.
-    const t = setTimeout(() => {
-      if (q.length < 3) {
-        setLocationResults([]);
-        setLocationSearching(false);
-        return;
-      }
-      setLocationSearching(true);
-      fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal: controller.signal })
-        .then((res) => res.json())
-        .then((data) => setLocationResults(Array.isArray(data) ? data : []))
-        .catch(() => { /* aborted or network error — leave prior results */ })
-        .finally(() => setLocationSearching(false));
-    }, 300);
-    return () => {
-      controller.abort();
-      clearTimeout(t);
-    };
-  }, [customLocationInput, customLocationOpen]);
 
   useEffect(() => {
     if (currentStep === 3) {
@@ -1085,27 +1048,27 @@ export default function BookingForm() {
     }, [], 0.18);
 
     // 3. Slide the car images left-to-right (unilateral sliding)
-    // Animate active car out to the right (sliding right, scaling up, no opacity fade, getting blurry)
+    // Animate active car out to the right — it shrinks and softens as it leaves,
+    // mirroring how the incoming car grows on the way in.
     tl.to(C, {
-      transform: "translateX(180%) scale(1.5) scaleX(-1)",
-      opacity: 1,
+      transform: "translateX(180%) scale(0.45) scaleX(-1)",
+      opacity: 0.6,
       filter: "blur(12px)",
       webkitFilter: "blur(12px)",
       duration: 0.55,
       ease: "power2.inOut"
     }, 0);
 
-    // Animate the left car into the center in one continuous motion. A single
-    // tween with a back ease gives a punchy, springy entrance (a subtle overshoot
-    // past the resting size, then settle) without the old two-tween "pop big to a
-    // hard stop, hang, then drop" that read as a double scale-down.
+    // Animate the left car into the center in one continuous motion: it scales up
+    // steadily THROUGHOUT the slide and lands exactly at the resting size — no
+    // overshoot, no arrive-then-grow pop.
     tl.to(L, {
       transform: `translateX(0%) scale(${CAR_REST_SCALE}) scaleX(-1)`,
       opacity: 1,
       filter: "blur(0px)",
       webkitFilter: "blur(0px)",
       duration: 0.55,
-      ease: "back.out(1.4)"
+      ease: "power2.inOut"
     }, 0);
 
     // Animate far-left car into the left background position (scaling up, losing some blur, opacity stays at 0.9)
@@ -1515,65 +1478,19 @@ export default function BookingForm() {
     nextStep();
   };
 
-  // Take an OpenStreetMap search hit and pin it (updates the input + map preview).
-  const pickLocationResult = (r: { display_name: string; lat: string; lon: string }) => {
-    const name = r.display_name.split(",").slice(0, 2).join(", ").trim();
-    skipLocationSearchRef.current = true; // input update below shouldn't re-search
-    setCustomLocationInput(r.display_name);
-    setLocationPicked({ name, full: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
-    setLocationResults([]);
-  };
-
-  // Drop the device's current position as the pickup (reverse-geocoded to an address).
-  const useCurrentLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocationError("Location isn't available on this device.");
-      return;
-    }
-    setLocationError("");
-    setLocationLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        try {
-          const res = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          if (Array.isArray(data) && data[0]) {
-            pickLocationResult(data[0]);
-          } else {
-            // No address match — pin the raw coordinates anyway.
-            const coords = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-            skipLocationSearchRef.current = true;
-            setCustomLocationInput(coords);
-            setLocationPicked({ name: "Current location", full: coords, lat: latitude, lng: longitude });
-            setLocationResults([]);
-          }
-        } catch {
-          setLocationError("Couldn't look up that location.");
-        } finally {
-          setLocationLocating(false);
-        }
-      },
-      () => {
-        setLocationLocating(false);
-        setLocationError("Location permission denied.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  // Commit the pinned OpenStreetMap location as the selected pickup (Step 2 popup)
+  // Commit the typed address as the selected pickup (Step 2 popup)
   const selectCustomLocation = () => {
-    if (!locationPicked) return;
+    const address = customLocationInput.trim();
+    if (!address) return;
     const landmark = customLocationLandmark.trim();
     setIsCustomLocation(true);
     setSelectedLocation({
       id: "custom",
-      name: landmark ? `${locationPicked.name} — ${landmark}` : locationPicked.name,
-      subtitle: locationPicked.full,
+      name: landmark ? `${address} — ${landmark}` : address,
+      subtitle: address,
       code: "PIN",
       desc: "",
-      coordinates: `${locationPicked.lat.toFixed(5)}, ${locationPicked.lng.toFixed(5)}`,
+      coordinates: "",
     });
     setCustomLocationOpen(false);
   };
@@ -2861,86 +2778,30 @@ export default function BookingForm() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="relative flex flex-col gap-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <label className={labelStyle}>Street / Area Address *</label>
-                <button
-                  type="button"
-                  onClick={useCurrentLocation}
-                  disabled={locationLocating}
-                  className="flex items-center gap-1 text-[11px] font-semibold tracking-wide transition-opacity duration-200 hover:opacity-80 disabled:opacity-50"
-                  style={{ color: isLight ? "#00209C" : "#FDBA16" }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                  </svg>
-                  {locationLocating ? "Locating…" : "Use current location"}
-                </button>
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelStyle}>Street / Area Address *</label>
               <input
                 ref={customLocationInputRef}
                 type="text"
                 value={customLocationInput}
-                autoComplete="off"
-                onChange={(e) => {
-                  setCustomLocationInput(e.target.value);
-                  setLocationPicked(null);
-                }}
-                placeholder="Search a street or area — e.g. Bourdillon Road, Ikoyi"
+                autoComplete="street-address"
+                onChange={(e) => setCustomLocationInput(e.target.value)}
+                placeholder="Location must be accurate"
                 className={modalInputStyle}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && locationResults.length > 0) {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    pickLocationResult(locationResults[0]);
+                    selectCustomLocation();
                   }
                 }}
               />
-
-              {/* OpenStreetMap search suggestions — translucent, blurred, compact */}
-              {(locationResults.length > 0 || locationSearching) && (
-                <div
-                  className={`absolute left-0 right-0 top-full z-30 mt-2 max-h-44 overflow-y-auto rounded-xl border backdrop-blur-xl ${
-                    isLight ? "bg-white/55 border-neutral-900/10" : "bg-neutral-900/40 border-white/10"
-                  }`}
-                >
-                  {locationSearching && locationResults.length === 0 && (
-                    <div className={`px-3 py-2 text-[11px] ${isLight ? "text-neutral-900/50" : "text-white/45"}`}>
-                      Searching…
-                    </div>
-                  )}
-                  {locationResults.map((r, i) => (
-                    <button
-                      key={`${r.lat}-${r.lon}-${i}`}
-                      type="button"
-                      onClick={() => pickLocationResult(r)}
-                      className={`block w-full text-left px-3 py-2 text-[11px] leading-snug transition-colors duration-150 ${
-                        isLight ? "text-neutral-800 hover:bg-[#00209C]/[0.08]" : "text-neutral-200 hover:bg-[#FDBA16]/[0.10]"
-                      }`}
-                    >
-                      {r.display_name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
+                Type the full pickup address exactly as your chauffeur should find it — street, number, and area.
+              </p>
             </div>
 
-            {locationError && (
-              <div className={`-mt-2 text-[11px] ${isLight ? "text-red-600" : "text-red-400"}`}>{locationError}</div>
-            )}
-
-            {/* Live satellite preview — lit to the location's current Nigeria time, accent pin */}
-            {customLocationOpen && (
-              <PickupMapEmbed
-                lng={locationPicked?.lng ?? null}
-                lat={locationPicked?.lat ?? null}
-                isLight={isLight}
-                accent={isLight ? "#00209C" : "#FDBA16"}
-              />
-            )}
-
             <div className="flex flex-col gap-1.5">
-              <label className={labelStyle}>Nearby Landmark (Optional)</label>
+              <label className={labelStyle}>Location Landmark (Optional)</label>
               <input
                 type="text"
                 value={customLocationLandmark}
@@ -2949,12 +2810,12 @@ export default function BookingForm() {
                 className={modalInputStyle}
               />
               <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
-                A well-known spot nearby helps your chauffeur find you — maps can&apos;t always pin an exact house number.
+                A well-known spot nearby helps your chauffeur find you faster.
               </p>
             </div>
 
             <div className="mt-1 flex justify-center">
-              <CtaButton isLight={isLight} disabled={!locationPicked} onClick={selectCustomLocation}>
+              <CtaButton isLight={isLight} disabled={!customLocationInput.trim()} onClick={selectCustomLocation}>
                 Confirm
               </CtaButton>
             </div>
