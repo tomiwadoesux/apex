@@ -2424,10 +2424,8 @@ export default function BookingForm() {
                   <button
                     type="button"
                     onClick={prevStep}
-                    className={`pointer-events-auto rounded-full border h-10 px-6 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                      isLight
-                        ? "border-neutral-900/20 text-neutral-900/70 hover:border-neutral-900/40 hover:text-neutral-900"
-                        : "border-white/20 text-white/70 hover:border-white/40 hover:text-white"
+                    className={`pointer-events-auto flex items-center gap-1.5 h-10 pr-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300 ${
+                      isLight ? "text-neutral-900/60 hover:text-neutral-900" : "text-white/60 hover:text-white"
                     }`}
                   >
                     <ArrowLeftIcon />
