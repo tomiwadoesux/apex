@@ -270,10 +270,10 @@ export default function ServicesPage() {
           onClick={() => setContactOpen(true)}
           className="pointer-events-auto inline-flex h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold tracking-wide transition-[filter,transform] duration-150 hover:brightness-[1.05] active:translate-y-px"
           style={{
-            background: "#2A4FD0",
-            borderColor: "#16308f",
+            background: "linear-gradient(180deg, #242424 0%, #090909 100%)",
+            borderColor: "rgba(255,255,255,0.16)",
             color: "#ffffff",
-            boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14)",
           }}
         >
           Contact Us

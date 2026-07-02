@@ -27,6 +27,8 @@ const TILES = GROUPS.length + 1;
 // Site-standard pill button (matches the header / services "Contact Us").
 const BTN = "inline-flex h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold tracking-wide transition-[filter,transform] duration-150 hover:brightness-[1.05] active:translate-y-px";
 const BTN_STYLE = { background: ACCENT, borderColor: "#16308f", color: "#ffffff", boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" } as const;
+// Header "Contact Us" — the site-standard BLACK slab (matches home + booking form).
+const CONTACT_BTN_STYLE = { background: "linear-gradient(180deg, #242424 0%, #090909 100%)", borderColor: "rgba(255,255,255,0.16)", color: "#ffffff", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14)" } as const;
 
 const CONTACTS = [
   { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
@@ -137,7 +139,7 @@ export default function FleetPage() {
           <Logo size={30} color="#0b0d12" accent={ACCENT} />
           <span className="text-sm font-bold uppercase tracking-[0.08em]">Apex<span className="font-semibold" style={{ color: ACCENT }}>Ride</span></span>
         </Link>
-        <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={BTN_STYLE}>Contact Us</button>
+        <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={CONTACT_BTN_STYLE}>Contact Us</button>
       </header>
 
       {/* content — fills the rest of the screen on desktop */}
