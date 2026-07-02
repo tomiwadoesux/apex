@@ -45,6 +45,10 @@ export default function FleetPage() {
   const [angle, setAngle] = useState<Angle>("side"); // which view of the active car is on the stage
   const [angleCarKey, setAngleCarKey] = useState("0:0"); // car the current angle belongs to
   const [contactOpen, setContactOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false); // compact all-cars list popup
+  // Accent scroll indicator under the phone roster strip: thumb width = the
+  // visible fraction of the strip, offset = how far it's scrolled.
+  const [stripBar, setStripBar] = useState({ w: 100, x: 0 });
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -104,7 +108,7 @@ export default function FleetPage() {
       else if (k === "ArrowDown") { e.preventDefault(); goTo(Math.min(TILES - 1, gi + COLS), 1); }
       else if (k === "ArrowUp") { e.preventDefault(); goTo(Math.max(0, gi - COLS), -1); }
       else if (k === "Enter") { ctaRef.current?.click(); }
-      else if (k === "Escape") { setContactOpen(false); }
+      else if (k === "Escape") { setContactOpen(false); setListOpen(false); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -115,6 +119,20 @@ export default function FleetPage() {
   useEffect(() => {
     tileRefs.current[gi]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [gi]);
+
+  // Track the roster strip's horizontal scroll for the accent indicator (phones).
+  const syncStripBar = () => {
+    const el = gridRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) { setStripBar({ w: 100, x: 0 }); return; }
+    const frac = el.clientWidth / el.scrollWidth;
+    const p = el.scrollLeft / (el.scrollWidth - el.clientWidth);
+    setStripBar({ w: frac * 100, x: p * (100 - frac * 100) });
+  };
+  useEffect(() => {
+    syncStripBar();
+    window.addEventListener("resize", syncStripBar);
+    return () => window.removeEventListener("resize", syncStripBar);
+  }, []);
 
   const arrowBtn =
     "hidden sm:grid h-11 w-11 shrink-0 place-items-center rounded-full border border-neutral-200 bg-white/80 text-neutral-500 shadow-sm transition-colors duration-150 hover:border-neutral-900/30 hover:text-neutral-900 active:scale-95";
@@ -320,11 +338,29 @@ export default function FleetPage() {
           <div className="flex w-full shrink-0 flex-col rounded-2xl border border-neutral-200 bg-white/70 p-2.5 backdrop-blur-sm lg:min-h-0 lg:max-h-[46vh]">
             <div className="flex shrink-0 items-center justify-between px-1 pb-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-400">Models</span>
+              {/* list view — opens the compact all-cars list */}
+              <button
+                type="button"
+                onClick={() => setListOpen(true)}
+                aria-label="View all cars as a list"
+                title="View all cars as a list"
+                className="grid h-7 w-7 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="9" y1="6" x2="20" y2="6" />
+                  <line x1="9" y1="12" x2="20" y2="12" />
+                  <line x1="9" y1="18" x2="20" y2="18" />
+                  <circle cx="4.5" cy="6" r="1" fill="currentColor" />
+                  <circle cx="4.5" cy="12" r="1" fill="currentColor" />
+                  <circle cx="4.5" cy="18" r="1" fill="currentColor" />
+                </svg>
+              </button>
             </div>
 
             <div
               ref={gridRef}
-              className="flex min-h-0 snap-x snap-mandatory gap-2.5 overflow-x-auto p-0.5 [scrollbar-width:thin] lg:grid lg:snap-none lg:auto-rows-max lg:grid-cols-3 lg:content-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1"
+              onScroll={syncStripBar}
+              className="flex min-h-0 snap-x snap-mandatory gap-2.5 overflow-x-auto p-0.5 [scrollbar-width:none] lg:grid lg:snap-none lg:auto-rows-max lg:grid-cols-3 lg:content-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1 lg:[scrollbar-width:thin]"
             >
               {GROUPS.map((g, i) => {
                 const active = i === gi;
@@ -378,12 +414,99 @@ export default function FleetPage() {
                 </span>
               </button>
             </div>
+
+            {/* accent scroll indicator — phones only; mirrors the strip's position */}
+            <div className="mx-0.5 mt-2 h-[3px] shrink-0 overflow-hidden rounded-full bg-neutral-900/[0.07] lg:hidden">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${stripBar.w}%`, marginLeft: `${stripBar.x}%`, background: ACCENT }}
+              />
+            </div>
           </div>
 
           {/* details — desktop only, left-aligned to the grid above */}
           <div className="hidden min-h-0 flex-col overflow-y-auto px-0.5 lg:flex">{details(true, true)}</div>
         </section>
       </div>
+
+      {/* All-cars list — compact rows: photo left, name + class beside it.
+          Bottom sheet on phones, centred card on larger screens. Tapping a row
+          puts that car on the stage and closes the list. */}
+      {listOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/35 backdrop-blur-sm sm:items-center sm:px-6"
+          onClick={() => setListOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="All cars"
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-neutral-200 bg-white/95 shadow-2xl backdrop-blur-xl sm:max-h-[70vh] sm:rounded-3xl"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-5 py-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>All cars</div>
+                <div className="mt-0.5 text-sm text-neutral-400">{GROUPS.length} models in the fleet</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setListOpen(false)}
+                className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-900"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2 [scrollbar-width:thin]">
+              {GROUPS.map((g, i) => {
+                const active = i === gi;
+                const v = g.variants[0];
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => { goTo(i, i > gi ? 1 : -1); setListOpen(false); }}
+                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                      active ? "bg-[#2A4FD0]/[0.07]" : "hover:bg-neutral-100"
+                    }`}
+                  >
+                    <span className="relative block h-9 w-16 shrink-0">
+                      <Image src={g.image} alt="" fill sizes="64px" className="object-contain" style={{ transform: g.variants[0].flip ? "scaleX(-1)" : undefined }} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-sm font-medium ${active ? "text-[#2A4FD0]" : "text-neutral-900"}`}>{g.name}</span>
+                      <span className="block truncate text-[11px] text-neutral-400">{v.year} · {v.type}</span>
+                    </span>
+                    {active && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* custom request row */}
+              <button
+                type="button"
+                onClick={() => { goTo(CUSTOM, 1); setListOpen(false); }}
+                className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                  isCustom ? "bg-[#2A4FD0]/[0.07]" : "hover:bg-neutral-100"
+                }`}
+              >
+                <span className="grid h-9 w-16 shrink-0 place-items-center">
+                  <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-neutral-300 text-sm text-neutral-400">?</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-sm font-medium ${isCustom ? "text-[#2A4FD0]" : "text-neutral-900"}`}>Something else</span>
+                  <span className="block truncate text-[11px] text-neutral-400">Request any make, model and year</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contact popup — shared site pattern */}
       {contactOpen && (
