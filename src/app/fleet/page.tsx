@@ -1,22 +1,23 @@
 "use client";
 
 // Our Fleet — pick a car. One screen, no page scroll on desktop.
-//   • LEFT  — the stage: a big car (sliding carousel) over a soft floor shadow,
-//             with a giant index watermark behind it for depth. Prev / next arrows
-//             flank it on desktop; on touch screens the stage swipes. Details sit
-//             below: model name, year / variant chips, spec chips, and the CTA.
-//   • RIGHT — the roster, grouped by MODEL so variants share one tile. On phones
-//             it becomes a horizontal snap strip under the details; on desktop a
-//             3-across vertical grid that scrolls inside its own frame. The last
-//             tile is a "?" for anything not listed (custom request).
+//   • TOP    — "Our fleet" centred over the stage.
+//   • CENTRE — the stage: a big centred car (sliding carousel) over a soft floor
+//              shadow, with a giant model-name watermark behind it. Prev / next
+//              arrows flank it on desktop; on touch screens the stage swipes.
+//              A small FRONT / SIDE / REAR text switcher sits under the car.
+//   • RIGHT  — the roster (grouped by MODEL, 3 across) with the active car's
+//              details BELOW it, left-aligned to the grid: name, variant chips,
+//              specs and the booking CTA. On phones the roster becomes a
+//              horizontal snap strip and the details centre under the stage.
 // Header matches the rest of the site: logo (links home) + Contact Us + popup.
 
-import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import Logo from "@/components/Logo";
-import { GROUPS, EASE, anglesFor, pad2, type Angle } from "@/components/fleet/data";
+import { GROUPS, EASE, anglesFor, type Angle } from "@/components/fleet/data";
 import { Chevron } from "@/components/fleet/icons";
 
 const ACCENT = "#2A4FD0";
@@ -127,6 +128,72 @@ export default function FleetPage() {
     }`;
   const tileRing = (active: boolean) => (active ? { boxShadow: `inset 0 0 0 2px ${ACCENT}` } : undefined);
 
+  // The active car's details. Rendered twice: centred under the stage on phones,
+  // left-aligned under the roster grid on desktop (`left` + `withCtaRef`).
+  const details = (left: boolean, withCtaRef: boolean): ReactNode => {
+    const wrap = left ? "items-start text-left" : "items-center text-center";
+    const chipsWrap = left ? "justify-start" : "justify-center";
+    if (isCustom) {
+      return (
+        <motion.div key={`custom-${left}`} initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className={`flex flex-col ${wrap}`}>
+          <h2 className="font-josefin text-2xl font-light leading-[1.06] tracking-tight sm:text-3xl">Not on the list?</h2>
+          <p className="mt-2 max-w-sm text-sm text-neutral-500">Tell us the make, model and year you want and we will source it for your trip.</p>
+          <Link ref={withCtaRef ? ctaRef : undefined} href="/form" className={`mt-4 ${BTN}`} style={BTN_STYLE}>Request a custom car</Link>
+        </motion.div>
+      );
+    }
+    return (
+      <div className={`flex flex-col ${wrap}`}>
+        <motion.div key={`${gi}-name-${left}`} initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className={`flex flex-col ${wrap}`}>
+          <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
+            {variant!.year} · {variant!.type}
+          </div>
+          <h2 className="mt-1 font-josefin text-2xl font-light leading-[1.06] tracking-tight sm:text-3xl">{group!.name}</h2>
+        </motion.div>
+
+        {/* year / variant selector — only when the model has more than one */}
+        {group!.variants.length > 1 && (
+          <div className={`mt-3 flex flex-wrap gap-1.5 ${chipsWrap}`}>
+            {group!.variants.map((v, k) => {
+              const on = k === Math.min(vi, group!.variants.length - 1);
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => pickVariant(k)}
+                  className="rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide transition-colors"
+                  style={{
+                    borderColor: on ? ACCENT : "rgba(0,0,0,0.12)",
+                    backgroundColor: on ? ACCENT : "transparent",
+                    color: on ? "#fff" : "#525252",
+                  }}
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* specs as quiet chips — scannable at a glance */}
+        <div className={`mt-3 flex flex-wrap items-center gap-1.5 ${chipsWrap}`}>
+          {variant!.specs.map((s) => (
+            <span key={s} className="rounded-full border border-neutral-200 bg-white/70 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-600">
+              {s}
+            </span>
+          ))}
+        </div>
+
+        <Link ref={withCtaRef ? ctaRef : undefined} href={`/form?car=${encodeURIComponent(variant!.name)}&year=${variant!.year}`} className={`mt-4 ${BTN}`} style={BTN_STYLE}>
+          Add to booking
+        </Link>
+        <p className="mt-2.5 text-[11px] tracking-wide text-neutral-400">
+          All vehicles chauffeur-driven · Lagos &amp; Abuja
+        </p>
+      </div>
+    );
+  };
+
   return (
     <main className="relative flex min-h-dvh flex-col overflow-x-hidden bg-[#f4f6fb] text-neutral-900 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
       {/* soft brand spotlight + a faint floor tint so the canvas isn't flat */}
@@ -142,22 +209,15 @@ export default function FleetPage() {
         <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={CONTACT_BTN_STYLE}>Contact Us</button>
       </header>
 
-      {/* content — fills the rest of the screen on desktop */}
-      <div className="relative z-10 grid grid-cols-1 gap-5 px-5 pb-6 sm:px-10 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)] lg:gap-8">
-        {/* LEFT — stage + details */}
-        <section className="order-1 flex min-h-0 flex-col gap-2">
-          <div className="flex shrink-0 items-end justify-between gap-4">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.4em]" style={{ color: ACCENT }}>The collection</div>
-              <h1 className="mt-0.5 font-josefin text-4xl font-light leading-none tracking-tight sm:text-5xl">Our fleet</h1>
-            </div>
-            {/* position counter — reads "03 / 10", or "+" on the custom tile */}
-            <div className="pb-1 font-mono text-xs tabular-nums text-neutral-400" aria-hidden="true">
-              {isCustom ? "+" : pad2(gi + 1)}<span className="mx-1 text-neutral-300">/</span>{pad2(GROUPS.length)}
-            </div>
-          </div>
+      {/* page title — top centre, sitting over the car */}
+      <div className="relative z-10 shrink-0 px-5 text-center sm:px-10">
+        <h1 className="font-josefin text-4xl font-light leading-none tracking-tight sm:text-5xl">Our fleet</h1>
+      </div>
 
-          {/* stage: arrows flank a sliding carousel; swipes on touch screens */}
+      {/* content — fills the rest of the screen on desktop */}
+      <div className="relative z-10 grid grid-cols-1 gap-5 px-5 pb-6 pt-2 sm:px-10 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:gap-8">
+        {/* LEFT — the stage alone, so the car sits big and centred */}
+        <section className="order-1 flex min-h-0 flex-col gap-3">
           <div
             className="relative flex h-[38vh] min-h-[220px] items-center justify-center gap-1 sm:h-[42vh] sm:gap-3 lg:h-auto lg:min-h-0 lg:flex-1"
             onTouchStart={onStageTouchStart}
@@ -168,39 +228,10 @@ export default function FleetPage() {
             {!isCustom && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-[44%] z-0 -translate-y-1/2 select-none overflow-hidden whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.06em]"
+                className="pointer-events-none absolute inset-x-0 top-[40%] z-0 -translate-y-1/2 select-none overflow-hidden whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.06em]"
                 style={{ fontSize: `min(${((100 / group!.name.length) * 1.3).toFixed(2)}vw, 16vh)`, color: "rgba(42,79,208,0.07)" }}
               >
                 {group!.name}
-              </div>
-            )}
-
-            {/* angle switcher — plain text labels (no ambiguous glyphs); dims any
-                angle with no photo */}
-            {!isCustom && angles && (
-              <div className="absolute left-1/2 top-0 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-neutral-200 bg-white/80 p-1 shadow-sm backdrop-blur-sm">
-                {(["front", "side", "rear"] as Angle[]).map((a) => {
-                  const available = !!angles[a];
-                  const on = effectiveAngle === a;
-                  return (
-                    <button
-                      key={a}
-                      type="button"
-                      disabled={!available}
-                      onClick={() => pickAngle(a)}
-                      aria-pressed={on}
-                      title={available ? `${a[0].toUpperCase()}${a.slice(1)} view` : `No ${a} view available`}
-                      className="rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition-colors disabled:cursor-not-allowed"
-                      style={{
-                        background: on ? ACCENT : "transparent",
-                        color: on ? "#ffffff" : "#6b7280",
-                        opacity: available ? 1 : 0.3,
-                      }}
-                    >
-                      {a}
-                    </button>
-                  );
-                })}
               </div>
             )}
 
@@ -230,14 +261,14 @@ export default function FleetPage() {
                     draggable={false}
                     sizes="(max-width:1024px) 88vw, 60vw"
                     className="relative z-10 w-auto max-w-full select-none object-contain"
-                    style={{ maxHeight: "82%", transform: variant!.flip ? "scaleX(-1)" : undefined }}
+                    style={{ maxHeight: "78%", transform: variant!.flip ? "scaleX(-1)" : undefined }}
                   />
                   {/* floor shadow — grounds the car on the canvas */}
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2"
                     style={{
-                      bottom: "4%",
+                      bottom: "8%",
                       width: "62%",
                       height: "9%",
                       background: "radial-gradient(50% 50% at 50% 50%, rgba(11,13,18,0.18), transparent 72%)",
@@ -249,80 +280,51 @@ export default function FleetPage() {
             </motion.div>
 
             <button type="button" onClick={() => go(1)} aria-label="Next" className={arrowBtn}><Chevron dir="right" /></button>
-          </div>
 
-          {/* details — centered */}
-          <div className="flex shrink-0 flex-col items-center text-center">
-            {isCustom ? (
-              <motion.div key="custom" initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="flex flex-col items-center">
-                <h2 className="font-josefin text-3xl font-light leading-[1.04] tracking-tight sm:text-4xl">Not on the list?</h2>
-                <p className="mt-2 max-w-sm text-sm text-neutral-500">Tell us the make, model and year you want and we will source it for your trip.</p>
-                <Link ref={ctaRef} href="/form" className={`mt-5 ${BTN}`} style={BTN_STYLE}>Request a custom car</Link>
-              </motion.div>
-            ) : (
-              <>
-                <motion.div key={`${gi}-name`} initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="flex flex-col items-center">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
-                    {variant!.year} · {variant!.type}
-                  </div>
-                  <h2 className="mt-1 font-josefin text-3xl font-light leading-[1.04] tracking-tight sm:text-4xl">{group!.name}</h2>
-                </motion.div>
-
-                {/* year / variant selector — only when the model has more than one */}
-                {group!.variants.length > 1 && (
-                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                    {group!.variants.map((v, k) => {
-                      const on = k === Math.min(vi, group!.variants.length - 1);
-                      return (
-                        <button
-                          key={v.id}
-                          type="button"
-                          onClick={() => pickVariant(k)}
-                          className="rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide transition-colors"
-                          style={{
-                            borderColor: on ? ACCENT : "rgba(0,0,0,0.12)",
-                            backgroundColor: on ? ACCENT : "transparent",
-                            color: on ? "#fff" : "#525252",
-                          }}
-                        >
-                          {v.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* specs as quiet chips — scannable at a glance */}
-                <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5">
-                  {variant!.specs.map((s) => (
-                    <span key={s} className="rounded-full border border-neutral-200 bg-white/70 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-600">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-
-                <Link ref={ctaRef} href={`/form?car=${encodeURIComponent(variant!.name)}&year=${variant!.year}`} className={`mt-5 ${BTN}`} style={BTN_STYLE}>
-                  Add to booking
-                </Link>
-                <p className="mt-2.5 text-[11px] tracking-wide text-neutral-400">
-                  All vehicles chauffeur-driven · Lagos &amp; Abuja
-                </p>
-              </>
+            {/* angle switcher — small text labels tucked UNDER the car; dims any
+                angle with no photo */}
+            {!isCustom && angles && (
+              <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-neutral-200 bg-white/80 p-0.5 shadow-sm backdrop-blur-sm">
+                {(["front", "side", "rear"] as Angle[]).map((a) => {
+                  const available = !!angles[a];
+                  const on = effectiveAngle === a;
+                  return (
+                    <button
+                      key={a}
+                      type="button"
+                      disabled={!available}
+                      onClick={() => pickAngle(a)}
+                      aria-pressed={on}
+                      title={available ? `${a[0].toUpperCase()}${a.slice(1)} view` : `No ${a} view available`}
+                      className="rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.16em] transition-colors disabled:cursor-not-allowed"
+                      style={{
+                        background: on ? ACCENT : "transparent",
+                        color: on ? "#ffffff" : "#6b7280",
+                        opacity: available ? 1 : 0.3,
+                      }}
+                    >
+                      {a}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
+
+          {/* details — centred under the stage on phones only */}
+          <div className="flex shrink-0 flex-col items-center lg:hidden">{details(false, false)}</div>
         </section>
 
-        {/* RIGHT — roster: horizontal snap strip on phones, 3-across grid on desktop */}
-        <section className="order-2 flex min-h-0 items-start">
-          <div className="flex w-full flex-col rounded-2xl border border-neutral-200 bg-white/70 p-2.5 backdrop-blur-sm lg:max-h-full lg:min-h-0">
+        {/* RIGHT — roster grid with the details underneath, left-aligned to it */}
+        <section className="order-2 flex min-h-0 flex-col gap-4">
+          <div className="flex w-full shrink-0 flex-col rounded-2xl border border-neutral-200 bg-white/70 p-2.5 backdrop-blur-sm lg:min-h-0 lg:max-h-[46vh]">
             <div className="flex shrink-0 items-center justify-between px-1 pb-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-400">Models</span>
-              <span className="font-mono text-[11px] tabular-nums text-neutral-300">{GROUPS.length}</span>
             </div>
 
             <div
               ref={gridRef}
-              className="flex min-h-0 snap-x snap-mandatory gap-2.5 overflow-x-auto p-0.5 [scrollbar-width:thin] lg:grid lg:flex-1 lg:snap-none lg:grid-cols-3 lg:content-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1"
+              className="flex min-h-0 snap-x snap-mandatory gap-2.5 overflow-x-auto p-0.5 [scrollbar-width:thin] lg:grid lg:snap-none lg:auto-rows-max lg:grid-cols-3 lg:content-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1"
             >
               {GROUPS.map((g, i) => {
                 const active = i === gi;
@@ -338,7 +340,7 @@ export default function FleetPage() {
                     className={`${tileClass(active)} flex h-[86px] w-[96px] flex-col lg:h-auto lg:w-auto lg:pb-0.5`}
                     style={tileRing(active)}
                   >
-                    <span className="relative block h-[58px] w-full lg:h-auto lg:flex-1 lg:aspect-[4/3]">
+                    <span className="relative block h-[58px] w-full shrink-0 lg:h-[62px]">
                       <Image
                         src={g.image}
                         alt=""
@@ -349,7 +351,7 @@ export default function FleetPage() {
                       />
                     </span>
                     <span
-                      className={`block w-full truncate px-1.5 pb-1 text-center text-[9px] font-semibold tracking-wide ${
+                      className={`block w-full shrink-0 truncate px-1.5 pb-1 text-center text-[9px] font-semibold tracking-wide ${
                         active ? "text-[#2A4FD0]" : "text-neutral-400"
                       }`}
                     >
@@ -367,7 +369,7 @@ export default function FleetPage() {
                 aria-label="Request a car not listed"
                 aria-pressed={isCustom}
                 title="Request a car not listed"
-                className={`${tileClass(isCustom, true)} flex h-[86px] w-[96px] flex-col items-center justify-center gap-0.5 lg:h-auto lg:w-auto lg:aspect-[4/3.6]`}
+                className={`${tileClass(isCustom, true)} flex h-[86px] w-[96px] flex-col items-center justify-center gap-0.5 lg:h-[82px] lg:w-auto`}
                 style={tileRing(isCustom)}
               >
                 <span className="text-2xl font-light text-neutral-400">?</span>
@@ -377,6 +379,9 @@ export default function FleetPage() {
               </button>
             </div>
           </div>
+
+          {/* details — desktop only, left-aligned to the grid above */}
+          <div className="hidden min-h-0 flex-col overflow-y-auto px-0.5 lg:flex">{details(true, true)}</div>
         </section>
       </div>
 
