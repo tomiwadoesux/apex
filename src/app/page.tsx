@@ -410,11 +410,9 @@ export default function Home() {
                 CityReveal's photo (2688×1520, xMidYMid slice). That makes the cutout
                 and the reveal photo scale and crop as ONE image at EVERY screen aspect
                 ratio — so the cars stay locked together on a laptop, an external
-                monitor, anything (the old object-cover + container-% nudge only lined
-                them up at a single aspect ratio). The alignment nudge below is in
-                FRAME units of the 2688×1520 frame, which stays constant across screens:
-                x ≈ 0.65% × 2688, y ≈ 9.7% × 1520. Tune just these two if the cars sit a
-                hair off — it now behaves identically on every display. */}
+                monitor, anything. FRONT.webp is exported at exactly 2688×1520 with the
+                old (17,147) alignment nudge BAKED IN, so it sits at 0,0 as a pixel-
+                perfect overlay of the reveal photo — no runtime offset to tune. */}
             <svg
               viewBox="0 0 2688 1520"
               preserveAspectRatio="xMidYMid slice"
@@ -423,8 +421,8 @@ export default function Home() {
             >
               <image
                 href="/images/FRONT.webp"
-                x={17}
-                y={147}
+                x={0}
+                y={0}
                 width="2688"
                 height="1520"
                 preserveAspectRatio="xMidYMid slice"
