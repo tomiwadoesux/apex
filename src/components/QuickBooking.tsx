@@ -281,7 +281,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
         </div>
 
         {/* body */}
-        <div className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto p-4">
+        <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto p-4">
           {/* 1 — pickup time */}
           {step === 0 && timeOptions.map((o) => {
             const active = pickupWhen?.label === o.label;

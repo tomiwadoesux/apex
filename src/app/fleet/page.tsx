@@ -360,6 +360,7 @@ export default function FleetPage() {
             <div
               ref={gridRef}
               onScroll={syncStripBar}
+              data-lenis-prevent
               className="accent-scrollbar accent-scrollbar-lg flex min-h-0 snap-x snap-mandatory gap-2.5 overflow-x-auto p-0.5 lg:grid lg:snap-none lg:auto-rows-max lg:grid-cols-3 lg:content-start lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1"
             >
               {GROUPS.map((g, i) => {
@@ -425,7 +426,7 @@ export default function FleetPage() {
           </div>
 
           {/* details — desktop only, left-aligned to the grid above */}
-          <div className="accent-scrollbar hidden min-h-0 flex-col overflow-y-auto px-0.5 lg:flex">{details(true, true)}</div>
+          <div data-lenis-prevent className="accent-scrollbar hidden min-h-0 flex-col overflow-y-auto px-0.5 lg:flex">{details(true, true)}</div>
         </section>
       </div>
 
@@ -458,7 +459,7 @@ export default function FleetPage() {
               </button>
             </div>
 
-            <div className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
+            <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
               {GROUPS.map((g, i) => {
                 const active = i === gi;
                 const v = g.variants[0];

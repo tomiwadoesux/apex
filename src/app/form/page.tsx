@@ -1607,7 +1607,7 @@ export default function BookingForm() {
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
-      <div className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-8 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
+      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-8 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -2647,7 +2647,7 @@ export default function BookingForm() {
               </button>
             </div>
 
-            <div className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
+            <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
               {VEHICLES.map((v, i) => {
                 const active = !isCustomCar && i === carIndex;
                 const activeBg = isLight ? "bg-[#00209C]/[0.07]" : "bg-[#FDBA16]/[0.09]";
