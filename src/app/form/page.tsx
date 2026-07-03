@@ -929,6 +929,7 @@ export default function BookingForm() {
 
   // Transition between cars: Symmetrical bidirectional sliding
   const spinCar = (dir: number) => {
+    setPreselectedCar(null); // browsing again — the fleet hand-off is no longer "the" choice
     if (isCustomCar) {
       setIsCustomCar(false);
       return;
@@ -1178,6 +1179,7 @@ export default function BookingForm() {
 
   // Jump the carousel straight to a car picked from the all-cars list.
   const selectCarFromList = (i: number) => {
+    setPreselectedCar(null);
     setIsCustomCar(false);
     setCarIndex(i);
     setDisplayedVehicleName(VEHICLES[i].name);
@@ -1693,7 +1695,9 @@ export default function BookingForm() {
 
             {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
             {currentStep === 3 && (
-              <div className="w-full flex flex-col items-center">
+              /* A car handed over from the fleet page is ALREADY chosen, so the whole
+                 picker rests dimmed — touching it (spin / list pick) wakes it back up. */
+              <div className={`w-full flex flex-col items-center transition-opacity duration-500 ${preselectedCar ? "opacity-55" : "opacity-100"}`}>
                 <div
                   className="relative w-full h-[28vh] max-h-[290px] flex items-center justify-center mt-2"
                   {...makeSwipeHandlers((dir) => spinCar(dir))}
