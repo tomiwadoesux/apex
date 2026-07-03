@@ -33,7 +33,7 @@ const CONTACT_BTN_STYLE = { background: "linear-gradient(180deg, #242424 0%, #09
 
 const CONTACTS = [
   { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
-  { label: "WhatsApp", value: "+234 800 000 0000", href: "https://wa.me/2348000000000" },
+  { label: "WhatsApp", value: "+234 814 168 1273", href: "https://wa.me/2348141681273" },
   { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
 ];
 

@@ -303,7 +303,7 @@ export function ContactPopup({
 
             <div className="mt-5 flex flex-col items-center gap-2.5 text-[13px]">
               <ContactDetail kind="mail" value="contact@apexride.com" accent={accent} isLight={isLight} className="font-semibold" />
-              <ContactDetail kind="phone" value="+234 801 234 5678" accent={accent} isLight={isLight} className="font-semibold" />
+              <ContactDetail kind="phone" value="+234 814 168 1273" accent={accent} isLight={isLight} className="font-semibold" />
             </div>
 
             <div className="mx-auto mt-6 grid w-full grid-cols-2 gap-3">

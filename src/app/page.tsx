@@ -555,9 +555,6 @@ export default function Home() {
           card floats over the dark navy slab; link columns beneath it; a giant
           faint brand watermark bleeds off the bottom. */}
       <footer className="relative z-10 w-full overflow-hidden sm:sticky sm:bottom-0 sm:z-0" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
-        {/* soft blue bloom behind the CTA card */}
-        <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[720px] -translate-x-1/2 rounded-full blur-3xl" style={{ background: accent, opacity: 0.14 }} />
-
         <div className="relative mx-auto w-full max-w-6xl px-6 pb-8 pt-16 sm:px-10">
           {/* CTA banner — brand-blue gradient card with the same inner sheen as the CTAs */}
           <div
@@ -567,12 +564,6 @@ export default function Home() {
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 24px 60px -24px rgba(42,79,208,0.55)",
             }}
           >
-            {/* faint diagonal hatch, echoing the hero CTA texture */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-8"
-              style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 18px)" }}
-            />
             {/* oversized faint logo bleeding off the card corner — depth, not a centre mark */}
             <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 opacity-[0.1]">
               <Logo size={190} color="#ffffff" accent="#ffffff" />

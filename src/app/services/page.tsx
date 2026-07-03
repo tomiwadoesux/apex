@@ -164,7 +164,7 @@ function pickPosition(current: Pos): Pos {
 
 const CONTACTS = [
   { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
-  { label: "WhatsApp", value: "+234 800 000 0000", href: "https://wa.me/2348000000000" },
+  { label: "WhatsApp", value: "+234 814 168 1273", href: "https://wa.me/2348141681273" },
   { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
 ];
 
@@ -297,7 +297,11 @@ export default function ServicesPage() {
           <motion.div
             key={index}
             className="absolute w-[90vw] max-w-[520px]"
-            style={{ left: `${panelPos.left}%`, top: `${panelPos.top}%` }}
+            style={
+              mobile
+                ? { left: "50%", transform: "translateX(-50%)", top: `${panelPos.top}%` } // centred on phones
+                : { left: `${panelPos.left}%`, top: `${panelPos.top}%` }
+            }
             initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
             animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: WIPE_S, ease: EASE } }}
             exit={{ clipPath: "inset(0% 100% 0% 0%)", transition: { duration: WIPE_S, ease: EASE } }}

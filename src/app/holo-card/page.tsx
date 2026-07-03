@@ -80,7 +80,7 @@ const LOCATION_IMG: Record<string, { light: string; dark: string }> = {
 };
 const RIDE_DATE = "Sat, 21 Jun 2026";
 const RIDE_TIME = "18:30";
-const PHONE = "+234 801 234 5678";
+const PHONE = "+234 814 168 1273";
 const EMAIL = "concierge@apexride.com";
 const SERVICE = "Airport transfer"; // the booked service — e.g. Point to point · Airport · Hourly
 const DEFAULT_REF = "4827 1193 0641";
