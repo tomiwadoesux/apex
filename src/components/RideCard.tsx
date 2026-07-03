@@ -370,7 +370,9 @@ export function RideCard({
 
   return (
     <div className="flex items-center justify-center py-6" style={vars}>
-      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative" style={{ width: "min(460px, 88vw)", aspectRatio: "5 / 7.5" }}>
+      {/* Phones get a taller, phone-length card (≈9:18) so the pass fills the
+          screen like a wallet pass; larger screens keep the classic 5:7.5. */}
+      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative aspect-[9/18] sm:aspect-[5/7.5]" style={{ width: "min(460px, 88vw)" }}>
         <div
           className="absolute inset-0 overflow-hidden"
           data-ride-card

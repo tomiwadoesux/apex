@@ -132,7 +132,8 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const cardW = Math.min(460, vw * 0.88, 416); // 416 = modal max-w minus padding
-      const naturalH = cardW * 1.5 + 48; // 5:7.5 aspect + the card's own py-6
+      const ratio = vw >= 640 ? 1.5 : 2; // 5:7.5 on desktop, phone-length 9:18 on mobile
+      const naturalH = cardW * ratio + 48; // aspect + the card's own py-6
       const modalMaxH = vh * (vw >= 640 ? 0.82 : 0.86);
       const avail = modalMaxH - 96 - 150; // header + confirm line + buttons
       setCardZoom(Math.max(0.5, Math.min(1, avail / naturalH)));
@@ -384,7 +385,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Location must be accurate"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
                   onKeyDown={(e) => { if (e.key === "Enter" && address.trim()) setStep(4); }}
                 />
               </div>
@@ -449,7 +450,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   autoComplete="name"
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
                 />
               </div>
               <div>
@@ -461,7 +462,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={() => setPhoneTouched(true)}
                   placeholder="08012345678"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
                 />
                 {phoneBad && (
                   <p className="mt-1.5 text-[10px] font-medium text-red-600">
