@@ -1292,7 +1292,9 @@ export default function BookingForm() {
   const nextStep = () => {
     if (!isStepValid()) return;
     if (currentStep < 7) {
-      setCurrentStep((s) => s + 1);
+      // A car handed over from the fleet page is already chosen, so the Car Type
+      // step is skipped entirely (its dot sits blurred in the bottom tracker).
+      setCurrentStep((s) => (s === 2 && preselectedCar ? 4 : s + 1));
     } else if (!submitting) {
       void submitBooking();
     }
@@ -1330,7 +1332,7 @@ export default function BookingForm() {
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep((s) => s - 1);
+      setCurrentStep((s) => (s === 4 && preselectedCar ? 2 : s - 1));
     }
   };
 
@@ -1695,9 +1697,7 @@ export default function BookingForm() {
 
             {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
             {currentStep === 3 && (
-              /* A car handed over from the fleet page is ALREADY chosen, so the whole
-                 picker rests dimmed — touching it (spin / list pick) wakes it back up. */
-              <div className={`w-full flex flex-col items-center transition-opacity duration-500 ${preselectedCar ? "opacity-55" : "opacity-100"}`}>
+              <div className="w-full flex flex-col items-center">
                 <div
                   className="relative w-full h-[28vh] max-h-[290px] flex items-center justify-center mt-2"
                   {...makeSwipeHandlers((dir) => spinCar(dir))}
@@ -2422,11 +2422,15 @@ export default function BookingForm() {
             {STEPS.map((stepName, idx) => {
               const isCompleted = currentStep > idx || currentStep === 8;
               const isActive = currentStep === idx;
+              // Car Type is pre-decided by the fleet hand-off: the step is skipped
+              // and its tracker entry sits blurred. Clicking it still works as the
+              // deliberate "actually, let me change the car" escape hatch.
+              const isSkipped = idx === 3 && !!preselectedCar;
 
               const accentHex = isLight ? "#00209C" : "#FDBA16";
 
               return (
-                <div key={stepName} className="flex flex-col items-center">
+                <div key={stepName} className={`flex flex-col items-center transition-all duration-300 ${isSkipped ? "blur-[2px] opacity-50" : ""}`}>
                   <div className="h-4 flex items-center justify-center">
                     <button
                       onClick={() => currentStep <= 7 && setCurrentStep(idx)}
