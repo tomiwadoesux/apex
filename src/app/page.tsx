@@ -24,6 +24,7 @@ import Logo from "@/components/Logo";
 import CityReveal from "@/components/city/CityReveal";
 import ServiceCards from "@/components/story/ServiceCards";
 import { ContactPopup } from "@/components/ContactPopup";
+import QuickBooking from "@/components/QuickBooking";
 type Theme = "light" | "dark";
 
 // Primary CTA — flat accent fill, no gradient or sheen. Accent per mode:
@@ -88,6 +89,14 @@ function CalendarIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function BoltIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
 function CarIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -224,6 +233,7 @@ const HEADLINE_CLASS =
 export default function Home() {
   const theme: Theme = "light"; // site is light-mode only
   const [contactOpen, setContactOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false); // Quick Booking popup (progress persists while closed)
   const [reveal, setReveal] = useState(false); // on-load intro (headline stands up + fleet in)
   const [p, setP] = useState(0); // scroll progress 0..1 across the pinned story
   const [bgLoaded, setBgLoaded] = useState(false); // full city photo (FORNT-BG) decoded
@@ -524,7 +534,17 @@ export default function Home() {
               transition: "opacity 420ms ease-out 220ms",
             }}
           >
-            <HatchButton label="Our fleet" href="/fleet" Icon={CarIcon} variant="dark" hatch={false} />
+            <HatchButton
+              label="Quick booking"
+              href="#quick-booking"
+              Icon={BoltIcon}
+              variant="dark"
+              hatch={false}
+              onClick={(e) => {
+                e.preventDefault();
+                setQuickOpen(true);
+              }}
+            />
             <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
           </div>
         </div>
@@ -690,6 +710,10 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Quick Booking — stays mounted so a closed popup resumes where it stopped;
+          only a reload starts the flow over. */}
+      <QuickBooking open={quickOpen} onClose={() => setQuickOpen(false)} />
 
       {/* Shared contact popup + flying logo (the same component the booking form uses). */}
       <ContactPopup
