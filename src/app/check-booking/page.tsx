@@ -65,7 +65,7 @@ export default function CheckBookingPage() {
     if (!node || !booking || saving) return;
     setSaving(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
+      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt
       const fileName = `apexride-pass-${booking.id.replace(/[^a-z0-9]/gi, "")}.png`;
       try {
         const blob = await (await fetch(dataUrl)).blob();

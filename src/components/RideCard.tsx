@@ -13,7 +13,10 @@
    prefers-reduced-motion.
    ────────────────────────────────────────────────────────────────────────── */
 
-import Image from "next/image";
+// NB: the card deliberately uses plain <img> (not next/image). The pass gets
+// exported to a PNG via html-to-image, which reliably inlines simple
+// same-origin src images but chokes on next/image's srcset + optimizer URLs —
+// the car kept vanishing from downloaded cards.
 import { Phone, Mail, MapPin, Clock, type LucideIcon } from "lucide-react";
 import {
   useCallback,
@@ -159,12 +162,11 @@ function RouteRow({ marker, icon: Icon, label, name, accent, ink, dim, img, ligh
       </div>
       {img && (
         <div className="pointer-events-none absolute" style={{ right: 0, top: "50%", width: "13cqw", height: "12cqw", transform: "translateY(-50%)" }}>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={light ? img.light : img.dark}
             alt={`${name} location`}
-            fill
-            sizes="180px"
-            className="object-contain"
+            className="absolute inset-0 h-full w-full object-contain"
             style={{ filter: `drop-shadow(0 1.2cqw 1.4cqw rgba(0,0,0,${light ? 0.28 : 0.55}))` }}
           />
         </div>
@@ -223,6 +225,9 @@ export function RideCard({
   const reduced = useReducedMotion();
   // touch devices can't hover, so we auto-play a GENTLE version of the hover there
   const noHoverRef = useRef(false);
+  // true once real device-orientation data is flowing — it then drives the tilt
+  // (tilting the PHONE tilts the card, like moving the mouse does on desktop)
+  const motionRef = useRef(false);
   useEffect(() => {
     noHoverRef.current = window.matchMedia("(hover: none)").matches;
   }, []);
@@ -244,7 +249,9 @@ export function RideCard({
       const t = target.current;
       const c = current.current;
       if (!hovering.current) {
-        if (noHoverRef.current && !rm) {
+        if (motionRef.current && !rm) {
+          // deviceorientation is writing the target directly — leave it alone
+        } else if (noHoverRef.current && !rm) {
           const now = performance.now() / 1000;
           t.x = 0.5 + Math.sin(now * 0.55) * 0.14;
           t.y = 0.5 + Math.cos(now * 0.42) * 0.14;
@@ -281,6 +288,42 @@ export function RideCard({
       if (raf.current) cancelAnimationFrame(raf.current);
     };
   }, []);
+
+  // Phones: tilt the card with the DEVICE — moving the phone reads like hovering.
+  // gamma (left/right roll) drives the x axis; beta (front/back pitch) drives y,
+  // centred on ~40° because that's how people naturally hold a phone. iOS 13+
+  // requires a user-gesture permission request, so we ask on the first touch.
+  useEffect(() => {
+    if (reduced) return;
+    if (typeof window === "undefined" || !window.matchMedia("(hover: none)").matches) return;
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+    const onOrient = (e: DeviceOrientationEvent) => {
+      if (e.beta == null || e.gamma == null) return;
+      motionRef.current = true;
+      target.current.x = clamp01(0.5 + (e.gamma / 28) * 0.5);
+      target.current.y = clamp01(0.5 + ((e.beta - 40) / 28) * 0.5);
+      target.current.active = 0.85;
+    };
+    const attach = () => window.addEventListener("deviceorientation", onOrient);
+    const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
+    let onFirstTouch: (() => void) | null = null;
+    if (typeof DOE?.requestPermission === "function") {
+      onFirstTouch = () => {
+        DOE.requestPermission!()
+          .then((state) => { if (state === "granted") attach(); })
+          .catch(() => { /* denied — the ambient float keeps playing instead */ });
+        window.removeEventListener("touchend", onFirstTouch!);
+      };
+      window.addEventListener("touchend", onFirstTouch);
+    } else {
+      attach();
+    }
+    return () => {
+      window.removeEventListener("deviceorientation", onOrient);
+      if (onFirstTouch) window.removeEventListener("touchend", onFirstTouch);
+      motionRef.current = false;
+    };
+  }, [reduced]);
 
   const onMove = useCallback((e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -371,16 +414,14 @@ export function RideCard({
 
             {/* hero: the car */}
             <div className="relative mt-[1cqw]" style={{ height: "72cqw", marginInline: "-7cqw" }}>
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 key={car.name + (light ? "l" : "d")}
                 src={encodeURI(`/images/${light ? car.side.light : car.side.dark}`)}
                 alt={`${car.name} side view`}
-                fill
                 draggable={false}
-                className="select-none object-contain"
+                className="absolute inset-0 h-full w-full select-none object-contain"
                 style={{ filter: "saturate(.95)" }}
-                sizes="420px"
-                priority
               />
             </div>
 
