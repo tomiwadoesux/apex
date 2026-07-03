@@ -120,7 +120,27 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
+  const [cardZoom, setCardZoom] = useState(1);
   const passRef = useRef<HTMLDivElement>(null);
+
+  // Shrink the ride-pass card just enough that the WHOLE pass (plus its buttons)
+  // fits inside the modal with no scrolling. The card is a fixed 5:7.5 stage
+  // min(460px, 88vw) wide, so its natural height is fully predictable.
+  useEffect(() => {
+    if (step !== 6) return;
+    const fit = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cardW = Math.min(460, vw * 0.88, 416); // 416 = modal max-w minus padding
+      const naturalH = cardW * 1.5 + 48; // 5:7.5 aspect + the card's own py-6
+      const modalMaxH = vh * (vw >= 640 ? 0.82 : 0.86);
+      const avail = modalMaxH - 96 - 150; // header + confirm line + buttons
+      setCardZoom(Math.max(0.5, Math.min(1, avail / naturalH)));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [step]);
 
   // Best-effort: pre-pick the guest's Nigerian state from their IP. Silent on
   // any failure — Lagos stays the default and the chips remain one tap away.
@@ -469,7 +489,11 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 save your ride pass below.
               </p>
               <div ref={passRef} className="flex w-full justify-center">
-                <RidePass booking={bookingToRide(booking)} light />
+                {/* `zoom` scales layout too (unlike transform), so the shrunken card
+                    leaves no dead space and the buttons stay right below it. */}
+                <div style={{ zoom: cardZoom }}>
+                  <RidePass booking={bookingToRide(booking)} light />
+                </div>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2.5">
                 <button
