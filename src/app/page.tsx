@@ -608,61 +608,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* link columns */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 pt-14 sm:grid-cols-[1.4fr_1fr_1fr] sm:gap-x-14">
-            <div className="col-span-2 sm:col-span-1">
-              <Link href="/" className="inline-flex items-center gap-2.5">
-                <Logo size={26} color="#f3f5fa" accent={accent} />
-                <span className="text-sm font-bold uppercase tracking-[0.08em]">
-                  Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
-                </span>
-              </Link>
-              <p className="mt-3.5 max-w-[26ch] text-xs leading-relaxed text-white/40">
-                Ride and arrive in style. Executive chauffeur service for airports, business and beyond.
-              </p>
-            </div>
-
-            {[
-              {
-                title: "Explore",
-                links: [
-                  { label: "Our fleet", href: "/fleet" },
-                  { label: "Services", href: "/services" },
-                  { label: "Book a ride", href: "/form" },
-                  { label: "Check booking", href: "/check-booking" },
-                ],
-              },
-              {
-                title: "Contact",
-                links: [
-                  { label: "contact@apexride.com", href: "mailto:contact@apexride.com" },
-                  { label: "WhatsApp", href: "https://wa.me/2348000000000" },
-                  { label: "@apexride", href: "https://instagram.com/apexride" },
-                ],
-              },
-            ].map((col) => (
-              <div key={col.title}>
-                <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: "#8aa2ff" }}>{col.title}</div>
-                <ul className="mt-4 flex flex-col gap-2.5 text-sm">
-                  {col.links.map((l) => (
-                    <li key={l.label}>
-                      <a
-                        href={l.href}
-                        className="group inline-flex items-center gap-1.5 text-white/60 transition-colors hover:text-white"
-                      >
-                        {l.label}
-                        <span aria-hidden className="translate-x-0 text-[#8aa2ff] opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100">→</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-
+          {/* brand row — the 3D-spinning logo lockup with a slim inline nav */}
+          <div className="flex flex-col items-center justify-between gap-6 pt-12 sm:flex-row">
+            <Link href="/" className="inline-flex items-center gap-3">
+              <Logo size={34} color="#f3f5fa" accent={accent} animate="spin3d" />
+              <span className="text-sm font-bold uppercase tracking-[0.08em]">
+                Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
+              </span>
+            </Link>
+            <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm">
+              {[
+                { label: "Our fleet", href: "/fleet" },
+                { label: "Services", href: "/services" },
+                { label: "Book a ride", href: "/form" },
+                { label: "Check booking", href: "/check-booking" },
+                { label: "Contact", href: "mailto:contact@apexride.com" },
+              ].map((l) => (
+                <a key={l.label} href={l.href} className="text-white/55 transition-colors hover:text-white">
+                  {l.label}
+                </a>
+              ))}
+            </nav>
           </div>
 
           {/* base row */}
-          <div className="mt-12 flex flex-col items-start justify-between gap-2 border-t border-white/[0.08] pt-6 text-[11px] tracking-wide text-white/30 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-white/[0.08] pt-6 text-[11px] tracking-wide text-white/30 sm:flex-row sm:items-center">
             <span>© {new Date().getFullYear()} ApexRide. All rights reserved.</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />

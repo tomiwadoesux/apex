@@ -13,58 +13,15 @@ import type { Booking } from "@/lib/bookings";
 
 type Mode = "light" | "dark";
 
-interface LocationItem {
-  id: string;
-  name: string;
-  subtitle: string;
-  code: string;
-  desc: string;
-  coordinates: string;
-}
-
-const LOCATIONS: LocationItem[] = [
-  {
-    id: "lagos",
-    name: "Lagos International Airport",
-    subtitle: "Murtala Muhammed Airport (LOS) · Ikeja",
-    code: "LOS",
-    desc: "Primary aviation gateway serving Lagos. Convenient access to major business districts and hotels.",
-    coordinates: "6.5770° N, 3.3211° E",
-  },
-  {
-    id: "abuja",
-    name: "Abuja International Airport",
-    subtitle: "Nnamdi Azikiwe Airport (ABV) · Airport Rd",
-    code: "ABV",
-    desc: "Federal Capital Territory gateway. Features modern terminal facilities and direct links to Maitama.",
-    coordinates: "9.0068° N, 7.2631° E",
-  },
-  {
-    id: "vi",
-    name: "Victoria Island Business Hub",
-    subtitle: "Adeola Odeku Center · Victoria Island",
-    code: "VIC",
-    desc: "Financial heart of Lagos. Swift chauffeur connections to headquarter complexes and premium hotels.",
-    coordinates: "6.4281° N, 3.4219° E",
-  },
+// Popular pickup spots — quick one-tap fills for the pickup address (3 per city).
+const POPULAR_PICKUPS: { city: "Lagos" | "Abuja"; name: string }[] = [
+  { city: "Lagos", name: "Murtala Muhammed Airport (MMIA), Ikeja" },
+  { city: "Lagos", name: "Eko Hotel & Suites, Victoria Island" },
+  { city: "Lagos", name: "Ikeja City Mall, Alausa" },
+  { city: "Abuja", name: "Nnamdi Azikiwe Airport (ABV)" },
+  { city: "Abuja", name: "Transcorp Hilton, Maitama" },
+  { city: "Abuja", name: "Jabi Lake Mall, Jabi" },
 ];
-
-// Floating-island renders for the pickup-location cards (public/images/city):
-// a DAY cut-out for light mode, a NIGHT/dusk one for dark. Keyed by location id.
-const LOCATION_CITY_IMG: Record<string, { light: string; dark: string }> = {
-  lagos: {
-    light: "/images/city/hf_20260609_191835_10382fac-98f4-4f3f-bbc5-b18661d9cd13.webp",
-    dark: "/images/city/hf_20260609_191641_778c656b-3c37-40dc-b8b6-fb969aa69c40.webp",
-  },
-  abuja: {
-    light: "/images/city/hf_20260609_211859_cfbf3152-29e3-469c-8852-c925c9926b80.webp",
-    dark: "/images/city/hf_20260609_212050_d98df3f4-df45-4dc1-b005-a168344cbae4.webp",
-  },
-  vi: {
-    light: "/images/city/hf_20260609_214000_7ad9a240-b82c-4cf6-8804-6d3d9f859ffc.webp",
-    dark: "/images/city/hf_20260609_214125_de3aa492-7fb6-42b6-a4bc-d3f0de8d54c7.webp",
-  },
-};
 
 interface VehicleAngles {
   front: string;
@@ -373,7 +330,6 @@ const CtaButton = ({
 export default function BookingForm() {
   const [mode, setMode] = useState<Mode>("light");
   const [currentStep, setCurrentStep] = useState(0); // 0–7 form steps, 8 = success
-  const [activeIndex, setActiveIndex] = useState(0); // Location carousel active index
   const [carIndex, setCarIndex] = useState(0); // Car-type carousel active index
   const [displayedVehicleName, setDisplayedVehicleName] = useState(VEHICLES[0].name);
   const [displayedVehicleDetails, setDisplayedVehicleDetails] = useState(VEHICLES[0]);
@@ -427,9 +383,12 @@ export default function BookingForm() {
   const emailHasDotAfterAt = emailHasAt && contactEmail.slice(emailAtIndex).includes('.');
   const showEmailError = (emailHasAt && !emailHasDotAfterAt) || (emailBlurred && contactEmail.trim() !== "" && !validateEmail(contactEmail));
 
-  // Booking fields
-  const [selectedLocation, setSelectedLocation] = useState(LOCATIONS[0]);
+  // Booking fields — pickup + destination are plain typed addresses, each with
+  // an optional popular-landmark helper for the chauffeur.
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupLandmark, setPickupLandmark] = useState("");
   const [destination, setDestination] = useState("");
+  const [destinationLandmark, setDestinationLandmark] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState(VEHICLES[0]);
   // ONE service choice overall, spread across two screens (Duration + Trip Type).
   // null until the user picks; choosing on either screen replaces the other.
@@ -466,14 +425,6 @@ export default function BookingForm() {
   // Car handed over from the fleet page via /form?car=…&year=… — pre-selected on mount
   // and announced near the Next button until the user reaches the Car Type step.
   const [preselectedCar, setPreselectedCar] = useState<string | null>(null);
-
-  // Custom pickup location ("Customize" popup on Step 2 — like the car "Other Options").
-  // A plain typed address (no lookup assist) plus an optional nearby landmark.
-  const [customLocationOpen, setCustomLocationOpen] = useState(false);
-  const [customLocationInput, setCustomLocationInput] = useState("");
-  const [isCustomLocation, setIsCustomLocation] = useState(false);
-  const [customLocationLandmark, setCustomLocationLandmark] = useState(""); // nearby popular landmark (optional)
-  const customLocationInputRef = useRef<HTMLInputElement>(null);
 
   const customOverlayRef = useRef<HTMLDivElement>(null);
   const customCardRef = useRef<HTMLDivElement>(null);
@@ -690,11 +641,21 @@ export default function BookingForm() {
         ? `Custom${customTripText.trim() ? ` · ${customTripText.trim()}` : ""}`
         : selectedService.name;
 
+  // The pickup / destination labels the summary + booking use: address, with the
+  // optional landmark folded in for the chauffeur.
+  const joinPlace = (addr: string, landmark: string) => {
+    const a = addr.trim();
+    const l = landmark.trim();
+    return a ? (l ? `${a} — ${l}` : a) : "";
+  };
+  const pickupLabel = joinPlace(pickupAddress, pickupLandmark);
+  const destinationLabel = joinPlace(destination, destinationLandmark);
+
   // Per-section completeness for the Review step (Step 8). Red = needs attention,
-  // green = done. Pickup / Vehicle default to a value, so they read as done.
+  // green = done. Vehicle defaults to a value, so it reads as done.
   const contactComplete =
     contactName.trim() !== "" && validateNigerianPhone(contactPhone) && validateEmail(contactEmail);
-  const pickupComplete = !!selectedLocation?.name;
+  const pickupComplete = pickupLabel !== "";
   const vehicleComplete = !!selectedVehicle?.name;
   const serviceComplete =
     !!selectedService &&
@@ -752,7 +713,7 @@ export default function BookingForm() {
   const getSubLabelText = (step: number) => {
     switch (step) {
       case 0: return "Provide Your Contact Information";
-      case 1: return selectedLocation?.name || "Lagos International Airport";
+      case 1: return "Enter Pickup Location";
       case 2: return "Enter Booking Destination";
       case 3: return "Select Your Premium Vehicle";
       case 4: return "Choose Service Duration";
@@ -789,7 +750,7 @@ export default function BookingForm() {
         setDisplayedSubLabel(newSubLabel);
       }
     }
-  }, [currentStep, selectedLocation?.name]);
+  }, [currentStep]);
 
   useEffect(() => {
     const targets = document.querySelectorAll(".step-text, .sub-step-text, .heading-vehicle-info");
@@ -812,20 +773,6 @@ export default function BookingForm() {
       });
     }
   }, [displayedStepText, displayedSubLabel]);
-
-  // Sync selected location state to active carousel card (unless a custom one is set)
-  useEffect(() => {
-    if (currentStep === 1 && !isCustomLocation) {
-      setSelectedLocation(LOCATIONS[activeIndex]);
-    }
-  }, [activeIndex, currentStep, isCustomLocation]);
-
-  // Focus the address field when the Customize popup opens
-  useEffect(() => {
-    if (customLocationOpen) {
-      customLocationInputRef.current?.focus();
-    }
-  }, [customLocationOpen]);
 
   useEffect(() => {
     if (currentStep === 3) {
@@ -1262,6 +1209,9 @@ export default function BookingForm() {
         validateEmail(contactEmail)
       );
     }
+    if (currentStep === 1) {
+      return pickupAddress.trim() !== "";
+    }
     if (currentStep === 4) {
       // Duration is optional on this screen — the user may instead pick a trip type
       // on the next screen. But if "Multiple Days" is chosen, require a valid count.
@@ -1291,7 +1241,7 @@ export default function BookingForm() {
   const submitBooking = async () => {
     const v = selectedVehicle;
     const isType = selectedService?.group === "type";
-    const dropoff = isType ? destination.trim() || null : null;
+    const dropoff = isType ? destinationLabel || null : null;
     const duration =
       !isType && selectedService
         ? selectedService.id === "multiday"
@@ -1302,7 +1252,7 @@ export default function BookingForm() {
       passenger: { name: contactName.trim(), phone: contactPhone.trim(), email: contactEmail.trim() },
       car: { name: v.name, klass: v.class, image: v.img.light.side },
       service: selectedService?.name ?? "Chauffeur service",
-      pickup: selectedLocation.name,
+      pickup: pickupLabel,
       dropoff,
       duration,
       date: formatCardDate(bookingDate),
@@ -1384,7 +1334,6 @@ export default function BookingForm() {
 
   const resetForm = () => {
     setCurrentStep(0);
-    setActiveIndex(0);
     setCarIndex(0);
     setDisplayedVehicleName(VEHICLES[0].name);
     setDisplayedVehicleDetails(VEHICLES[0]);
@@ -1393,7 +1342,10 @@ export default function BookingForm() {
     setContactEmail("");
     setPhoneBlurred(false);
     setEmailBlurred(false);
+    setPickupAddress("");
+    setPickupLandmark("");
     setDestination("");
+    setDestinationLandmark("");
     setSelectedVehicle(VEHICLES[0]);
     setSelectedService(null);
     setMultiDayCount("");
@@ -1509,45 +1461,11 @@ export default function BookingForm() {
     nextStep();
   };
 
-  // Commit the typed address as the selected pickup (Step 2 popup)
-  const selectCustomLocation = () => {
-    const address = customLocationInput.trim();
-    if (!address) return;
-    const landmark = customLocationLandmark.trim();
-    setIsCustomLocation(true);
-    setSelectedLocation({
-      id: "custom",
-      name: landmark ? `${address} — ${landmark}` : address,
-      subtitle: address,
-      code: "PIN",
-      desc: "",
-      coordinates: "",
-    });
-    setCustomLocationOpen(false);
-  };
-
-  // Move the location carousel; leaving any custom pickup so presets take over again
-  const moveLocation = (updater: (i: number) => number) => {
-    setIsCustomLocation(false);
-    setActiveIndex(updater);
-  };
-
   const getSuggestions = () => {
     if (!customCarInput.trim()) return [];
     const query = customCarInput.toLowerCase();
     const matches = apiModels.filter((m) => m.toLowerCase().includes(query));
     return matches.slice(0, 3);
-  };
-
-
-
-  // Carousel relative offset helper
-  const getDiff = (idx: number) => {
-    let d = idx - activeIndex;
-    const count = LOCATIONS.length;
-    if (d < -1) d += count;
-    if (d > 1) d -= count;
-    return d;
   };
 
   const heading = isLight ? "text-neutral-900" : "text-white";
@@ -1690,81 +1608,59 @@ export default function BookingForm() {
 
             {/* Step 2: Pickup Location Carousel (Black Squares) */}
             {currentStep === 1 && (
-              <div
-                className="relative w-full h-[340px] sm:h-[420px] flex items-center justify-center mt-2"
-                {...makeSwipeHandlers((dir) =>
-                  moveLocation((idx) => (idx + dir + LOCATIONS.length) % LOCATIONS.length)
-                )}
-              >
-
-                {/* Left arrow */}
-                <button
-                  onClick={() => moveLocation((idx) => (idx - 1 + LOCATIONS.length) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute left-1 sm:left-4 lg:left-12 z-20 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-300 ${isLight ? "border-neutral-900/40 bg-white/70 text-neutral-900 hover:bg-neutral-900/[0.08]" : "border-white/30 bg-white/5 text-white hover:bg-white/[0.12]"
-                    }`}
-                  aria-label="Previous Location"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
-
-                {/* The 3D-Style Carousel */}
-                <div className="relative w-full max-w-4xl h-full flex items-center justify-center overflow-visible">
-                  {LOCATIONS.map((loc, idx) => {
-                    const diff = getDiff(idx);
-                    const isActive = diff === 0;
-                    const isPrev = diff === -1;
-                    const isNext = diff === 1;
-                    const cityImg = LOCATION_CITY_IMG[loc.id];
-
-                    let transformClass = "";
-                    if (isActive) {
-                      transformClass = "translate-x-0 translate-y-0 scale-[1.15] z-10 opacity-100 rotate-0";
-                    } else if (isPrev) {
-                      transformClass = "-translate-x-[9rem] sm:-translate-x-[15rem] lg:-translate-x-[19rem] translate-y-8 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
-                    } else if (isNext) {
-                      transformClass = "translate-x-[9rem] sm:translate-x-[15rem] lg:translate-x-[19rem] translate-y-8 scale-[0.5] z-0 opacity-40 rotate-0 pointer-events-auto cursor-pointer";
-                    } else {
-                      transformClass = "translate-y-24 scale-50 z-0 opacity-0 pointer-events-none";
-                    }
-
-                    return (
-                      <div
-                        key={loc.id}
-                        onClick={() => {
-                          if (isPrev) moveLocation((i) => (i - 1 + LOCATIONS.length) % LOCATIONS.length);
-                          if (isNext) moveLocation((i) => (i + 1) % LOCATIONS.length);
-                        }}
-                        className={`absolute w-52 h-52 sm:w-64 sm:h-64 transition-all duration-700 cubic-bezier(0.25, 1, 0.5, 1) transform flex flex-col items-center justify-center ${transformClass}`}
-                      >
-                        {/* the floating-island render, centered (no code badge / card) */}
-                        <div className="relative min-h-0 w-full flex-1">
-                          <Image
-                            src={isLight ? cityImg.light : cityImg.dark}
-                            alt={loc.name}
-                            fill
-                            sizes="(max-width: 640px) 80vw, 360px"
-                            draggable={false}
-                            className="select-none object-contain"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className={`w-full max-w-md mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Pickup Address *</label>
+                  <input
+                    type="text"
+                    placeholder="Location must be accurate"
+                    value={pickupAddress}
+                    onChange={(e) => setPickupAddress(e.target.value)}
+                    className={inputStyle}
+                  />
                 </div>
 
-                {/* Right arrow */}
-                <button
-                  onClick={() => moveLocation((idx) => (idx + 1) % LOCATIONS.length)}
-                  className={`pointer-events-auto absolute right-1 sm:right-4 lg:right-12 z-20 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-300 ${isLight ? "border-neutral-900/40 bg-white/70 text-neutral-900 hover:bg-neutral-900/[0.08]" : "border-white/30 bg-white/5 text-white hover:bg-white/[0.12]"
-                    }`}
-                  aria-label="Next Location"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Popular Landmark (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. opposite Eko Hotel, beside Shoprite"
+                    value={pickupLandmark}
+                    onChange={(e) => setPickupLandmark(e.target.value)}
+                    className={inputStyle}
+                  />
+                </div>
+
+                {/* Popular pickup spots — one tap fills the address */}
+                <div className="flex flex-col gap-2">
+                  <span className={labelStyle}>Popular pickup spots</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {POPULAR_PICKUPS.map((spot) => {
+                      const active = pickupAddress.trim() === spot.name;
+                      return (
+                        <button
+                          key={spot.name}
+                          type="button"
+                          onClick={() => setPickupAddress(spot.name)}
+                          className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-tight transition-all duration-200 ${
+                            active
+                              ? isLight
+                                ? "border-[#00209C] bg-[#00209C] text-white"
+                                : "border-[#FDBA16] bg-[#FDBA16] text-neutral-950"
+                              : isLight
+                                ? "border-neutral-900/15 bg-white/40 text-neutral-700 hover:border-[#00209C]/40 hover:bg-white/70"
+                                : "border-white/15 bg-white/[0.04] text-white/70 hover:border-[#FDBA16]/40 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <span className={`mr-1.5 text-[9px] font-bold uppercase tracking-widest ${active ? "opacity-70" : isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
+                            {spot.city}
+                          </span>
+                          {spot.name.split(",")[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1772,12 +1668,23 @@ export default function BookingForm() {
             {currentStep === 2 && (
               <div className={`w-full max-w-md mt-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border ${cardBgStyle} text-left flex flex-col gap-6`}>
                 <div className="flex flex-col">
-                  <label className={labelStyle}>Destination (Optional)</label>
+                  <label className={labelStyle}>Destination Address (Optional)</label>
                   <input
                     type="text"
-                    placeholder="Where are you headed?"
+                    placeholder="Location must be accurate"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
+                    className={inputStyle}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Popular Landmark (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. opposite Eko Hotel, beside Shoprite"
+                    value={destinationLandmark}
+                    onChange={(e) => setDestinationLandmark(e.target.value)}
                     className={inputStyle}
                   />
                 </div>
@@ -2262,7 +2169,7 @@ export default function BookingForm() {
                   <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                     {[
                       { label: "Contact", value: `${contactName} · ${contactPhone}`, step: 0, required: true, done: contactComplete },
-                      { label: "Pickup", value: selectedLocation.name, step: 1, required: true, done: pickupComplete },
+                      { label: "Pickup", value: pickupLabel, step: 1, required: true, done: pickupComplete },
                       { label: "Destination", value: destination.trim() || "Optional", step: 2, required: false, done: destination.trim() !== "" },
                       { label: "Vehicle", value: `${selectedVehicle.name} · ${selectedVehicle.capacity}`, step: 3, required: true, done: vehicleComplete },
                       { label: "Service", value: serviceSummary, step: 4, required: true, done: serviceComplete },
@@ -2413,27 +2320,6 @@ export default function BookingForm() {
                   </button>
                 </div>
 
-                <div
-                  className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
-                    currentStep === 1
-                      ? "max-w-[240px] opacity-100 translate-x-0"
-                      : "max-w-0 opacity-0 translate-x-4 pointer-events-none"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setCustomLocationOpen(true)}
-                    className={`pointer-events-auto ml-3 rounded-full border h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
-                      isCustomLocation ? "border-solid" : "border-dashed"
-                    } ${
-                      isLight
-                        ? "border-[#00209C] text-[#00209C] hover:bg-[#00209C]/[0.05]"
-                        : "border-[#FDBA16] text-[#FDBA16] hover:bg-[#FDBA16]/[0.05]"
-                    }`}
-                  >
-                    {isCustomLocation ? "Custom location ✓" : "Customize location"}
-                  </button>
-                </div>
               </div>
 
               {/* Hand-off note from the fleet page — shown until the user reaches Car Type */}
@@ -2852,99 +2738,6 @@ export default function BookingForm() {
         </div>
       </div>
 
-      {/* Custom pickup location popup (Step 2 "Customize location") */}
-      <div
-        onClick={() => setCustomLocationOpen(false)}
-        aria-hidden={!customLocationOpen}
-        className={`fixed inset-0 z-[60] flex items-center justify-center px-4 transition-opacity duration-300 ${
-          customLocationOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        style={{
-          backgroundColor: customLocationOpen ? "rgba(0,0,0,0.30)" : "transparent",
-          backdropFilter: customLocationOpen ? "blur(4px)" : "blur(0px)",
-          WebkitBackdropFilter: customLocationOpen ? "blur(4px)" : "blur(0px)",
-        }}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Custom Pickup Location"
-          className={`relative w-full max-w-md rounded-[2rem] sm:rounded-[2.5rem] border p-6 sm:p-8 shadow-lg backdrop-blur-xl transition-all duration-300 ${
-            customLocationOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-2"
-          } ${
-            isLight
-              ? "bg-white/80 border-neutral-900/10 text-neutral-900 shadow-neutral-900/5"
-              : "bg-neutral-950/70 border-white/10 text-white shadow-black/30"
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => setCustomLocationOpen(false)}
-            className={`absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-widest transition-colors duration-200 ${
-              isLight ? "text-neutral-900/40 hover:text-neutral-900" : "text-white/40 hover:text-white"
-            }`}
-          >
-            Close
-          </button>
-
-          <div className="text-center mb-6">
-            <div
-              className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2"
-              style={{ color: isLight ? "#00209C" : "#FDBA16" }}
-            >
-              Customize
-            </div>
-            <h2 className={`text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
-              Enter your pickup spot
-            </h2>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className={labelStyle}>Street / Area Address *</label>
-              <input
-                ref={customLocationInputRef}
-                type="text"
-                value={customLocationInput}
-                autoComplete="street-address"
-                onChange={(e) => setCustomLocationInput(e.target.value)}
-                placeholder="Location must be accurate"
-                className={modalInputStyle}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    selectCustomLocation();
-                  }
-                }}
-              />
-              <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
-                Type the full pickup address exactly as your chauffeur should find it — street, number, and area.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className={labelStyle}>Location Landmark (Optional)</label>
-              <input
-                type="text"
-                value={customLocationLandmark}
-                onChange={(e) => setCustomLocationLandmark(e.target.value)}
-                placeholder="e.g. opposite Eko Hotel, beside Shoprite"
-                className={modalInputStyle}
-              />
-              <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>
-                A well-known spot nearby helps your chauffeur find you faster.
-              </p>
-            </div>
-
-            <div className="mt-1 flex justify-center">
-              <CtaButton isLight={isLight} disabled={!customLocationInput.trim()} onClick={selectCustomLocation}>
-                Confirm
-              </CtaButton>
-            </div>
-          </div>
-        </div>
-      </div>
     </main>
   );
 }
