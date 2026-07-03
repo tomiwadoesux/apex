@@ -156,3 +156,18 @@ select:-webkit-autofill:focus {
 }
 
 
+
+/* Brand-accent scrollbar for scrollable panels (fleet roster, car lists).
+   `accent-scrollbar-lg` hides it below lg — used where a custom indicator
+   replaces it on phones. */
+.accent-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #2a4fd0 transparent;
+}
+.accent-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.accent-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.accent-scrollbar::-webkit-scrollbar-thumb { background: #2a4fd0; border-radius: 9999px; }
+@media (max-width: 1023px) {
+  .accent-scrollbar-lg { scrollbar-width: none; }
+  .accent-scrollbar-lg::-webkit-scrollbar { display: none; }
+}

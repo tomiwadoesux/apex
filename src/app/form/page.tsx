@@ -456,6 +456,7 @@ export default function BookingForm() {
   const [contactOpen, setContactOpen] = useState(false);
 
   const [customCarOpen, setCustomCarOpen] = useState(false);
+  const [carListOpen, setCarListOpen] = useState(false); // compact all-cars list (Car Type step)
   const [customCarInput, setCustomCarInput] = useState("");
   const [customCarYear, setCustomCarYear] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
@@ -1212,6 +1213,36 @@ export default function BookingForm() {
       document.body.style.overflow = prevOverflow;
     };
   }, [customCarOpen]);
+
+  // Close the all-cars list on Escape; lock body scroll while it's open.
+  useEffect(() => {
+    if (!carListOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCarListOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [carListOpen]);
+
+  // Jump the carousel straight to a car picked from the all-cars list.
+  const selectCarFromList = (i: number) => {
+    setIsCustomCar(false);
+    setCarIndex(i);
+    setDisplayedVehicleName(VEHICLES[i].name);
+    setDisplayedVehicleDetails(VEHICLES[i]);
+    setSelectedVehicle(VEHICLES[i]);
+    setCarListOpen(false);
+  };
+
+  // The Schedule step always opens on the Quick Pickup path first.
+  useEffect(() => {
+    if (currentStep === 6) setScheduleMode("quick");
+  }, [currentStep]);
 
   const toggleTheme = (theme: Mode) => {
     setMode(theme);
@@ -2369,8 +2400,9 @@ export default function BookingForm() {
                       : "max-w-0 opacity-0 translate-x-4 pointer-events-none"
                   }`}
                 >
-                  <Link
-                    href="/fleet"
+                  <button
+                    type="button"
+                    onClick={() => setCarListOpen(true)}
                     className={`pointer-events-auto ml-3 rounded-full border border-dashed h-10 px-7 text-xs font-semibold tracking-wider transition-all duration-300 hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap flex items-center justify-center ${
                       isLight
                         ? "border-[#00209C] text-[#00209C] hover:bg-[#00209C]/[0.05]"
@@ -2378,7 +2410,7 @@ export default function BookingForm() {
                     }`}
                   >
                     Explore our fleet
-                  </Link>
+                  </button>
                 </div>
 
                 <div
@@ -2581,6 +2613,97 @@ export default function BookingForm() {
         headerLogoRef={logoContainerRef}
         logoSize={28}
       />
+
+      {/* All-cars list (Car Type step) — same compact list as the fleet page:
+          photo left, name + class beside it. Bottom sheet on phones, centred
+          card on larger screens. Tapping a row puts that car on the carousel. */}
+      {carListOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/35 backdrop-blur-sm sm:items-center sm:px-6"
+          onClick={() => setCarListOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="All cars"
+            onClick={(e) => e.stopPropagation()}
+            className={`flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border shadow-2xl backdrop-blur-xl sm:max-h-[70vh] sm:rounded-3xl ${
+              isLight ? "border-neutral-200 bg-white/95 text-neutral-900" : "border-white/10 bg-neutral-950/90 text-white"
+            }`}
+          >
+            <div className={`flex shrink-0 items-center justify-between border-b px-5 py-4 ${isLight ? "border-neutral-100" : "border-white/[0.07]"}`}>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>All cars</div>
+                <div className={`mt-0.5 text-sm ${isLight ? "text-neutral-400" : "text-white/40"}`}>{VEHICLES.length} cars in the fleet</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCarListOpen(false)}
+                className={`text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+                  isLight ? "text-neutral-400 hover:text-neutral-900" : "text-white/40 hover:text-white"
+                }`}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
+              {VEHICLES.map((v, i) => {
+                const active = !isCustomCar && i === carIndex;
+                const activeBg = isLight ? "bg-[#00209C]/[0.07]" : "bg-[#FDBA16]/[0.09]";
+                const hoverBg = isLight ? "hover:bg-neutral-100" : "hover:bg-white/[0.06]";
+                const activeInk = isLight ? "text-[#00209C]" : "text-[#FDBA16]";
+                return (
+                  <button
+                    key={v.name}
+                    type="button"
+                    onClick={() => selectCarFromList(i)}
+                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${active ? activeBg : hoverBg}`}
+                  >
+                    <span className="relative block h-9 w-16 shrink-0">
+                      <Image
+                        src={encodeURI(`/images/${v.img[isLight ? "light" : "dark"].side}`)}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-contain"
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-sm font-medium ${active ? activeInk : isLight ? "text-neutral-900" : "text-white"}`}>{v.name}</span>
+                      <span className={`block truncate text-[11px] ${isLight ? "text-neutral-400" : "text-white/40"}`}>{v.year} · {v.class}</span>
+                    </span>
+                    {active && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isLight ? "#00209C" : "#FDBA16"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* bespoke request row — opens the Other Options popup */}
+              <button
+                type="button"
+                onClick={() => { setCarListOpen(false); setCustomCarOpen(true); }}
+                className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                  isCustomCar
+                    ? isLight ? "bg-[#00209C]/[0.07]" : "bg-[#FDBA16]/[0.09]"
+                    : isLight ? "hover:bg-neutral-100" : "hover:bg-white/[0.06]"
+                }`}
+              >
+                <span className="grid h-9 w-16 shrink-0 place-items-center">
+                  <span className={`grid h-8 w-8 place-items-center rounded-full border border-dashed text-sm ${isLight ? "border-neutral-300 text-neutral-400" : "border-white/25 text-white/45"}`}>?</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-sm font-medium ${isCustomCar ? (isLight ? "text-[#00209C]" : "text-[#FDBA16]") : isLight ? "text-neutral-900" : "text-white"}`}>Something else</span>
+                  <span className={`block truncate text-[11px] ${isLight ? "text-neutral-400" : "text-white/40"}`}>Request any make, model and year</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom vehicle selection overlay — blurs the page and allows search input */}
       <div

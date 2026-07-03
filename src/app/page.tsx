@@ -332,8 +332,10 @@ export default function Home() {
 
   return (
     <main className="relative w-full">
-      {/* tall spacer sets the scroll length; the stage inside stays pinned */}
-      <div ref={spacerRef} style={{ height: `${STORY_VH}vh` }}>
+      {/* tall spacer sets the scroll length; the stage inside stays pinned.
+          It sits ABOVE the footer (z-10 + opaque stage) so the sticky footer
+          below is hidden until the story scrolls up past it. */}
+      <div ref={spacerRef} className="relative z-10" style={{ height: `${STORY_VH}vh`, backgroundColor: "#f6f7f9" }}>
         <div className="sticky top-0 h-screen w-full overflow-hidden">
           {/* base wash so the pinned stage is never transparent */}
           <div className="absolute inset-0 z-0" style={{ backgroundColor: "#f6f7f9" }} />
@@ -528,11 +530,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FOOTER — flows in after the pinned story ends. A blue CTA banner card
-          floats over the dark navy slab; link columns beneath it; a giant faint
-          brand watermark bleeds off the bottom (same oversized-mark treatment as
-          the ride-pass cards). */}
-      <footer className="relative z-10 w-full overflow-hidden" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
+      {/* FOOTER — REVEALED, not scrolled in: on sm+ it sticks to the viewport
+          bottom BEHIND the story (z-0 vs the story's z-10), so the page appears
+          to lift away like a curtain and expose it. On phones (where the footer
+          is taller than the screen) it stays in normal flow. A blue CTA banner
+          card floats over the dark navy slab; link columns beneath it; a giant
+          faint brand watermark bleeds off the bottom. */}
+      <footer className="relative z-10 w-full overflow-hidden sm:sticky sm:bottom-0 sm:z-0" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
         {/* soft blue bloom behind the CTA card */}
         <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[720px] -translate-x-1/2 rounded-full blur-3xl" style={{ background: accent, opacity: 0.14 }} />
 
