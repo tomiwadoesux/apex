@@ -528,61 +528,127 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FOOTER — flows in after the pinned story ends. Dark navy slab, brand lockup,
-          quick links + contact channels, and a final booking CTA. */}
-      <footer className="relative z-10 w-full" style={{ background: "linear-gradient(180deg, #0d1118 0%, #070a0f 100%)", color: "#eef1f6" }}>
-        {/* hairline brand accent along the top edge */}
-        <div aria-hidden className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+      {/* FOOTER — flows in after the pinned story ends. A blue CTA banner card
+          floats over the dark navy slab; link columns beneath it; a giant faint
+          brand watermark bleeds off the bottom (same oversized-mark treatment as
+          the ride-pass cards). */}
+      <footer className="relative z-10 w-full overflow-hidden" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
+        {/* soft blue bloom behind the CTA card */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[720px] -translate-x-1/2 rounded-full blur-3xl" style={{ background: accent, opacity: 0.14 }} />
 
-        <div className="mx-auto w-full max-w-6xl px-6 pb-10 pt-14 sm:px-10">
-          {/* CTA row */}
-          <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-10 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="font-josefin text-3xl font-light leading-tight tracking-tight sm:text-4xl">Ready when you are.</h2>
-              <p className="mt-1.5 text-sm text-white/55">Chauffeur-driven rides across Lagos &amp; Abuja — booked in minutes.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
-              <HatchButton label="Our fleet" href="/fleet" Icon={CarIcon} variant="light" hatch={false} />
+        {/* giant brand watermark — cropped by the footer's bottom edge */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -bottom-[0.28em] select-none whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.04em]"
+          style={{ fontSize: "min(13.5vw, 190px)", color: "rgba(255,255,255,0.028)" }}
+        >
+          ApexRide
+        </div>
+
+        <div className="relative mx-auto w-full max-w-6xl px-6 pb-10 pt-16 sm:px-10">
+          {/* CTA banner — brand-blue gradient card with the same inner sheen as the CTAs */}
+          <div
+            className="relative overflow-hidden rounded-[1.75rem] px-7 py-9 sm:rounded-[2rem] sm:px-10 sm:py-11"
+            style={{
+              background: "linear-gradient(135deg, #3A60E0 0%, #2A4FD0 55%, #1B3AAE 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 24px 60px -24px rgba(42,79,208,0.55)",
+            }}
+          >
+            {/* faint diagonal hatch, echoing the hero CTA texture */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-8"
+              style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 18px)" }}
+            />
+            {/* oversized faint logo bleeding off the card corner — depth, not a centre mark */}
+            <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 opacity-[0.1]">
+              <Logo size={190} color="#ffffff" accent="#ffffff" />
+            </span>
+
+            <div className="relative flex flex-col items-start justify-between gap-7 sm:flex-row sm:items-center">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.32em] text-white/60">Apex Ride</div>
+                <h2 className="mt-2 font-josefin text-3xl font-light leading-[1.06] tracking-tight text-white sm:text-4xl">
+                  Ready when you are.
+                </h2>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/70">
+                  Chauffeur-driven rides across Lagos &amp; Abuja — booked in minutes.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href="/form"
+                  className="inline-flex h-11 items-center gap-2.5 rounded-full bg-white px-6 text-sm font-semibold tracking-wide text-[#12234f] transition-transform duration-150 hover:scale-[1.02] active:translate-y-px"
+                  style={{ boxShadow: "0 10px 24px -10px rgba(0,0,0,0.4)" }}
+                >
+                  <CalendarIcon className="h-4 w-4 shrink-0" />
+                  Book Now
+                </a>
+                <a
+                  href="/fleet"
+                  className="inline-flex h-11 items-center gap-2.5 rounded-full border border-white/45 px-6 text-sm font-semibold tracking-wide text-white transition-colors duration-150 hover:bg-white/10"
+                >
+                  <CarIcon className="h-4 w-4 shrink-0" />
+                  Our fleet
+                </a>
+              </div>
             </div>
           </div>
 
           {/* link columns */}
-          <div className="grid grid-cols-2 gap-10 pt-10 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 pt-14 sm:grid-cols-4">
             <div className="col-span-2 sm:col-span-1">
               <Link href="/" className="inline-flex items-center gap-2.5">
                 <Logo size={26} color="#f3f5fa" accent={accent} />
                 <span className="text-sm font-bold uppercase tracking-[0.08em]">
-                  Apex<span className="font-semibold" style={{ color: accent }}>Ride</span>
+                  Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
                 </span>
               </Link>
-              <p className="mt-3 max-w-[26ch] text-xs leading-relaxed text-white/45">
+              <p className="mt-3.5 max-w-[26ch] text-xs leading-relaxed text-white/40">
                 Ride and arrive in style. Executive chauffeur service for airports, business and beyond.
               </p>
             </div>
 
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Explore</div>
-              <ul className="mt-3 flex flex-col gap-2 text-sm">
-                <li><Link href="/fleet" className="text-white/70 transition-colors hover:text-white">Our fleet</Link></li>
-                <li><Link href="/services" className="text-white/70 transition-colors hover:text-white">Services</Link></li>
-                <li><Link href="/form" className="text-white/70 transition-colors hover:text-white">Book a ride</Link></li>
-                <li><Link href="/check-booking" className="text-white/70 transition-colors hover:text-white">Check booking</Link></li>
-              </ul>
-            </div>
+            {[
+              {
+                title: "Explore",
+                links: [
+                  { label: "Our fleet", href: "/fleet" },
+                  { label: "Services", href: "/services" },
+                  { label: "Book a ride", href: "/form" },
+                  { label: "Check booking", href: "/check-booking" },
+                ],
+              },
+              {
+                title: "Contact",
+                links: [
+                  { label: "contact@apexride.com", href: "mailto:contact@apexride.com" },
+                  { label: "WhatsApp", href: "https://wa.me/2348000000000" },
+                  { label: "@apexride", href: "https://instagram.com/apexride" },
+                ],
+              },
+            ].map((col) => (
+              <div key={col.title}>
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: "#8aa2ff" }}>{col.title}</div>
+                <ul className="mt-4 flex flex-col gap-2.5 text-sm">
+                  {col.links.map((l) => (
+                    <li key={l.label}>
+                      <a
+                        href={l.href}
+                        className="group inline-flex items-center gap-1.5 text-white/60 transition-colors hover:text-white"
+                      >
+                        {l.label}
+                        <span aria-hidden className="translate-x-0 text-[#8aa2ff] opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100">→</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Contact</div>
-              <ul className="mt-3 flex flex-col gap-2 text-sm">
-                <li><a href="mailto:contact@apexride.com" className="text-white/70 transition-colors hover:text-white">contact@apexride.com</a></li>
-                <li><a href="https://wa.me/2348000000000" className="text-white/70 transition-colors hover:text-white">WhatsApp</a></li>
-                <li><a href="https://instagram.com/apexride" className="text-white/70 transition-colors hover:text-white">@apexride</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">Service</div>
-              <ul className="mt-3 flex flex-col gap-2 text-sm text-white/70">
+              <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: "#8aa2ff" }}>Service</div>
+              <ul className="mt-4 flex flex-col gap-2.5 text-sm text-white/60">
                 <li>Airport pickup</li>
                 <li>Daily chauffeur</li>
                 <li>Interstate transit</li>
@@ -591,9 +657,12 @@ export default function Home() {
           </div>
 
           {/* base row */}
-          <div className="mt-12 flex flex-col items-start justify-between gap-2 border-t border-white/10 pt-5 text-[11px] tracking-wide text-white/35 sm:flex-row sm:items-center">
+          <div className="mt-14 flex flex-col items-start justify-between gap-2 border-t border-white/[0.08] pt-6 text-[11px] tracking-wide text-white/30 sm:flex-row sm:items-center">
             <span>© {new Date().getFullYear()} ApexRide. All rights reserved.</span>
-            <span>Lagos &amp; Abuja, Nigeria</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+              Lagos &amp; Abuja, Nigeria
+            </span>
           </div>
         </div>
       </footer>
