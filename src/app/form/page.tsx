@@ -1795,7 +1795,7 @@ export default function BookingForm() {
                         width={800}
                         height={450}
                         draggable={false}
-                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        className="w-full h-auto max-h-[24vh] object-contain select-none pointer-events-none drop-shadow-2xl"
                         sizes="(max-width: 768px) 100vw, 800px"
                       />
                     </div>
@@ -1818,7 +1818,7 @@ export default function BookingForm() {
                         width={800}
                         height={450}
                         draggable={false}
-                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        className="w-full h-auto max-h-[24vh] object-contain select-none pointer-events-none drop-shadow-2xl"
                         sizes="(max-width: 768px) 100vw, 800px"
                       />
                     </div>
@@ -1841,7 +1841,7 @@ export default function BookingForm() {
                         width={800}
                         height={450}
                         draggable={false}
-                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        className="w-full h-auto max-h-[24vh] object-contain select-none pointer-events-none drop-shadow-2xl"
                         sizes="(max-width: 768px) 100vw, 800px"
                       />
                     </div>
@@ -1863,7 +1863,7 @@ export default function BookingForm() {
                         width={800}
                         height={450}
                         draggable={false}
-                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-2xl"
+                        className="w-full h-auto max-h-[24vh] object-contain select-none pointer-events-none drop-shadow-2xl"
                         sizes="(max-width: 768px) 100vw, 800px"
                       />
                     </div>
