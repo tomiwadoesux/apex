@@ -536,13 +536,33 @@ export default function Home() {
         {/* soft blue bloom behind the CTA card */}
         <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[720px] -translate-x-1/2 rounded-full blur-3xl" style={{ background: accent, opacity: 0.14 }} />
 
-        {/* giant brand watermark — cropped by the footer's bottom edge */}
+        {/* giant brand watermark — cropped by the footer's bottom edge. On a slow
+            loop, "Ride" (amber accent) drives left BEHIND "Apex" and fades away
+            while "Apex" glides over to hold the centre; it rests there, then
+            "Ride" pulls back out and the lockup reassembles. Static under
+            prefers-reduced-motion. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 -bottom-[0.28em] select-none whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.04em]"
-          style={{ fontSize: "min(13.5vw, 190px)", color: "rgba(255,255,255,0.028)" }}
+          className="pointer-events-none absolute inset-x-0 -bottom-[0.28em] select-none overflow-hidden whitespace-nowrap text-center font-josefin font-light uppercase leading-none tracking-[0.04em]"
+          style={{ fontSize: "min(13.5vw, 190px)" }}
         >
-          ApexRide
+          <style>{`
+            @keyframes apexfoot-apex{0%,10%{transform:translateX(0)}32%,64%{transform:translateX(48%)}86%,100%{transform:translateX(0)}}
+            @keyframes apexfoot-ride{0%,10%{transform:translateX(0);opacity:1}32%,64%{transform:translateX(-94%);opacity:0}86%,100%{transform:translateX(0);opacity:1}}
+            @media (prefers-reduced-motion: reduce){.apexfoot-apex,.apexfoot-ride{animation:none!important}}
+          `}</style>
+          <span
+            className="apexfoot-apex relative z-[1] inline-block"
+            style={{ color: "rgba(255,255,255,0.032)", animation: "apexfoot-apex 10s ease-in-out infinite" }}
+          >
+            Apex
+          </span>
+          <span
+            className="apexfoot-ride inline-block"
+            style={{ color: "rgba(253,186,22,0.075)", animation: "apexfoot-ride 10s ease-in-out infinite" }}
+          >
+            Ride
+          </span>
         </div>
 
         <div className="relative mx-auto w-full max-w-6xl px-6 pb-10 pt-16 sm:px-10">
