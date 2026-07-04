@@ -564,9 +564,9 @@ export default function Home() {
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 24px 60px -24px rgba(42,79,208,0.55)",
             }}
           >
-            {/* oversized faint logo bleeding off the card corner — depth, not a centre mark */}
+            {/* oversized faint logo bleeding off the card corner — slow 3D turntable spin */}
             <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 opacity-[0.1]">
-              <Logo size={190} color="#ffffff" accent="#ffffff" />
+              <Logo size={190} color="#ffffff" accent="#ffffff" animate="spin3d" />
             </span>
 
             <div className="relative flex flex-col items-start justify-between gap-7 sm:flex-row sm:items-center">
@@ -599,10 +599,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* brand row — the 3D-spinning logo lockup with a slim inline nav */}
+          {/* brand row — static logo lockup with a slim inline nav */}
           <div className="flex flex-col items-center justify-between gap-6 pt-12 sm:flex-row">
             <Link href="/" className="inline-flex items-center gap-3">
-              <Logo size={34} color="#f3f5fa" accent={accent} animate="spin3d" />
+              <Logo size={34} color="#f3f5fa" accent={accent} />
               <span className="text-sm font-bold uppercase tracking-[0.08em]">
                 Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
               </span>
