@@ -57,7 +57,9 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    void loadAll();
+    // deferred a tick so the data fetch never sets state inside the effect body
+    const t = setTimeout(() => void loadAll(), 0);
+    return () => clearTimeout(t);
   }, [loadAll]);
 
   const login = async () => {
