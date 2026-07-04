@@ -10,9 +10,9 @@
 import type { Booking } from "./bookings";
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
-// apex.ayotomcs.me must be verified as a domain in the Resend dashboard for
-// this sender to deliver; RESEND_FROM overrides it if that ever changes.
-const FROM = process.env.RESEND_FROM || "ApexRide <bookings@apex.ayotomcs.me>";
+// ayotomcs.me is the domain verified in Resend, so senders must live on it —
+// not on the apex. subdomain. RESEND_FROM overrides if that ever changes.
+const FROM = process.env.RESEND_FROM || "ApexRide <bookings@ayotomcs.me>";
 const COMPANY_EMAIL = process.env.COMPANY_EMAIL;
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const SITE_URL = process.env.SITE_URL || "https://apex.ayotomcs.me";
