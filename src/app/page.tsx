@@ -242,6 +242,8 @@ export default function Home() {
   const [quickOpen, setQuickOpen] = useState(false); // Quick Booking popup (progress persists while closed)
   const [reveal, setReveal] = useState(false); // on-load intro (headline stands up + fleet in)
   const [p, setP] = useState(0); // scroll progress 0..1 across the pinned story
+  const [fr, setFr] = useState(0); // footer reveal 0..1 — drives the CTA merge (Book Now tucks behind Quick booking)
+  const [ctaW, setCtaW] = useState({ quick: 0, book: 0 }); // measured button widths for the merge math
   const [bgLoaded, setBgLoaded] = useState(false); // full city photo (FORNT-BG) decoded
   const [scrollPct, setScrollPct] = useState(0); // whole-page scroll 0..1 → accent scroll bar fill
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -308,7 +310,36 @@ export default function Home() {
       end: "bottom bottom",
       onUpdate: (self) => setP(self.progress),
     });
-    return () => st.kill();
+    // Footer reveal: progress of scrolling PAST the story into the footer. Drives
+    // the CTA merge and reverses on scroll up.
+    const ft = ScrollTrigger.create({
+      trigger: spacerRef.current,
+      start: "bottom bottom",
+      end: "bottom 55%",
+      onUpdate: (self) => setFr(self.progress),
+    });
+    return () => {
+      st.kill();
+      ft.kill();
+    };
+  }, []);
+
+  // Measure the two CTA buttons (constant natural widths) so Book Now can slide
+  // exactly underneath Quick booking during the footer merge.
+  const quickWrapRef = useRef<HTMLDivElement>(null);
+  const bookWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const measure = () =>
+      setCtaW({
+        quick: quickWrapRef.current?.querySelector("a")?.offsetWidth ?? 0,
+        book: bookWrapRef.current?.querySelector("a")?.offsetWidth ?? 0,
+      });
+    const t = setTimeout(measure, 0);
+    window.addEventListener("resize", measure);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   const isLight = theme === "light"; // light-mode only, but the popup keeps its ternaries
@@ -544,30 +575,46 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Buttons — anchored LOW in the hero, centred (decoupled from the centred
-              headline so they sit well down the stage). Persist as the CTA and rise
-              slightly as the headline leaves (riseUp), which folds into `bottom`
-              alongside the baked BUTTONS_Y offset (no transform). */}
+          {/* Buttons — anchored LOW and FIXED to the viewport (identical to absolute
+              while the stage is pinned) so they can persist over the footer reveal.
+              As the footer shows (fr), Book Now slides underneath Quick booking and
+              its slot collapses, letting Quick booking settle in the centre of the
+              screen; scrolling back up reverses the merge. */}
           <div
-            className="absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
+            className="pointer-events-none fixed inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
           >
-            <HatchButton
-              label="Quick booking"
-              href="#quick-booking"
-              Icon={BoltIcon}
-              variant="dark"
-              hatch={false}
-              onClick={(e) => {
-                e.preventDefault();
-                setQuickOpen(true);
-              }}
-            />
-            <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
+            <div ref={quickWrapRef} className="relative z-10">
+              <HatchButton
+                label="Quick booking"
+                href="#quick-booking"
+                Icon={BoltIcon}
+                variant="dark"
+                hatch={false}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setQuickOpen(true);
+                }}
+              />
+            </div>
+            <div
+              ref={bookWrapRef}
+              className="relative z-0"
+              style={{ width: ctaW.book ? lerp(ctaW.book, 0, fr) : undefined, marginLeft: `${(-12 * fr).toFixed(1)}px` }}
+            >
+              <div
+                style={{
+                  transform: `translateX(${(-fr * (ctaW.quick / 2 + 12 + ctaW.book / 2)).toFixed(1)}px) scale(${(1 - 0.1 * fr).toFixed(3)})`,
+                  opacity: 1 - 0.3 * fr,
+                }}
+              >
+                <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
