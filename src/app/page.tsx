@@ -144,12 +144,18 @@ function HatchButton({
   const ink = isAccent || dark ? "#ffffff" : "#0a0a0a";
   const line = isAccent ? "rgba(255,255,255,0.14)" : dark ? "rgba(255,255,255,0.10)" : "rgba(10,10,10,0.08)";
   const border = isAccent ? "rgba(15,32,110,0.5)" : dark ? "rgba(255,255,255,0.16)" : "rgba(10,10,10,0.18)";
-  const sheen = isAccent ? "inset 0 1px 0 rgba(255,255,255,0.28)" : dark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.9)";
+  // inner sheen + a soft drop shadow so the pills lift off busy photography;
+  // the accent slab gets a blue glow instead of a neutral one.
+  const sheen = isAccent
+    ? "inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 34px -14px rgba(42,79,208,0.65)"
+    : dark
+    ? "inset 0 1px 0 rgba(255,255,255,0.14), 0 16px 34px -16px rgba(0,0,0,0.6)"
+    : "inset 0 1px 0 rgba(255,255,255,0.9), 0 16px 34px -16px rgba(0,0,0,0.35)";
   return (
     <a
       href={href}
       onClick={onClick}
-      className="group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-full border px-6 text-sm font-semibold tracking-wide transition-transform duration-150 active:translate-y-px"
+      className="group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-full border px-6 text-sm font-semibold tracking-wide transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-px"
       style={{ background: bg, color: ink, borderColor: border, boxShadow: sheen }}
     >
       {/* diagonal hatch — oversized so it can slide on hover without exposing an edge */}
@@ -502,23 +508,41 @@ export default function Home() {
             </div>
           </div>
 
-          {/* CTA sub-label — sits just above the buttons and tracks the same nudges.
-              Uses the same adaptive ink (headInk) as the headline: dark on the light
-              hero, white over the dark city overlay — clean and legible on both, with
-              no mix-blend ghosting. */}
-          <span
-            className="pointer-events-none absolute inset-x-0 z-[26] block whitespace-nowrap text-center text-[11px] font-medium uppercase tracking-[0.2em]"
+          {/* CTA sub-label — a frosted-glass pill of the three services, separated by
+              accent dots. The glass flips from light to dark with the overlay
+              (overlayIn) so it stays legible on both the light hero and the city
+              photo, and the ink tracks headInk like the headline. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4"
             style={{
-              bottom: `calc(14% + ${(56 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              color: headInk,
+              bottom: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
           >
-            Airport Pickup&nbsp;&nbsp;|&nbsp;&nbsp;Daily chauffeur service
-            <br />
-            Interstate transit
-          </span>
+            <div
+              className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 rounded-full border px-5 py-2.5 backdrop-blur-md sm:gap-x-4 sm:px-6"
+              style={{
+                color: headInk,
+                background: `rgba(${overlayIn > 0.5 ? "8,10,16" : "255,255,255"}, ${lerp(0.32, 0.26, overlayIn).toFixed(2)})`,
+                borderColor: `rgba(${overlayIn > 0.5 ? "255,255,255" : "10,14,26"}, 0.14)`,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 14px 34px -18px rgba(0,0,0,0.45)",
+              }}
+            >
+              {["Airport Pickup", "Daily Chauffeur", "Interstate Transit"].map((s, i) => (
+                <span key={s} className="flex items-center gap-x-3.5 sm:gap-x-4">
+                  {i > 0 && (
+                    <span
+                      aria-hidden
+                      className="hidden h-1 w-1 rounded-full sm:inline-block"
+                      style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
+                    />
+                  )}
+                  <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.22em] sm:text-[11px]">{s}</span>
+                </span>
+              ))}
+            </div>
+          </div>
 
           {/* Buttons — anchored LOW in the hero, centred (decoupled from the centred
               headline so they sit well down the stage). Persist as the CTA and rise
