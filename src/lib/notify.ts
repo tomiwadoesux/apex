@@ -77,7 +77,65 @@ async function sendPush(b: Booking): Promise<void> {
   if (!res.ok) throw new Error(`ntfy ${res.status}`);
 }
 
+// Which channels the server actually has configured — surfaced in /admin so a
+// missing env var is visible instead of a silent skip.
+export function notificationStatus() {
+  return {
+    resend: Boolean(RESEND_KEY),
+    companyEmail: COMPANY_EMAIL || null,
+    from: FROM,
+    ntfyTopic: NTFY_TOPIC || null,
+    supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+  };
+}
+
+// Fires every configured channel with a test message and reports exactly what
+// happened on each — the /admin "Send test" button.
+export async function sendTestNotifications(): Promise<{ channel: string; ok: boolean; detail: string }[]> {
+  const results: { channel: string; ok: boolean; detail: string }[] = [];
+  const fake: Booking = {
+    id: "APX-TEST00",
+    createdAt: Date.now(),
+    passenger: { name: "Test Passenger", phone: "+2340000000000", email: "" },
+    car: { name: "Test Car", klass: "Test", image: null },
+    service: "Notification test",
+    pickup: "Admin panel",
+    dropoff: null,
+    duration: null,
+    date: "today",
+    time: "now",
+    light: true,
+  };
+  if (!RESEND_KEY) {
+    results.push({ channel: "email", ok: false, detail: "RESEND_API_KEY is not set" });
+  } else if (!COMPANY_EMAIL) {
+    results.push({ channel: "email", ok: false, detail: "COMPANY_EMAIL is not set" });
+  } else {
+    try {
+      await sendEmail(COMPANY_EMAIL, "ApexRide test notification", emailShell("Test notification", "If you can read this, booking emails are working.", fake));
+      results.push({ channel: "email", ok: true, detail: `sent to ${COMPANY_EMAIL} from ${FROM}` });
+    } catch (e) {
+      results.push({ channel: "email", ok: false, detail: String(e).slice(0, 300) });
+    }
+  }
+  if (!NTFY_TOPIC) {
+    results.push({ channel: "push", ok: false, detail: "NTFY_TOPIC is not set" });
+  } else {
+    try {
+      await sendPush(fake);
+      results.push({ channel: "push", ok: true, detail: `pushed to ntfy.sh/${NTFY_TOPIC}` });
+    } catch (e) {
+      results.push({ channel: "push", ok: false, detail: String(e).slice(0, 300) });
+    }
+  }
+  return results;
+}
+
 export async function notifyBookingCreated(b: Booking): Promise<void> {
+  if (!RESEND_KEY && !NTFY_TOPIC) {
+    console.warn("[notify] skipped — no RESEND_API_KEY or NTFY_TOPIC configured");
+    return;
+  }
   const jobs: Promise<void>[] = [];
 
   if (RESEND_KEY && b.passenger.email) {

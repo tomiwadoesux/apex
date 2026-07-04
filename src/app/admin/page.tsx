@@ -44,17 +44,33 @@ export default function AdminPage() {
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
+  const [notifyStatus, setNotifyStatus] = useState<{ resend: boolean; companyEmail: string | null; ntfyTopic: string | null; supabase: boolean } | null>(null);
+  const [testResults, setTestResults] = useState<{ channel: string; ok: boolean; detail: string }[] | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const loadAll = useCallback(async () => {
-    const [b, c] = await Promise.all([fetch("/api/admin/bookings"), fetch("/api/admin/config")]);
+    const [b, c, n] = await Promise.all([
+      fetch("/api/admin/bookings"),
+      fetch("/api/admin/config"),
+      fetch("/api/admin/notify-status"),
+    ]);
     if (b.status === 401 || c.status === 401) {
       setAuthed(false);
       return;
     }
     setBookings((await b.json()).bookings ?? []);
     setConfig(await c.json());
+    if (n.ok) setNotifyStatus(await n.json());
     setAuthed(true);
   }, []);
+
+  const runNotifyTest = async () => {
+    setTesting(true);
+    setTestResults(null);
+    const res = await fetch("/api/admin/notify-status", { method: "POST" });
+    if (res.ok) setTestResults((await res.json()).results ?? []);
+    setTesting(false);
+  };
 
   useEffect(() => {
     // deferred a tick so the data fetch never sets state inside the effect body
@@ -187,6 +203,42 @@ export default function AdminPage() {
                 Refresh
               </button>
             </div>
+
+            {/* notification channels — green when the env var is present on the server */}
+            {notifyStatus && (
+              <div className={card}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold">
+                    <span className="text-neutral-400 uppercase tracking-wider">Notifications</span>
+                    {[
+                      { on: notifyStatus.resend, name: notifyStatus.resend ? "Email keys OK" : "No RESEND_API_KEY" },
+                      { on: Boolean(notifyStatus.companyEmail), name: notifyStatus.companyEmail ? `Alerts → ${notifyStatus.companyEmail}` : "No COMPANY_EMAIL" },
+                      { on: Boolean(notifyStatus.ntfyTopic), name: notifyStatus.ntfyTopic ? `Push → ${notifyStatus.ntfyTopic}` : "No NTFY_TOPIC" },
+                      { on: notifyStatus.supabase, name: notifyStatus.supabase ? "Supabase connected" : "Supabase not connected" },
+                    ].map((c) => (
+                      <span key={c.name} className="flex items-center gap-1.5">
+                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: c.on ? "#16a34a" : "#dc2626" }} />
+                        {c.name}
+                      </span>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => void runNotifyTest()} disabled={testing} className="rounded-full px-3.5 py-1.5 text-xs font-bold text-white disabled:opacity-50" style={{ background: BLUE }}>
+                    {testing ? "Sending…" : "Send test"}
+                  </button>
+                </div>
+                {testResults && (
+                  <div className="mt-3 flex flex-col gap-1 border-t border-neutral-100 pt-3 text-xs">
+                    {testResults.map((r) => (
+                      <div key={r.channel} className="flex items-start gap-1.5">
+                        <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: r.ok ? "#16a34a" : "#dc2626" }} />
+                        <span><span className="font-bold uppercase">{r.channel}</span> — {r.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {bookings.length === 0 && <p className="text-sm text-neutral-400">No bookings yet.</p>}
             {bookings.map((b) => {
               const status = (b.status ?? "new") as BookingStatus;
