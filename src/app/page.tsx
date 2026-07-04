@@ -545,7 +545,7 @@ export default function Home() {
               photo, and the ink tracks headInk like the headline. Phones: sits just
               UNDER the headline (clear of the bottom buttons); sm+: above the buttons. */}
           <div
-            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 max-sm:top-[calc(50%-212px)] sm:bottom-[var(--pill-b)]"
+            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 max-sm:top-[calc(50%-240px)] sm:bottom-[var(--pill-b)]"
             style={{
               ["--pill-b" as string]: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
               opacity: reveal ? 1 : 0,
