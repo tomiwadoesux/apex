@@ -187,25 +187,6 @@ function RouteIcon() {
   );
 }
 
-function HeadlampOnIcon() {
-  const BODY = "M31.875 1.875C37.7083 2.29167 49.375 7.5 49.375 19.375C49.375 31.25 37.7083 36.4583 31.875 36.875C27.5 36.875 25.625 34.75 25.625 26.25L25.625 12.5C25.625 4 27.5 1.875 31.875 1.875Z";
-  const BEAMS = "M17.5 8.125L1.875 8.125M17.5 15.625L1.875 15.625M17.5 23.125L1.875 23.125M17.5 30.625L1.875 30.625";
-  return (
-    <svg width="22" height="16" viewBox="0 0 52 39" fill="none" stroke="currentColor" strokeWidth="3.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={`${BEAMS} ${BODY}`} />
-    </svg>
-  );
-}
-
-function HeadlampOffIcon() {
-  const BODY = "M31.875 1.875C37.7083 2.29167 49.375 7.5 49.375 19.375C49.375 31.25 37.7083 36.4583 31.875 36.875C27.5 36.875 25.625 34.75 25.625 26.25L25.625 12.5C25.625 4 27.5 1.875 31.875 1.875Z";
-  return (
-    <svg width="22" height="16" viewBox="0 0 52 39" fill="none" stroke="currentColor" strokeWidth="3.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path transform="translate(-11.5 0)" d={BODY} />
-    </svg>
-  );
-}
-
 const BG_GRADIENT: Record<Mode, string> = {
   light: "radial-gradient(120% 120% at 50% 50%, #e2e8f0 0%, #cbd5e1 60%, #94a3b8 100%)",
   dark: "radial-gradient(120% 120% at 50% 50%, #1c1c1c 0%, #0a0a0a 60%, #020202 100%)",
@@ -1043,13 +1024,9 @@ export default function BookingForm() {
     }
   };
 
-  // Handle stored theme setting
-
-  // Handle stored theme setting
+  // Theme follows the device's colour-scheme preference (no manual toggle).
   useEffect(() => {
-    const stored = localStorage.getItem("apex-form-theme");
-    if (stored === "light" || stored === "dark") setMode(stored);
-    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setMode("dark");
+    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setMode("dark");
   }, []);
 
   // Smooth custom vehicle search overlay animations (backdrop blur & center card morphing)
@@ -1172,13 +1149,6 @@ export default function BookingForm() {
   useEffect(() => {
     if (currentStep === 6) setScheduleMode("quick");
   }, [currentStep]);
-
-  const toggleTheme = (theme: Mode) => {
-    setMode(theme);
-    try {
-      localStorage.setItem("apex-form-theme", theme);
-    } catch { }
-  };
 
   // Stepper state validation
   const isStepValid = () => {
@@ -1465,8 +1435,12 @@ export default function BookingForm() {
       className={`relative h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between ${mode}`}
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
-      {/* 1. Header component */}
-      <header className="flex items-center justify-between px-5 sm:px-8 md:px-12 py-5 z-20">
+      {/* 1. Header — fixed with its own backdrop so anything scrolling passes underneath it */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-5 sm:px-8 md:px-12 py-5 backdrop-blur-md border-b ${
+          isLight ? "bg-[#e2e8f0]/70 border-neutral-900/[0.06]" : "bg-[#101010]/60 border-white/[0.06]"
+        }`}
+      >
         {/* Logo and text wrapper — links back to the landing page */}
         <Link href="/" className={`flex items-center gap-2.5 ${heading}`}>
           <div ref={logoContainerRef} className="inline-flex">
@@ -1509,7 +1483,7 @@ export default function BookingForm() {
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
-      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-8 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
+      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-28 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -2444,37 +2418,6 @@ export default function BookingForm() {
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* 4. Headlights theme toggle (bottom left) */}
-      <div className="pointer-events-auto fixed bottom-16 sm:bottom-5 left-4 sm:left-12 z-20 select-none">
-        <div className={`relative flex rounded-full border p-1 shadow-lg backdrop-blur-md transition-all duration-300 ${isLight
-          ? "border-neutral-900/15 bg-transparent shadow-neutral-900/5"
-          : "border-white/10 bg-transparent shadow-black/40"
-          }`}>
-          <div
-            className={`absolute top-[4px] bottom-[4px] w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-in-out border ${isLight
-              ? "left-[4px] border-neutral-950 bg-white shadow-sm"
-              : "left-[50%] border-white bg-white/10 shadow-sm"
-              }`}
-          />
-          <button
-            onClick={() => toggleTheme("light")}
-            aria-label="Light mode"
-            className={`relative z-10 rounded-full p-2 transition-all duration-300 ${isLight ? "text-neutral-900" : "text-white/45 hover:text-white"
-              }`}
-          >
-            <HeadlampOnIcon />
-          </button>
-          <button
-            onClick={() => toggleTheme("dark")}
-            aria-label="Dark mode"
-            className={`relative z-10 rounded-full p-2 transition-all duration-300 ${!isLight ? "text-white" : "text-neutral-500 hover:text-neutral-900"
-              }`}
-          >
-            <HeadlampOffIcon />
-          </button>
         </div>
       </div>
 
