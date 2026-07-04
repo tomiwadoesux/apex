@@ -496,7 +496,7 @@ export default function Home() {
             style={{ opacity: reveal ? 1 : 0, transition: "opacity 420ms ease-out 300ms" }}
           >
             <HatchButton
-              label="Contact Us"
+              label="Contact"
               href="#contact"
               Icon={PhoneIcon}
               onClick={(e) => {

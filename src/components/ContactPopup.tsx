@@ -172,7 +172,7 @@ export function ContactButton({
       }}
     >
       <PhoneIcon className="relative z-[1] h-4 w-4 shrink-0" />
-      <span className="relative z-[1]">Contact Us</span>
+      <span className="relative z-[1]">Contact</span>
     </button>
   );
 }

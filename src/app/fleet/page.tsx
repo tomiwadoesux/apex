@@ -224,7 +224,7 @@ export default function FleetPage() {
           <Logo size={30} color="#0b0d12" accent={ACCENT} />
           <span className="text-sm font-bold uppercase tracking-[0.08em]">Apex<span className="font-semibold" style={{ color: ACCENT }}>Ride</span></span>
         </Link>
-        <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={CONTACT_BTN_STYLE}>Contact Us</button>
+        <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={CONTACT_BTN_STYLE}>Contact</button>
       </header>
 
       {/* page title — top centre, sitting over the car */}
