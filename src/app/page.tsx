@@ -234,7 +234,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 // (`!font-light`) does NOT compile in v4. 300 is the lightest Josefin weight loaded, so
 // this is as thin as the headline goes without adding a lighter weight in layout.tsx.
 const HEADLINE_CLASS =
-  "mx-auto whitespace-nowrap text-[clamp(1.4rem,6vw,6.5rem)] font-light! leading-[0.92] tracking-tight text-white first-letter:text-[1em]";
+  "mx-auto whitespace-nowrap text-[clamp(1.4rem,8vw,6.5rem)] sm:text-[clamp(1.4rem,6vw,6.5rem)] font-light! leading-[0.92] tracking-tight text-white first-letter:text-[1em]";
 
 export default function Home() {
   const theme: Theme = "light"; // site is light-mode only
