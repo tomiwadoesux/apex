@@ -10,11 +10,12 @@
 import type { Booking } from "./bookings";
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
-// Until a domain is verified in Resend, onboarding@resend.dev only delivers to
-// the account owner's own address — set RESEND_FROM once the domain is live.
-const FROM = process.env.RESEND_FROM || "ApexRide <onboarding@resend.dev>";
+// apex.ayotomcs.me must be verified as a domain in the Resend dashboard for
+// this sender to deliver; RESEND_FROM overrides it if that ever changes.
+const FROM = process.env.RESEND_FROM || "ApexRide <bookings@apex.ayotomcs.me>";
 const COMPANY_EMAIL = process.env.COMPANY_EMAIL;
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
+const SITE_URL = process.env.SITE_URL || "https://apex.ayotomcs.me";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -36,7 +37,7 @@ function rows(b: Booking): string {
   ].join("");
 }
 
-function emailShell(heading: string, intro: string, b: Booking): string {
+function emailShell(heading: string, intro: string, b: Booking, cta?: { label: string; href: string }): string {
   return `<div style="font-family:Helvetica,Arial,sans-serif;background:#f6f7f9;padding:32px 16px">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0">
     <div style="background:linear-gradient(135deg,#2A4FD0,#00209C);padding:22px 26px">
@@ -47,6 +48,7 @@ function emailShell(heading: string, intro: string, b: Booking): string {
       <div style="color:#0f172a;font-size:17px;font-weight:600">${heading}</div>
       <p style="color:#475569;font-size:14px;line-height:1.6;margin:10px 0 18px">${intro}</p>
       <table style="border-collapse:collapse">${rows(b)}</table>
+      ${cta ? `<a href="${cta.href}" style="display:inline-block;margin-top:20px;background:#2A4FD0;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:999px">${cta.label}</a>` : ""}
       <p style="color:#94a3b8;font-size:12px;margin:22px 0 0">Questions? Call or WhatsApp us on +234 814 168 1273.</p>
     </div>
   </div>
@@ -87,6 +89,7 @@ export async function notifyBookingCreated(b: Booking): Promise<void> {
           "Your ride is booked",
           `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. We've received your booking — our team will reach out shortly to confirm the details below.`,
           b,
+          { label: "View your booking", href: `${SITE_URL}/booking/${b.id.replace(/\D/g, "")}` },
         ),
       ),
     );

@@ -81,7 +81,7 @@ const LOCATION_IMG: Record<string, { light: string; dark: string }> = {
 const RIDE_DATE = "Sat, 21 Jun 2026";
 const RIDE_TIME = "18:30";
 const PHONE = "+234 814 168 1273";
-const EMAIL = "concierge@apexride.com";
+const EMAIL = "concierge@apex.ayotomcs.me";
 const SERVICE = "Airport transfer"; // the booked service — e.g. Point to point · Airport · Hourly
 const DEFAULT_REF = "4827 1193 0641";
 
@@ -556,7 +556,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               <div style={{ borderTop: `2px dotted ${light ? "rgba(10,18,40,.3)" : "rgba(255,255,255,.26)"}`, margin: "2cqw 0 2.5cqw" }} />
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.3em", color: dim }}>BOOKING No.</div>
               <div style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600, fontSize: "5.6cqw", letterSpacing: "0.2em", color: ink, marginTop: "1.2cqw" }}>{bookingRef}</div>
-              <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apexride.com/booking/{bookingRef.replace(/\s+/g, "")}</div>
+              <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apex.ayotomcs.me/booking/{bookingRef.replace(/\s+/g, "")}</div>
             </div>
 
             {/* contact — pinned to the bottom */}

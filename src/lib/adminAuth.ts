@@ -1,5 +1,6 @@
-// Minimal admin session: the password lives in the ADMIN_PASSWORD env var and a
-// successful login sets an HMAC-signed httpOnly cookie. Server-only.
+// Minimal admin session: the password comes from the ADMIN_PASSWORD env var
+// (falling back to the owner-chosen default below) and a successful login sets
+// an HMAC-signed httpOnly cookie. Server-only.
 
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
@@ -7,7 +8,7 @@ import { cookies } from "next/headers";
 export const ADMIN_COOKIE = "apex_admin";
 
 function secret(): string | null {
-  return process.env.ADMIN_PASSWORD || null;
+  return process.env.ADMIN_PASSWORD || "password";
 }
 
 function sign(value: string): string {

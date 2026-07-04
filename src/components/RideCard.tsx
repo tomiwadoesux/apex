@@ -34,7 +34,7 @@ export const BLUE = "#00209C";
 
 /* ── default concierge contact (shown when a booking has no contact of its own) */
 const CONCIERGE_PHONE = "+234 814 168 1273";
-const CONCIERGE_EMAIL = "concierge@apexride.com";
+const CONCIERGE_EMAIL = "concierge@apex.ayotomcs.me";
 
 /* ── the booked car ───────────────────────────────────────────────────────── */
 export type RideCar = {
@@ -462,7 +462,7 @@ export function RideCard({
                   Issued to <span style={{ color: ink, fontWeight: 600 }}>{passengerName}</span>
                 </div>
               ) : (
-                <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apexride.com/booking/{bookingRef.replace(/\s+/g, "")}</div>
+                <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apex.ayotomcs.me/booking/{bookingRef.replace(/\s+/g, "")}</div>
               )}
             </div>
 

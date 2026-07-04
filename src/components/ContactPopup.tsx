@@ -302,7 +302,7 @@ export function ContactPopup({
             </p>
 
             <div className="mt-5 flex flex-col items-center gap-2.5 text-[13px]">
-              <ContactDetail kind="mail" value="contact@apexride.com" accent={accent} isLight={isLight} className="font-semibold" />
+              <ContactDetail kind="mail" value="contact@apex.ayotomcs.me" accent={accent} isLight={isLight} className="font-semibold" />
               <ContactDetail kind="phone" value="+234 814 168 1273" accent={accent} isLight={isLight} className="font-semibold" />
             </div>
 
@@ -347,7 +347,7 @@ export function ContactPopup({
                 const phone = String(fd.get("phone") || "");
                 const inquiry = String(fd.get("inquiry") || "");
                 const body = `Name: ${name}\nPhone: ${phone}\n\n${inquiry}`;
-                window.location.href = `mailto:contact@apexride.com?subject=${encodeURIComponent(
+                window.location.href = `mailto:contact@apex.ayotomcs.me?subject=${encodeURIComponent(
                   `Inquiry from ${name || "a guest"}`,
                 )}&body=${encodeURIComponent(body)}`;
                 onClose();

@@ -32,7 +32,7 @@ const BTN_STYLE = { background: ACCENT, borderColor: "#16308f", color: "#ffffff"
 const CONTACT_BTN_STYLE = { background: "linear-gradient(180deg, #242424 0%, #090909 100%)", borderColor: "rgba(255,255,255,0.16)", color: "#ffffff", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14)" } as const;
 
 const CONTACTS = [
-  { label: "Email", value: "contact@apexride.com", href: "mailto:contact@apexride.com" },
+  { label: "Email", value: "contact@apex.ayotomcs.me", href: "mailto:contact@apex.ayotomcs.me" },
   { label: "WhatsApp", value: "+234 814 168 1273", href: "https://wa.me/2348141681273" },
   { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
 ];
