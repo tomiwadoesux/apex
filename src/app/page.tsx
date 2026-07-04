@@ -534,7 +534,7 @@ export default function Home() {
                   {i > 0 && (
                     <span
                       aria-hidden
-                      className="hidden h-1 w-1 rounded-full sm:inline-block"
+                      className="inline-block h-1 w-1 rounded-full"
                       style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
                     />
                   )}
