@@ -167,7 +167,7 @@ function HatchButton({
         />
       ) : null}
       {Icon ? <Icon className="relative z-[1] h-4 w-4 shrink-0" /> : null}
-      <span className="relative z-[1]">{label}</span>
+      <span className="relative z-[1] whitespace-nowrap">{label}</span>
     </a>
   );
 }
@@ -542,11 +542,12 @@ export default function Home() {
           {/* CTA sub-label — a frosted-glass pill of the three services, separated by
               accent dots. The glass flips from light to dark with the overlay
               (overlayIn) so it stays legible on both the light hero and the city
-              photo, and the ink tracks headInk like the headline. */}
+              photo, and the ink tracks headInk like the headline. Phones: sits just
+              UNDER the headline (clear of the bottom buttons); sm+: above the buttons. */}
           <div
-            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4"
+            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 max-sm:top-[calc(50%-212px)] sm:bottom-[var(--pill-b)]"
             style={{
-              bottom: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
+              ["--pill-b" as string]: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
@@ -604,7 +605,7 @@ export default function Home() {
             <div
               ref={bookWrapRef}
               className="relative z-0"
-              style={{ width: ctaW.book ? lerp(ctaW.book, 0, fr) : undefined, marginLeft: `${(-12 * fr).toFixed(1)}px` }}
+              style={{ width: ctaW.book && fr > 0 ? lerp(ctaW.book, 0, fr) : undefined, marginLeft: `${(-12 * fr).toFixed(1)}px` }}
             >
               <div
                 style={{
