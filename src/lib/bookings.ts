@@ -1,17 +1,19 @@
 // Server-side booking store. Saves each booking the customer makes under a unique,
 // non-repeating reference, and looks it up again for /check-booking and the QR page.
 //
-// Storage is pluggable:
-//   • If Vercel KV / Upstash Redis env vars are present, it uses that (persists in
-//     production — Vercel's filesystem is ephemeral, so this is the deploy path).
-//   • Otherwise it falls back to a local JSON file under .data/ so the whole flow
-//     works in `next dev` with zero setup.
+// Storage is pluggable (first match wins):
+//   • Supabase (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) — the deploy path;
+//     rows live in the `bookings` table of the apexride project.
+//   • Vercel KV / Upstash Redis env vars.
+//   • Otherwise a local JSON file under .data/ so the whole flow works in
+//     `next dev` with zero setup.
 //
 // This module is server-only (it touches the filesystem) — import it from Route
 // Handlers / Server Components only, never from client code.
 
 import { promises as fs } from "fs";
 import path from "path";
+import { sb, useSupabase } from "./supabaseRest";
 import type { BookingStatus } from "./siteConfigDefaults";
 
 /* ── the saved booking — everything the ride-pass card needs to render ─────── */
@@ -78,6 +80,10 @@ async function writeFile(all: Record<string, Booking>): Promise<void> {
 export async function getBooking(ref: string): Promise<Booking | null> {
   const digits = digitsOf(ref);
   if (!digits) return null;
+  if (useSupabase) {
+    const rows = await sb<{ data: Booking }[]>(`bookings?digits=eq.${digits}&select=data`);
+    return rows[0]?.data ?? null;
+  }
   if (useKv) {
     const raw = await kv<string | null>(["GET", keyFor(digits)]);
     return raw ? (JSON.parse(raw) as Booking) : null;
@@ -87,6 +93,10 @@ export async function getBooking(ref: string): Promise<Booking | null> {
 }
 
 async function refExists(digits: string): Promise<boolean> {
+  if (useSupabase) {
+    const rows = await sb<{ digits: string }[]>(`bookings?digits=eq.${digits}&select=digits`);
+    return rows.length > 0;
+  }
   if (useKv) return (await kv<number>(["EXISTS", keyFor(digits)])) === 1;
   const all = await readFile();
   return Boolean(all[digits]);
@@ -98,7 +108,13 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     const digits = String(Math.floor(100000 + Math.random() * 900000));
     if (await refExists(digits)) continue;
     const booking: Booking = { ...input, id: `APX-${digits}`, createdAt: Date.now() };
-    if (useKv) {
+    if (useSupabase) {
+      await sb("bookings", {
+        method: "POST",
+        body: { digits, data: booking, created_at: booking.createdAt },
+        prefer: "return=minimal",
+      });
+    } else if (useKv) {
       await kv(["SET", keyFor(digits), JSON.stringify(booking)]);
     } else {
       const all = await readFile();
@@ -113,6 +129,10 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
 /* ── operations API (the /admin panel) ─────────────────────────────────────── */
 export async function listBookings(): Promise<Booking[]> {
   let all: Booking[];
+  if (useSupabase) {
+    const rows = await sb<{ data: Booking }[]>("bookings?select=data&order=created_at.desc&limit=500");
+    return rows.map((r) => r.data);
+  }
   if (useKv) {
     const keys = await kv<string[]>(["KEYS", `${PREFIX}*`]);
     if (!keys?.length) return [];
@@ -133,7 +153,13 @@ export async function updateBooking(
   const current = await getBooking(digits);
   if (!current) return null;
   const next: Booking = { ...current, ...patch, updatedAt: Date.now() };
-  if (useKv) {
+  if (useSupabase) {
+    await sb(`bookings?digits=eq.${digits}`, {
+      method: "PATCH",
+      body: { data: next },
+      prefer: "return=minimal",
+    });
+  } else if (useKv) {
     await kv(["SET", keyFor(digits), JSON.stringify(next)]);
   } else {
     const all = await readFile();

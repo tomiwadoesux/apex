@@ -1,9 +1,10 @@
 // Server-side store for the admin-editable site options. Same pluggable backend
-// as bookings: Vercel KV / Upstash when configured, a local JSON file otherwise.
+// as bookings: Supabase first, then Vercel KV / Upstash, then a local JSON file.
 // Server-only — import from Route Handlers, never client code.
 
 import { promises as fs } from "fs";
 import path from "path";
+import { sb, useSupabase } from "./supabaseRest";
 import { DEFAULT_CONFIG, type SiteConfig } from "./siteConfigDefaults";
 
 const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -27,6 +28,10 @@ async function kv<T = unknown>(command: (string | number)[]): Promise<T> {
 // always have a value even if the saved blob predates them.
 export async function getSiteConfig(): Promise<SiteConfig> {
   try {
+    if (useSupabase) {
+      const rows = await sb<{ data: Partial<SiteConfig> }[]>(`site_config?key=eq.${KEY}&select=data`);
+      return rows[0] ? { ...DEFAULT_CONFIG, ...rows[0].data } : DEFAULT_CONFIG;
+    }
     let raw: string | null = null;
     if (useKv) {
       raw = await kv<string | null>(["GET", KEY]);
@@ -41,6 +46,14 @@ export async function getSiteConfig(): Promise<SiteConfig> {
 }
 
 export async function setSiteConfig(config: SiteConfig): Promise<void> {
+  if (useSupabase) {
+    await sb("site_config", {
+      method: "POST",
+      body: { key: KEY, data: config },
+      prefer: "resolution=merge-duplicates,return=minimal",
+    });
+    return;
+  }
   const raw = JSON.stringify(config);
   if (useKv) {
     await kv(["SET", KEY, raw]);

@@ -2,6 +2,7 @@
 // Runs on the Node runtime so the file-store fallback (fs) works in local dev.
 
 import { createBooking, type BookingInput } from "@/lib/bookings";
+import { notifyBookingCreated } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
 
   try {
     const booking = await createBooking(input);
+    // Emails + team push. Awaited so serverless doesn't kill the sends, but
+    // notifyBookingCreated never throws — a failed email can't fail the booking.
+    await notifyBookingCreated(booking);
     return Response.json({ booking }, { status: 201 });
   } catch (err) {
     console.error("[bookings] create failed", err);
