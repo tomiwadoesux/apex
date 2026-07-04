@@ -277,7 +277,7 @@ const CtaButton = ({
 };
 
 export default function BookingForm() {
-  const [mode, setMode] = useState<Mode>("light");
+  const mode = "light" as Mode; // form is light-only (dark mode removed)
   const [currentStep, setCurrentStep] = useState(0); // 0–7 form steps, 8 = success
   const [carIndex, setCarIndex] = useState(0); // Car-type carousel active index
   const [displayedVehicleName, setDisplayedVehicleName] = useState(VEHICLES[0].name);
@@ -1023,11 +1023,6 @@ export default function BookingForm() {
       );
     }
   };
-
-  // Theme follows the device's colour-scheme preference (no manual toggle).
-  useEffect(() => {
-    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setMode("dark");
-  }, []);
 
   // Smooth custom vehicle search overlay animations (backdrop blur & center card morphing)
   useEffect(() => {
