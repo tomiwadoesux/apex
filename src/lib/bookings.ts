@@ -12,6 +12,7 @@
 
 import { promises as fs } from "fs";
 import path from "path";
+import type { BookingStatus } from "./siteConfigDefaults";
 
 /* ── the saved booking — everything the ride-pass card needs to render ─────── */
 export type Booking = {
@@ -26,9 +27,14 @@ export type Booking = {
   date: string; // human-readable, e.g. "Sat, 21 Jun 2026"
   time: string; // "18:30"
   light: boolean; // theme the card was created in
+  // ── operations (managed from /admin) ──
+  status?: BookingStatus; // defaults to "new"
+  driver?: string; // assigned chauffeur
+  notes?: string; // internal team notes
+  updatedAt?: number;
 };
 
-export type BookingInput = Omit<Booking, "id" | "createdAt">;
+export type BookingInput = Omit<Booking, "id" | "createdAt" | "status" | "driver" | "notes" | "updatedAt">;
 
 /* ── storage backend selection ─────────────────────────────────────────────── */
 const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -102,4 +108,37 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     return booking;
   }
   throw new Error("Could not allocate a unique booking reference");
+}
+
+/* ── operations API (the /admin panel) ─────────────────────────────────────── */
+export async function listBookings(): Promise<Booking[]> {
+  let all: Booking[];
+  if (useKv) {
+    const keys = await kv<string[]>(["KEYS", `${PREFIX}*`]);
+    if (!keys?.length) return [];
+    const raws = await kv<(string | null)[]>(["MGET", ...keys]);
+    all = raws.filter(Boolean).map((r) => JSON.parse(r!) as Booking);
+  } else {
+    all = Object.values(await readFile());
+  }
+  return all.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function updateBooking(
+  ref: string,
+  patch: Partial<Pick<Booking, "status" | "driver" | "notes">>,
+): Promise<Booking | null> {
+  const digits = digitsOf(ref);
+  if (!digits) return null;
+  const current = await getBooking(digits);
+  if (!current) return null;
+  const next: Booking = { ...current, ...patch, updatedAt: Date.now() };
+  if (useKv) {
+    await kv(["SET", keyFor(digits), JSON.stringify(next)]);
+  } else {
+    const all = await readFile();
+    all[digits] = next;
+    await writeFile(all);
+  }
+  return next;
 }

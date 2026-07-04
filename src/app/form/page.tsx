@@ -10,18 +10,9 @@ import { toPng } from "html-to-image";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import type { Booking } from "@/lib/bookings";
+import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
 type Mode = "light" | "dark";
-
-// Popular pickup spots — quick one-tap fills for the pickup address (3 per city).
-const POPULAR_PICKUPS: { city: "Lagos" | "Abuja"; name: string }[] = [
-  { city: "Lagos", name: "Murtala Muhammed Airport (MMIA), Ikeja" },
-  { city: "Lagos", name: "Eko Hotel & Suites, Victoria Island" },
-  { city: "Lagos", name: "Ikeja City Mall, Alausa" },
-  { city: "Abuja", name: "Nnamdi Azikiwe Airport (ABV)" },
-  { city: "Abuja", name: "Transcorp Hilton, Maitama" },
-  { city: "Abuja", name: "Jabi Lake Mall, Jabi" },
-];
 
 interface VehicleAngles {
   front: string;
@@ -117,30 +108,7 @@ interface ServiceItem {
   durationHours?: number;
 }
 
-const SERVICES: ServiceItem[] = [
-  { id: "6h", name: "6 Hours", desc: "Half-day chauffeur, billed as a fixed 6-hour block.", group: "duration", durationHours: 6 },
-  { id: "12h", name: "12 Hours", desc: "Full-day chauffeur across a fixed 12-hour block.", group: "duration", durationHours: 12 },
-  { id: "24h", name: "24 Hours", desc: "Round-the-clock chauffeur on call for a full day.", group: "duration", durationHours: 24 },
-  { id: "multiday", name: "Multiple Days", desc: "Dedicated chauffeur across the number of days you choose.", group: "duration" },
-  { id: "custom", name: "Custom", desc: "Bespoke itinerary — tell us exactly what you need.", group: "type" },
-  { id: "interstate", name: "Interstate", desc: "Long-distance executive transit between states.", group: "type" },
-  { id: "airport", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals.", group: "type" },
-  { id: "point", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates.", group: "type" },
-];
 
-const DURATION_SERVICES = SERVICES.filter((s) => s.group === "duration");
-const TYPE_SERVICES = SERVICES.filter((s) => s.group === "type");
-
-// Quick-add chips for the final step. Tapping one toggles a short line in the
-// request notes so guests can fill in the common asks without typing.
-const QUICK_REQUESTS = [
-  "Meet and greet at arrivals",
-  "Child seat needed",
-  "Quiet ride preferred",
-  "Bottled water on board",
-  "Extra stop along the way",
-  "Help with my luggage",
-];
 
 // Labels for the custom date/time picker on the Schedule step.
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -434,6 +402,18 @@ export default function BookingForm() {
 
   const isLight = mode === "light";
   const accent = "#2A4FD0"; // brand blue — matches the landing page lockup + popup
+
+  // Admin-edited options (pickup spots, tiers, chips, cars) — code defaults
+  // until /api/config answers.
+  const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_CONFIG);
+  useEffect(() => {
+    fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
+  }, []);
+  const durationServices: ServiceItem[] = cfg.durations.map((d) => ({
+    id: d.id, name: d.name, desc: d.desc, group: "duration" as const,
+    ...(d.hours ? { durationHours: d.hours } : {}),
+  }));
+  const typeServices: ServiceItem[] = cfg.tripTypes.map((t) => ({ id: t.id, name: t.name, desc: t.desc, group: "type" as const }));
 
   const selectedVehicleObj = isCustomCar ? selectedVehicle : VEHICLES[carIndex];
   const nextVehicleObj = VEHICLES[(carIndex + 1) % VEHICLES.length];
@@ -1639,7 +1619,7 @@ export default function BookingForm() {
                 <div className="flex flex-col gap-2">
                   <span className={labelStyle}>Popular pickup spots</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {POPULAR_PICKUPS.map((spot) => {
+                    {cfg.popularPickups.map((spot) => {
                       const active = pickupAddress.trim() === spot.name;
                       return (
                         <button
@@ -1876,7 +1856,7 @@ export default function BookingForm() {
             {currentStep === 4 && (
               <div className="w-full max-w-3xl mt-8 flex flex-col items-center gap-6">
                 <div className="grid w-full grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {DURATION_SERVICES.map(renderTierCard)}
+                  {durationServices.map(renderTierCard)}
                 </div>
 
                 {/* Multiple Days → ask how many days. Plain text box per spec. */}
@@ -1900,7 +1880,7 @@ export default function BookingForm() {
             {currentStep === 5 && (
               <div className="w-full max-w-3xl mt-8 flex flex-col items-center gap-6">
                 <div className="grid w-full grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {TYPE_SERVICES.map(renderTierCard)}
+                  {typeServices.map(renderTierCard)}
                 </div>
 
                 {/* Custom → free-text description of the trip. */}
@@ -2228,7 +2208,7 @@ export default function BookingForm() {
 
                   {/* Quick-add chips — toggle a ready-made line into the notes */}
                   <div className="mb-4 flex flex-wrap gap-2">
-                    {QUICK_REQUESTS.map((phrase) => {
+                    {cfg.quickRequests.map((phrase) => {
                       const active = isQuickRequestActive(phrase);
                       return (
                         <button
@@ -2528,7 +2508,7 @@ export default function BookingForm() {
             <div className={`flex shrink-0 items-center justify-between border-b px-5 py-4 ${isLight ? "border-neutral-100" : "border-white/[0.07]"}`}>
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>All cars</div>
-                <div className={`mt-0.5 text-sm ${isLight ? "text-neutral-400" : "text-white/40"}`}>{VEHICLES.length} cars in the fleet</div>
+                <div className={`mt-0.5 text-sm ${isLight ? "text-neutral-400" : "text-white/40"}`}>{VEHICLES.filter((v) => !cfg.hiddenCars.includes(v.name)).length + cfg.extraCars.length} cars in the fleet</div>
               </div>
               <button
                 type="button"
@@ -2543,6 +2523,7 @@ export default function BookingForm() {
 
             <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2">
               {VEHICLES.map((v, i) => {
+                if (cfg.hiddenCars.includes(v.name)) return null; // hidden from /admin
                 const active = !isCustomCar && i === carIndex;
                 const activeBg = isLight ? "bg-[#00209C]/[0.07]" : "bg-[#FDBA16]/[0.09]";
                 const hoverBg = isLight ? "hover:bg-neutral-100" : "hover:bg-white/[0.06]";
@@ -2572,6 +2553,53 @@ export default function BookingForm() {
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
+                  </button>
+                );
+              })}
+
+              {/* team-added cars (from /admin) — booked via the bespoke path */}
+              {cfg.extraCars.map((c) => {
+                const active = isCustomCar && selectedVehicle?.name === `${c.name}${c.year ? ` (${c.year})` : ""}`;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      const nameWithYear = c.year ? `${c.name} (${c.year})` : c.name;
+                      const obj = {
+                        name: nameWithYear,
+                        year: c.year || "2025",
+                        class: c.type || "From Our Fleet",
+                        rate: "Quote on Request",
+                        capacity: "Capacity confirmed after review",
+                        specs: c.specs.join(" · ") || "Fleet Selection",
+                        details: `Selected from our fleet: ${c.name}.`,
+                        img: {
+                          light: { front: c.image ? c.image.replace(/^\/images\//, "") : "", side: c.image ? c.image.replace(/^\/images\//, "") : "", rear: "" },
+                          dark: { front: c.image ? c.image.replace(/^\/images\//, "") : "", side: c.image ? c.image.replace(/^\/images\//, "") : "", rear: "" },
+                        },
+                      };
+                      setPreselectedCar(null);
+                      setIsCustomCar(true);
+                      setCustomCarName(nameWithYear);
+                      setDisplayedVehicleName(nameWithYear);
+                      setSelectedVehicle(obj);
+                      setDisplayedVehicleDetails(obj);
+                      setCarListOpen(false);
+                    }}
+                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${active ? (isLight ? "bg-[#00209C]/[0.07]" : "bg-[#FDBA16]/[0.09]") : isLight ? "hover:bg-neutral-100" : "hover:bg-white/[0.06]"}`}
+                  >
+                    <span className="relative block h-9 w-16 shrink-0">
+                      {c.image ? (
+                        <Image src={c.image} alt="" fill sizes="64px" className="object-contain" />
+                      ) : (
+                        <span className={`grid h-full w-full place-items-center text-sm ${isLight ? "text-neutral-300" : "text-white/25"}`}>—</span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate text-sm font-medium ${active ? (isLight ? "text-[#00209C]" : "text-[#FDBA16]") : isLight ? "text-neutral-900" : "text-white"}`}>{c.name}</span>
+                      <span className={`block truncate text-[11px] ${isLight ? "text-neutral-400" : "text-white/40"}`}>{c.year}{c.year && c.type ? " · " : ""}{c.type}</span>
+                    </span>
                   </button>
                 );
               })}

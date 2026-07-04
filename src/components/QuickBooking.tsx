@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { toPng } from "html-to-image";
 import { CARS, type Variant } from "@/components/fleet/data";
+import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import type { Booking } from "@/lib/bookings";
 
@@ -27,19 +28,6 @@ const BLUE = "#00209C";
 const ACCENT = "#2A4FD0";
 
 /* ── options ────────────────────────────────────────────────────────────────── */
-
-const TRIP_TYPES = [
-  { id: "custom", badge: "Flexible", name: "Custom", desc: "Bespoke itinerary — tell us exactly what you need." },
-  { id: "interstate", badge: "Trip Type", name: "Interstate", desc: "Long-distance executive transit between states." },
-  { id: "airport", badge: "Trip Type", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals." },
-  { id: "point", badge: "Trip Type", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates." },
-] as const;
-
-const DURATIONS = [
-  { id: "6h", badge: "Fixed Duration", name: "6 Hours", hours: 6, desc: "Half-day chauffeur, billed as a fixed 6-hour block." },
-  { id: "12h", badge: "Fixed Duration", name: "12 Hours", hours: 12, desc: "Full-day chauffeur across a fixed 12-hour block." },
-  { id: "24h", badge: "Fixed Duration", name: "24 Hours", hours: 24, desc: "Round-the-clock chauffeur on call for a full day." },
-] as const;
 
 const STATES = ["Lagos", "Abuja"];
 
@@ -106,9 +94,20 @@ const STEP_TITLES = [
 
 export default function QuickBooking({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
+  // Admin-edited options (trip types, durations, car list) — defaults until /api/config loads.
+  const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_CONFIG);
+  useEffect(() => {
+    fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
+  }, []);
+  const tripTypes = cfg.tripTypes.map((t) => ({ id: t.id, badge: t.id === "custom" ? "Flexible" : "Trip Type", name: t.name, desc: t.desc }));
+  const durations = cfg.durations.filter((d) => d.id !== "multiday").map((d) => ({ id: d.id, badge: "Fixed Duration", name: d.name, hours: d.hours ?? 6, desc: d.desc }));
+  const availableCars: Variant[] = [
+    ...AVAILABLE_CARS.filter((c) => !cfg.hiddenCars.includes(c.name)),
+    ...cfg.extraCars.map((c) => ({ id: c.id, label: c.year, name: c.name, year: Number(c.year) || 2025, type: c.type || "Fleet selection", specs: c.specs, image: c.image })),
+  ];
   const [pickupWhen, setPickupWhen] = useState<{ label: string; date: Date } | null>(null);
-  const [tripType, setTripType] = useState<(typeof TRIP_TYPES)[number] | null>(null);
-  const [duration, setDuration] = useState<(typeof DURATIONS)[number] | null>(null);
+  const [tripType, setTripType] = useState<(typeof tripTypes)[number] | null>(null);
+  const [duration, setDuration] = useState<(typeof durations)[number] | null>(null);
   const [state, setState] = useState<string>("Lagos");
   const [stateDetected, setStateDetected] = useState(false); // true once the IP lookup filled it in
   const [address, setAddress] = useState("");
@@ -182,7 +181,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     if (!pickupWhen || !tripType || !duration || !car || submitting) return;
     const payload = {
       passenger: { name: name.trim(), phone: phone.trim(), email: "" },
-      car: { name: car.name, klass: car.type, image: car.image!.replace(/^\/images\//, "") },
+      car: { name: car.name, klass: car.type, image: car.image ? car.image.replace(/^\/images\//, "") : null },
       service: tripType.name,
       pickup: address.trim() ? `${address.trim()}, ${state}` : state,
       dropoff: null,
@@ -322,7 +321,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           })}
 
           {/* 2 — trip type */}
-          {step === 1 && TRIP_TYPES.map((t) => {
+          {step === 1 && tripTypes.map((t) => {
             const active = tripType?.id === t.id;
             return (
               <button key={t.id} type="button" onClick={() => { setTripType(t); setStep(2); }} className={cardCls(active)}>
@@ -334,7 +333,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           })}
 
           {/* 3 — duration */}
-          {step === 2 && DURATIONS.map((d) => {
+          {step === 2 && durations.map((d) => {
             const active = duration?.id === d.id;
             return (
               <button key={d.id} type="button" onClick={() => { setDuration(d); setStep(3); }} className={cardCls(active)}>
@@ -404,7 +403,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           {/* 5 — car */}
           {step === 4 && (
             <>
-              {(showAllCars ? AVAILABLE_CARS : AVAILABLE_CARS.slice(0, SHORT_LIST)).map((c) => {
+              {(showAllCars ? availableCars : availableCars.slice(0, SHORT_LIST)).map((c) => {
                 const active = car?.id === c.id;
                 return (
                   <button
@@ -414,7 +413,11 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                     className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${active ? "bg-[#00209C]/[0.07]" : "hover:bg-neutral-100"}`}
                   >
                     <span className="relative block h-9 w-16 shrink-0">
-                      <Image src={c.image!} alt="" fill sizes="64px" className="object-contain" />
+                      {c.image ? (
+                        <Image src={c.image} alt="" fill sizes="64px" className="object-contain" />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center text-sm text-neutral-300">—</span>
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-sm font-medium ${active ? "text-[#00209C]" : "text-neutral-900"}`}>{c.name}</span>
@@ -434,7 +437,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 className="mt-1 text-[11px] font-semibold uppercase tracking-widest transition-colors"
                 style={{ color: ACCENT }}
               >
-                {showAllCars ? "Show fewer cars" : `Show all ${AVAILABLE_CARS.length} cars`}
+                {showAllCars ? "Show fewer cars" : `Show all ${availableCars.length} cars`}
               </button>
             </>
           )}
