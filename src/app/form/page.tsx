@@ -431,16 +431,16 @@ export default function BookingForm() {
     : "block text-xs font-semibold tracking-wide mb-2 font-josefin text-white/50";
 
   const inputStyle = isLight
-    ? "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
-    : "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
+    ? "w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+    : "w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
 
   const modalInputStyle = isLight
-    ? "w-full px-4 py-3 rounded-xl bg-neutral-950/[0.03] border border-neutral-900/10 text-sm font-josefin transition-all duration-300 focus:outline-none focus:bg-white focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C] text-neutral-900 placeholder-neutral-900/35"
-    : "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 text-sm font-josefin transition-all duration-300 focus:outline-none focus:bg-neutral-900 focus:border-[#FDBA16] focus:ring-1 focus:ring-[#FDBA16] text-white placeholder-white/25";
+    ? "w-full px-4 py-3 rounded-xl bg-neutral-950/[0.03] border border-neutral-900/10 text-base sm:text-sm font-josefin transition-all duration-300 focus:outline-none focus:bg-white focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C] text-neutral-900 placeholder-neutral-900/35"
+    : "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 text-base sm:text-sm font-josefin transition-all duration-300 focus:outline-none focus:bg-neutral-900 focus:border-[#FDBA16] focus:ring-1 focus:ring-[#FDBA16] text-white placeholder-white/25";
 
   const textareaStyle = isLight
-    ? "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
-    : "w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
+    ? "w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
+    : "w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin leading-relaxed resize-none transition-colors duration-300 focus:outline-none border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]";
 
   const formatDateInput = (date: Date) => {
     const year = date.getFullYear();
@@ -1482,7 +1482,7 @@ export default function BookingForm() {
 
       {/* Floating step progress text, positioned constantly at the top */}
       {currentStep <= 7 && (
-        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
+        <div className="fixed top-[5.25rem] sm:top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
             <p className={`step-text text-[10px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.3em] ${sub}`}>
               {displayedStepText}
@@ -1490,7 +1490,7 @@ export default function BookingForm() {
           </div>
           {currentStep !== 3 && (
             <div className="flex flex-col items-center">
-              <h1 className={`max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl ${heading} transition-all duration-300 min-h-[44px] sm:min-h-[50px] flex items-center justify-center text-center`}>
+              <h1 className={`max-w-4xl text-2xl font-bold tracking-tight sm:text-5xl ${heading} transition-all duration-300 min-h-[44px] sm:min-h-[50px] flex items-center justify-center text-center`}>
                 <span className="sub-step-text inline-block">
                   {displayedSubLabel}
                 </span>
@@ -1534,7 +1534,7 @@ export default function BookingForm() {
                     placeholder="John Doe"
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
                       ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
                       : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
                       }`}
@@ -1552,7 +1552,7 @@ export default function BookingForm() {
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
                     onBlur={() => setPhoneBlurred(true)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
                       ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
                       : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
                       }`}
@@ -1575,7 +1575,7 @@ export default function BookingForm() {
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     onBlur={() => setEmailBlurred(true)}
-                    className={`w-full pb-2 bg-transparent border-b rounded-none text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
+                    className={`w-full pb-2 bg-transparent border-b rounded-none text-base sm:text-sm font-josefin focus:outline-none transition-colors duration-300 ${isLight
                       ? "border-neutral-900/25 text-neutral-900 placeholder-neutral-900/35 focus:border-[#00209C]"
                       : "border-white/15 text-white placeholder-white/25 focus:border-[#FDBA16]"
                       }`}
@@ -2238,7 +2238,7 @@ export default function BookingForm() {
                       placeholder="Example: Flight BA75 lands at 18:20. Please meet me at arrivals with a name sign."
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
-                      className={`h-32 w-full resize-none bg-transparent p-4 pb-9 text-sm font-josefin leading-relaxed outline-none ${isLight ? "text-neutral-900 placeholder-neutral-900/35" : "text-white placeholder-white/25"}`}
+                      className={`h-32 w-full resize-none bg-transparent p-4 pb-9 text-base sm:text-sm font-josefin leading-relaxed outline-none ${isLight ? "text-neutral-900 placeholder-neutral-900/35" : "text-white placeholder-white/25"}`}
                     />
                     <div className={`pointer-events-none absolute bottom-3 right-4 text-[10px] ${isLight ? "text-neutral-900/35" : "text-white/30"}`}>
                       {specialRequests.length} / 500
