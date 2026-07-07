@@ -659,7 +659,7 @@ export default function Home() {
           <div
             className="pointer-events-none absolute inset-0 z-[20] flex flex-col items-center justify-center px-6 text-center"
           >
-            <div className="relative" style={{ top: `${lerp(-64, HERO_Y, settle).toFixed(1)}px` }}>
+            <div className="relative" style={{ top: `${lerp(-40, HERO_Y, settle).toFixed(1)}px` }}>
               <div style={{ opacity: 1 - swap, filter: `blur(${(swap * 16).toFixed(2)}px)` }}>
                 <StandUpHeadline
                   text="Ride and arrive in style."
