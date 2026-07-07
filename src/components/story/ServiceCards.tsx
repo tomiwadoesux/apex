@@ -229,19 +229,21 @@ export default function ServiceCards({ progress }: { progress: number }) {
         const cardStyle: CSSProperties = isMobile
           ? {
               left: "50%",
-              transform: "translateX(-50%)", // stay centred, no horizontal march
+              transform: "translate(-50%, -50%)", // centred both axes, no horizontal march
               clipPath: `inset(${collapse.toFixed(2)}% 0% ${reveal.toFixed(2)}% 0%)`, // top→down
               filter: blur,
               willChange: blur ? "filter" : undefined,
             }
           : {
               left: `${x.toFixed(1)}px`,
+              transform: "translateY(-50%)", // vertically centred
               clipPath: `inset(0% ${reveal.toFixed(2)}% 0% ${collapse.toFixed(2)}%)`, // right→left
               filter: blur,
               willChange: blur ? "filter" : undefined,
             };
         return (
-          <div key={s.index} className="absolute bottom-[16%] w-[90vw] max-w-[520px]" style={cardStyle}>
+          // top-1/2 + translateY(-50%) → the service panel sits vertically centred
+          <div key={s.index} className="absolute top-1/2 w-[90vw] max-w-[520px]" style={cardStyle}>
             <ServicePanel service={s} />
           </div>
         );

@@ -659,7 +659,7 @@ export default function Home() {
           <div
             className="pointer-events-none absolute inset-0 z-[20] flex flex-col items-center justify-center px-6 text-center"
           >
-            <div className="relative" style={{ top: `${lerp(-90, HERO_Y, settle).toFixed(1)}px` }}>
+            <div className="relative" style={{ top: `${lerp(-64, HERO_Y, settle).toFixed(1)}px` }}>
               <div style={{ opacity: 1 - swap, filter: `blur(${(swap * 16).toFixed(2)}px)` }}>
                 <StandUpHeadline
                   text="Ride and arrive in style."
@@ -691,7 +691,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 bottom-[var(--pill-b)]"
             style={{
               ["--pill-b" as string]: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              transform: `translateY(${lerp(-30, 0, settle).toFixed(1)}vh)`,
+              transform: `translateY(${lerp(-34, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
@@ -726,7 +726,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              transform: `translateY(${lerp(-24, 0, settle).toFixed(1)}vh)`,
+              transform: `translateY(${lerp(-30, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
