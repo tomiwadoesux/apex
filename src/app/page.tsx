@@ -500,6 +500,10 @@ export default function Home() {
   // arrive in style." blurs OUT while "Our Services" blurs IN over the same window.
   const swap = smooth(win(p, 0.12, 0.23));
   const riseUp = smooth(win(p, 0.2, 0.3)); // buttons rise
+  // At REST (p≈0) the headline + pill + buttons sit as ONE cluster centred
+  // vertically; as you begin to scroll they "settle" out to their story
+  // positions (headline up top, CTAs low) so the service cards have room.
+  const settle = smooth(win(p, 0.0, 0.14));
   // the service cards walk-through (a bit slower); the first card lands ON the city
   // photo right as the reveal finishes; the scroll line fades first.
   const cardsProgress = win(p, 0.16, 1.0);
@@ -655,7 +659,7 @@ export default function Home() {
           <div
             className="pointer-events-none absolute inset-0 z-[20] flex flex-col items-center justify-center px-6 text-center"
           >
-            <div className="relative" style={{ top: `${HERO_Y}px` }}>
+            <div className="relative" style={{ top: `${lerp(-90, HERO_Y, settle).toFixed(1)}px` }}>
               <div style={{ opacity: 1 - swap, filter: `blur(${(swap * 16).toFixed(2)}px)` }}>
                 <StandUpHeadline
                   text="Ride and arrive in style."
@@ -684,9 +688,10 @@ export default function Home() {
               photo, and the ink tracks headInk like the headline. Phones: sits just
               UNDER the headline (clear of the bottom buttons); sm+: above the buttons. */}
           <div
-            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 max-sm:top-[calc(50%-240px)] sm:bottom-[var(--pill-b)]"
+            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 bottom-[var(--pill-b)]"
             style={{
               ["--pill-b" as string]: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
+              transform: `translateY(${lerp(-30, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
@@ -721,6 +726,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
+              transform: `translateY(${lerp(-24, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
