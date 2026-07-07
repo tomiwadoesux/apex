@@ -395,6 +395,13 @@ export default function Home() {
   const [reveal, setReveal] = useState(false); // on-load intro (headline stands up + fleet in)
   const [p, setP] = useState(0); // scroll progress 0..1 across the pinned story
   const [fr, setFr] = useState(0); // footer reveal 0..1 — triggers the testimonials' 3D entrance
+  const [isMobile, setIsMobile] = useState(false); // phones lift the CTAs closer to the headline
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [bgLoaded, setBgLoaded] = useState(false); // full city photo (FORNT-BG) decoded
   const [scrollPct, setScrollPct] = useState(0); // whole-page scroll 0..1 → accent scroll bar fill
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -727,7 +734,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              transform: `translateY(${lerp(-39, 0, settle).toFixed(1)}vh)`,
+              transform: `translateY(${lerp(isMobile ? -44 : -39, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
