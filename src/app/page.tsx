@@ -172,6 +172,108 @@ function HatchButton({
   );
 }
 
+// Client voices shown at the foot of the full-screen footer — revived from the
+// old 3D landing. Kept short so three cards stack cleanly on mobile.
+const TESTIMONIALS = [
+  {
+    name: "Adeola Balogun",
+    role: "Airport transfers",
+    message:
+      "Spotless cars and a chauffeur who made the airport run effortless. The only service I trust in Lagos now.",
+  },
+  {
+    name: "Chidi Okeke",
+    role: "Wedding hire",
+    message:
+      "Booked the fleet for our wedding — every car arrived early, beautifully styled, and the drivers were impeccable.",
+  },
+  {
+    name: "Funke Adeyemi",
+    role: "Corporate travel",
+    message:
+      "Discreet, professional and always on time for my corporate travel. Genuinely a class above the rest.",
+  },
+];
+
+// A single testimonial — a frosted-glass card on the dark footer: a gold 5-star
+// rating, the quote, a hairline divider, then a neutral monogram + name + role.
+function TestimonialCard({ name, role, message }: { name: string; role: string; message: string }) {
+  const words = name.trim().split(/\s+/);
+  const initials = (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
+  return (
+    <figure
+      className="relative flex h-full flex-col overflow-hidden rounded-[28px] border p-6 text-left sm:p-7"
+      style={{
+        background: "linear-gradient(155deg, rgba(44,48,60,0.8) 0%, rgba(15,17,23,0.62) 100%)",
+        borderColor: "rgba(255,255,255,0.12)",
+        backdropFilter: "blur(28px) saturate(160%)",
+        WebkitBackdropFilter: "blur(28px) saturate(160%)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 56px rgba(0,0,0,0.32)",
+      }}
+    >
+      <div aria-label="Rated 5 out of 5" style={{ color: "#f5b50a", fontSize: "13px", letterSpacing: "3px", lineHeight: 1 }}>
+        ★★★★★
+      </div>
+      <blockquote className="relative mt-4 flex-1 text-[14px] leading-[1.7] text-white/85 sm:text-[15px]">{message}</blockquote>
+      <div
+        aria-hidden
+        className="relative my-5 h-px w-full"
+        style={{ background: "linear-gradient(to right, rgba(255,255,255,0.16), transparent)" }}
+      />
+      <figcaption className="relative flex items-center gap-3.5">
+        <span
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border text-[13px] font-semibold tracking-wide text-white"
+          style={{ background: "rgba(255,255,255,0.07)", borderColor: "rgba(255,255,255,0.14)" }}
+        >
+          {initials}
+        </span>
+        <div className="leading-tight">
+          <div className="text-[15px] font-semibold tracking-tight text-white">{name}</div>
+          <div className="mt-0.5 text-[12px] text-white/55">{role}</div>
+        </div>
+      </figcaption>
+    </figure>
+  );
+}
+
+// The footer testimonials: a centred label over a snap-scrolling card row (swipe
+// on mobile, all three in a row on desktop). Each card rises out of a 3D
+// recline + side-fan as the footer reveals, and reverses on scroll up.
+function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
+  return (
+    <div className="w-full" style={{ opacity: atFooter ? 1 : 0, transition: "opacity 500ms ease-out 120ms" }}>
+      <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.22em] text-white/55">What our clients say</p>
+      <div
+        data-lenis-prevent
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 pt-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-5 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+        style={{ perspective: "1100px", perspectiveOrigin: "center" }}
+      >
+        {TESTIMONIALS.map((t, i) => {
+          // -1 (left) … 0 (centre) … +1 (right): drives the fan direction.
+          const offset = i - (TESTIMONIALS.length - 1) / 2;
+          return (
+            <div
+              key={t.name}
+              className="min-w-[82%] shrink-0 snap-center sm:min-w-0 sm:flex-1"
+              style={{
+                opacity: atFooter ? 1 : 0,
+                // rotateX = the recline standing up (hinged at the bottom);
+                // rotateY = the per-side fan; settles flat.
+                transform: atFooter ? "none" : `rotateX(48deg) rotateY(${offset * 30}deg) translateY(26px)`,
+                transformOrigin: "center bottom",
+                transition: "opacity 600ms ease-out 150ms, transform 800ms cubic-bezier(0.22, 1, 0.36, 1) 150ms",
+                willChange: "transform, opacity",
+              }}
+            >
+              <TestimonialCard name={t.name} role={t.role} message={t.message} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Minor connector words stay lowercase + normal size; only the "real" words get the
 // enlarged capital initial, so the line reads like a title (Ride … Arrive … Style)
 // rather than forcing every word — including "and" / "in" — up to a capital.
@@ -626,8 +728,8 @@ export default function Home() {
           is taller than the screen) it stays in normal flow. A blue CTA banner
           card floats over the dark navy slab; link columns beneath it; a giant
           faint brand watermark bleeds off the bottom. */}
-      <footer className="relative z-10 w-full overflow-hidden sm:sticky sm:bottom-0 sm:z-0" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
-        <div className="relative mx-auto w-full max-w-6xl px-6 pb-8 pt-16 sm:px-10">
+      <footer className="relative z-10 w-full overflow-hidden sm:sticky sm:bottom-0 sm:z-0 sm:h-screen" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
+        <div className="relative mx-auto flex w-full max-w-6xl flex-col px-6 pb-8 pt-14 sm:h-full sm:px-10 sm:pt-10">
           {/* CTA banner — brand-blue gradient card with the same inner sheen as the CTAs */}
           <div
             className="relative overflow-hidden rounded-[1.75rem] px-7 py-9 sm:rounded-[2rem] sm:px-10 sm:py-11"
@@ -672,7 +774,7 @@ export default function Home() {
           </div>
 
           {/* brand row — static logo lockup with a slim inline nav */}
-          <div className="flex flex-col items-center justify-between gap-6 pt-12 sm:flex-row">
+          <div className="flex flex-col items-center justify-between gap-6 pt-10 sm:flex-row sm:pt-8">
             <Link href="/" className="inline-flex items-center gap-3">
               <Logo size={34} color="#f3f5fa" accent={accent} />
               <span className="text-sm font-bold uppercase tracking-[0.08em]">
@@ -692,6 +794,12 @@ export default function Home() {
                 </a>
               ))}
             </nav>
+          </div>
+
+          {/* client voices — fill the band where the old short footer used to sit;
+              the cards do their 3D recline + fan entrance as the curtain lifts */}
+          <div className="flex flex-1 items-center pt-10 sm:pt-4">
+            <TestimonialsCarousel atFooter={fr > 0.35} />
           </div>
 
           {/* base row */}
