@@ -50,6 +50,23 @@ async function scanFleet(): Promise<{ src: string; label: string }[]> {
   });
 }
 
+// Loose beauty shots dropped straight into public/images/gallery — the brand
+// photoshoot. Shown as a mixed-orientation masonry (portrait/landscape/square
+// all keep their natural shape).
+async function scanGallery(): Promise<string[]> {
+  const base = path.join(process.cwd(), "public", "images", "gallery");
+  let files: string[];
+  try {
+    files = await fs.readdir(base);
+  } catch {
+    return [];
+  }
+  return files
+    .filter((f) => /\.(webp|jpe?g|png)$/i.test(f))
+    .sort()
+    .map((f) => `/images/gallery/${encodeURIComponent(f)}`);
+}
+
 // Per-car folders (public/images/cars, public/images/buses).
 async function scan(dir: string): Promise<Car[]> {
   const base = path.join(process.cwd(), "public", "images", dir);
@@ -81,7 +98,7 @@ async function scan(dir: string): Promise<Car[]> {
 }
 
 export default async function GalleryPage() {
-  const [fleet, cars, buses] = await Promise.all([scanFleet(), scan("cars"), scan("buses")]);
+  const [shots, fleet, cars, buses] = await Promise.all([scanGallery(), scanFleet(), scan("cars"), scan("buses")]);
   const groups = [
     { label: "Cars", items: cars },
     { label: "Buses & vans", items: buses },
@@ -117,6 +134,29 @@ export default async function GalleryPage() {
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-5 py-12 sm:px-10">
+        {/* MASONRY — the brand photoshoot. CSS columns let each photo keep its
+            natural shape (portrait / landscape / square) and pack together. */}
+        {shots.length > 0 && (
+          <section className="mb-16">
+            <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4 [column-fill:balance]">
+              {shots.map((src) => (
+                <figure
+                  key={src}
+                  className="group mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-neutral-900/[0.08] bg-white shadow-[0_12px_36px_-22px_rgba(15,23,42,0.28)] sm:mb-4"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt="ApexRide"
+                    loading="lazy"
+                    className="w-full transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* FEATURED — the fleet lineup shots from the fleet folder */}
         {fleet.length > 0 && (
           <section className="mb-14">
