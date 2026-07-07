@@ -230,6 +230,18 @@ export default function FleetPage() {
       {/* page title — top centre, sitting over the car */}
       <div className="relative z-10 shrink-0 px-5 text-center sm:px-10">
         <h1 className="font-josefin text-4xl font-light leading-none tracking-tight sm:text-5xl">Our fleet</h1>
+        {/* gallery link — see every car we've added */}
+        <div className="mt-2 flex flex-col items-center gap-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400">See our full gallery</span>
+          <Link
+            href="/gallery"
+            className="group inline-flex items-center gap-1.5 text-sm font-semibold tracking-wide transition-colors"
+            style={{ color: ACCENT }}
+          >
+            View the gallery
+            <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+          </Link>
+        </div>
       </div>
 
       {/* content — fills the rest of the screen on desktop */}
