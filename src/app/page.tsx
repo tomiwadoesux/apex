@@ -236,14 +236,59 @@ function TestimonialCard({ name, role, message }: { name: string; role: string; 
   );
 }
 
-// The footer testimonials: a centred label over a snap-scrolling card row (swipe
-// on mobile, all three in a row on desktop). Each card rises out of a 3D
-// recline + side-fan as the footer reveals, and reverses on scroll up.
+// A round glass arrow that pages the testimonial row. Dims + disables itself
+// when there's nothing further to scroll in that direction.
+function CarouselArrow({ dir, onClick, disabled }: { dir: -1 | 1; onClick: () => void; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={dir === -1 ? "Previous testimonial" : "Next testimonial"}
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-white backdrop-blur-md transition-all duration-200 hover:border-white/30 hover:bg-white/15 disabled:cursor-default disabled:opacity-25"
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {dir === -1 ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 6l6 6-6 6" />}
+      </svg>
+    </button>
+  );
+}
+
+// The footer testimonials: a centred label over the card row — ONE card per view
+// on mobile, paged with arrows underneath; all three in a row on desktop. Each
+// card rises out of a 3D recline + side-fan as the footer reveals, and reverses
+// on scroll up.
 function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanLeft(el.scrollLeft > 4);
+      setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  const page = (dir: number) => {
+    const el = scrollRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+  };
+
   return (
     <div className="w-full" style={{ opacity: atFooter ? 1 : 0, transition: "opacity 500ms ease-out 120ms" }}>
       <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.22em] text-white/55">What our clients say</p>
       <div
+        ref={scrollRef}
         data-lenis-prevent
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 pt-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-5 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
         style={{ perspective: "1100px", perspectiveOrigin: "center" }}
@@ -254,7 +299,7 @@ function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
           return (
             <div
               key={t.name}
-              className="w-[82%] max-w-[82%] shrink-0 snap-center sm:w-auto sm:max-w-none sm:flex-1"
+              className="w-full max-w-full shrink-0 snap-center sm:w-auto sm:max-w-none sm:flex-1"
               style={{
                 opacity: atFooter ? 1 : 0,
                 // rotateX = the recline standing up (hinged at the bottom);
@@ -269,6 +314,11 @@ function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
             </div>
           );
         })}
+      </div>
+      {/* pager arrows — phones only; desktop shows all three cards at once */}
+      <div className="mt-5 flex items-center justify-center gap-3 sm:hidden">
+        <CarouselArrow dir={-1} disabled={!canLeft} onClick={() => page(-1)} />
+        <CarouselArrow dir={1} disabled={!canRight} onClick={() => page(1)} />
       </div>
     </div>
   );
