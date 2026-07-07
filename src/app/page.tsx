@@ -254,7 +254,7 @@ function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
           return (
             <div
               key={t.name}
-              className="min-w-[82%] shrink-0 snap-center sm:min-w-0 sm:flex-1"
+              className="w-[82%] max-w-[82%] shrink-0 snap-center sm:w-auto sm:max-w-none sm:flex-1"
               style={{
                 opacity: atFooter ? 1 : 0,
                 // rotateX = the recline standing up (hinged at the bottom);
@@ -344,8 +344,7 @@ export default function Home() {
   const [quickOpen, setQuickOpen] = useState(false); // Quick Booking popup (progress persists while closed)
   const [reveal, setReveal] = useState(false); // on-load intro (headline stands up + fleet in)
   const [p, setP] = useState(0); // scroll progress 0..1 across the pinned story
-  const [fr, setFr] = useState(0); // footer reveal 0..1 — drives the CTA merge (Book Now tucks behind Quick booking)
-  const [ctaW, setCtaW] = useState({ quick: 0, book: 0 }); // measured button widths for the merge math
+  const [fr, setFr] = useState(0); // footer reveal 0..1 — triggers the testimonials' 3D entrance
   const [bgLoaded, setBgLoaded] = useState(false); // full city photo (FORNT-BG) decoded
   const [scrollPct, setScrollPct] = useState(0); // whole-page scroll 0..1 → accent scroll bar fill
   const spacerRef = useRef<HTMLDivElement>(null);
@@ -412,8 +411,8 @@ export default function Home() {
       end: "bottom bottom",
       onUpdate: (self) => setP(self.progress),
     });
-    // Footer reveal: progress of scrolling PAST the story into the footer. Drives
-    // the CTA merge and reverses on scroll up.
+    // Footer reveal: progress of scrolling PAST the story into the footer.
+    // Triggers the testimonials' 3D entrance and reverses on scroll up.
     const ft = ScrollTrigger.create({
       trigger: spacerRef.current,
       start: "bottom bottom",
@@ -423,24 +422,6 @@ export default function Home() {
     return () => {
       st.kill();
       ft.kill();
-    };
-  }, []);
-
-  // Measure the two CTA buttons (constant natural widths) so Book Now can slide
-  // exactly underneath Quick booking during the footer merge.
-  const quickWrapRef = useRef<HTMLDivElement>(null);
-  const bookWrapRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const measure = () =>
-      setCtaW({
-        quick: quickWrapRef.current?.querySelector("a")?.offsetWidth ?? 0,
-        book: bookWrapRef.current?.querySelector("a")?.offsetWidth ?? 0,
-      });
-    const t = setTimeout(measure, 0);
-    window.addEventListener("resize", measure);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", measure);
     };
   }, []);
 
@@ -678,46 +659,28 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Buttons — anchored LOW and FIXED to the viewport (identical to absolute
-              while the stage is pinned) so they can persist over the footer reveal.
-              As the footer shows (fr), Book Now slides underneath Quick booking and
-              its slot collapses, letting Quick booking settle in the centre of the
-              screen; scrolling back up reverses the merge. */}
+          {/* Buttons — anchored LOW in the hero, centred; they scroll away with the
+              story like everything else on the stage. */}
           <div
-            className="pointer-events-none fixed inset-x-0 z-[25] flex items-center justify-center gap-3"
+            className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
           >
-            <div ref={quickWrapRef} className="relative z-10">
-              <HatchButton
-                label="Quick booking"
-                href="#quick-booking"
-                Icon={BoltIcon}
-                variant="dark"
-                hatch={false}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setQuickOpen(true);
-                }}
-              />
-            </div>
-            <div
-              ref={bookWrapRef}
-              className="relative z-0"
-              style={{ width: ctaW.book && fr > 0 ? lerp(ctaW.book, 0, fr) : undefined, marginLeft: `${(-12 * fr).toFixed(1)}px` }}
-            >
-              <div
-                style={{
-                  transform: `translateX(${(-fr * (ctaW.quick / 2 + 12 + ctaW.book / 2)).toFixed(1)}px) scale(${(1 - 0.1 * fr).toFixed(3)})`,
-                  opacity: 1 - 0.3 * fr,
-                }}
-              >
-                <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
-              </div>
-            </div>
+            <HatchButton
+              label="Quick booking"
+              href="#quick-booking"
+              Icon={BoltIcon}
+              variant="dark"
+              hatch={false}
+              onClick={(e) => {
+                e.preventDefault();
+                setQuickOpen(true);
+              }}
+            />
+            <HatchButton label="Book Now" href="/form" Icon={CalendarIcon} variant="accent" hatch={false} />
           </div>
         </div>
       </div>
@@ -773,15 +736,21 @@ export default function Home() {
             </div>
           </div>
 
-          {/* brand row — static logo lockup with a slim inline nav */}
-          <div className="flex flex-col items-center justify-between gap-6 pt-10 sm:flex-row sm:pt-8">
+          {/* client voices — fill the band between the CTA card and the bottom bar;
+              the cards do their 3D recline + fan entrance as the curtain lifts */}
+          <div className="flex flex-1 items-center pt-10 sm:pt-6">
+            <TestimonialsCarousel atFooter={fr > 0.35} />
+          </div>
+
+          {/* bottom bar — logo lockup + slim nav pinned to the very bottom */}
+          <div className="mt-10 flex flex-col items-center justify-between gap-5 border-t border-white/[0.08] pt-6 pb-1 sm:flex-row">
             <Link href="/" className="inline-flex items-center gap-3">
-              <Logo size={34} color="#f3f5fa" accent={accent} />
+              <Logo size={30} color="#f3f5fa" accent={accent} />
               <span className="text-sm font-bold uppercase tracking-[0.08em]">
                 Apex<span className="font-semibold" style={{ color: "#8aa2ff" }}>Ride</span>
               </span>
             </Link>
-            <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-sm">
               {[
                 { label: "Our fleet", href: "/fleet" },
                 { label: "Services", href: "/services" },
@@ -794,21 +763,6 @@ export default function Home() {
                 </a>
               ))}
             </nav>
-          </div>
-
-          {/* client voices — fill the band where the old short footer used to sit;
-              the cards do their 3D recline + fan entrance as the curtain lifts */}
-          <div className="flex flex-1 items-center pt-10 sm:pt-4">
-            <TestimonialsCarousel atFooter={fr > 0.35} />
-          </div>
-
-          {/* base row */}
-          <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-white/[0.08] pt-6 text-[11px] tracking-wide text-white/30 sm:flex-row sm:items-center">
-            <span>© {new Date().getFullYear()} ApexRide. All rights reserved.</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
-              Lagos &amp; Abuja, Nigeria
-            </span>
           </div>
         </div>
       </footer>
