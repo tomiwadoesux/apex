@@ -79,7 +79,7 @@ const SERVICES: Service[] = [
       { label: "Luggage help", Icon: Luggage },
       { label: "Round the clock", Icon: Clock },
     ],
-    bg: "https://picsum.photos/seed/apexride-airport/1920/1080",
+    bg: "/images/services/airport.webp",
   },
   {
     index: "03",
@@ -94,7 +94,7 @@ const SERVICES: Service[] = [
       { label: "Flexible booking", Icon: CalendarCheck },
       { label: "Corporate billing", Icon: ReceiptText },
     ],
-    bg: "https://picsum.photos/seed/apexride-corporate/1920/1080",
+    bg: "/images/services/corporate.webp",
   },
   {
     index: "04",
@@ -109,7 +109,7 @@ const SERVICES: Service[] = [
       { label: "Route planning", Icon: Route },
       { label: "Seasoned drivers", Icon: BadgeCheck },
     ],
-    bg: "https://picsum.photos/seed/apexride-group/1920/1080",
+    bg: "/images/services/group.webp",
   },
   {
     index: "05",
@@ -124,7 +124,7 @@ const SERVICES: Service[] = [
       { label: "Personal chauffeur", Icon: UserRound },
       { label: "VIP service", Icon: Crown },
     ],
-    bg: "https://picsum.photos/seed/apexride-executive/1920/1080",
+    bg: "/images/services/executive.webp",
   },
   {
     index: "06",
@@ -139,7 +139,7 @@ const SERVICES: Service[] = [
       { label: "Trained chauffeurs", Icon: UserCheck },
       { label: "Guest shuttles", Icon: Users },
     ],
-    bg: "https://picsum.photos/seed/apexride-wedding/1920/1080",
+    bg: "/images/services/wedding.webp",
   },
 ];
 
