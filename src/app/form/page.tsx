@@ -2561,6 +2561,19 @@ export default function BookingForm() {
                 </span>
               </button>
             </div>
+
+            {/* footer — jump to the full fleet page to browse every car in detail */}
+            <Link
+              href="/fleet"
+              className={`flex shrink-0 items-center justify-center gap-2 border-t px-5 py-3.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                isLight ? "border-neutral-100 text-[#00209C] hover:bg-neutral-50" : "border-white/[0.07] text-[#FDBA16] hover:bg-white/[0.04]"
+              }`}
+            >
+              View full fleet page
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </Link>
           </div>
         </div>
       )}

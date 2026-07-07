@@ -203,8 +203,8 @@ export default function ServiceCards({ progress }: { progress: number }) {
             </div>
           );
         })}
-        <div className="absolute inset-0 bg-black/35" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/25" />
       </div>
 
       {/* one card per service. Desktop: marches left→right across services (leftmost
