@@ -204,10 +204,10 @@ function TestimonialCard({ name, role, message }: { name: string; role: string; 
     <figure
       className="relative flex h-full flex-col overflow-hidden rounded-[28px] border p-6 text-left sm:p-7"
       style={{
-        background: "linear-gradient(155deg, rgba(44,48,60,0.8) 0%, rgba(15,17,23,0.62) 100%)",
+        // solid fill (no backdrop-blur): the footer behind is opaque anyway, so
+        // the blur added nothing but scroll-time compositing lag during the reveal.
+        background: "linear-gradient(155deg, #23262f 0%, #14161c 100%)",
         borderColor: "rgba(255,255,255,0.12)",
-        backdropFilter: "blur(28px) saturate(160%)",
-        WebkitBackdropFilter: "blur(28px) saturate(160%)",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 56px rgba(0,0,0,0.32)",
       }}
     >
@@ -245,7 +245,7 @@ function CarouselArrow({ dir, onClick, disabled }: { dir: -1 | 1; onClick: () =>
       onClick={onClick}
       disabled={disabled}
       aria-label={dir === -1 ? "Previous testimonial" : "Next testimonial"}
-      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-white backdrop-blur-md transition-all duration-200 hover:border-white/30 hover:bg-white/15 disabled:cursor-default disabled:opacity-25"
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-white transition-all duration-200 hover:border-white/30 hover:bg-white/15 disabled:cursor-default disabled:opacity-25"
     >
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {dir === -1 ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 6l6 6-6 6" />}
