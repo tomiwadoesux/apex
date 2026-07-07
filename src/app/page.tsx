@@ -394,7 +394,11 @@ export default function Home() {
   const [quickOpen, setQuickOpen] = useState(false); // Quick Booking popup (progress persists while closed)
   const [reveal, setReveal] = useState(false); // on-load intro (headline stands up + fleet in)
   const [p, setP] = useState(0); // scroll progress 0..1 across the pinned story
-  const [fr, setFr] = useState(0); // footer reveal 0..1 — triggers the testimonials' 3D entrance
+  // A BOOLEAN, not a 0..1 value: the footer reveal only needs to know when the
+  // testimonials should animate in. Storing it as a boolean means React re-renders
+  // once (when it flips) instead of on every scroll frame — that per-frame
+  // re-render was what made the footer reveal lag/stick.
+  const [atFooter, setAtFooter] = useState(false);
   const [isMobile, setIsMobile] = useState(false); // phones lift the CTAs closer to the headline
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 640);
@@ -468,13 +472,15 @@ export default function Home() {
       end: "bottom bottom",
       onUpdate: (self) => setP(self.progress),
     });
-    // Footer reveal: progress of scrolling PAST the story into the footer.
-    // Triggers the testimonials' 3D entrance and reverses on scroll up.
+    // Footer reveal: a single threshold that flips the testimonials on when you
+    // scroll down into the footer and off when you scroll back up. onEnter/
+    // onLeaveBack fire ONCE each — no per-frame state updates, so the footer no
+    // longer lags/sticks while it reveals.
     const ft = ScrollTrigger.create({
       trigger: spacerRef.current,
-      start: "bottom bottom",
-      end: "bottom 55%",
-      onUpdate: (self) => setFr(self.progress),
+      start: "bottom 68%",
+      onEnter: () => setAtFooter(true),
+      onLeaveBack: () => setAtFooter(false),
     });
     return () => {
       st.kill();
@@ -809,7 +815,7 @@ export default function Home() {
           {/* client voices — fill the band between the CTA card and the bottom bar;
               the cards do their 3D recline + fan entrance as the curtain lifts */}
           <div className="flex flex-1 items-center pt-10 sm:pt-6">
-            <TestimonialsCarousel atFooter={fr > 0.35} />
+            <TestimonialsCarousel atFooter={atFooter} />
           </div>
 
           {/* bottom bar — logo lockup + slim nav pinned to the very bottom */}
