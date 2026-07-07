@@ -688,10 +688,11 @@ export default function Home() {
               photo, and the ink tracks headInk like the headline. Phones: sits just
               UNDER the headline (clear of the bottom buttons); sm+: above the buttons. */}
           <div
-            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4 bottom-[var(--pill-b)]"
+            className="pointer-events-none absolute inset-x-0 z-[26] flex justify-center px-4"
             style={{
-              ["--pill-b" as string]: `calc(14% + ${(60 + lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              transform: `translateY(${lerp(-34, 0, settle).toFixed(1)}vh)`,
+              // Rest: pinned near the TOP of the screen (just under the header).
+              // On scroll it settles down to its story spot above the buttons.
+              top: `${lerp(12, 82, settle).toFixed(1)}%`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
@@ -726,7 +727,7 @@ export default function Home() {
             className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
             style={{
               bottom: `calc(14% + ${(lerp(0, 16, riseUp) + BUTTONS_Y).toFixed(2)}px)`,
-              transform: `translateY(${lerp(-30, 0, settle).toFixed(1)}vh)`,
+              transform: `translateY(${lerp(-39, 0, settle).toFixed(1)}vh)`,
               opacity: reveal ? 1 : 0,
               transition: "opacity 420ms ease-out 220ms",
             }}
