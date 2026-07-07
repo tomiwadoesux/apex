@@ -155,7 +155,7 @@ function HatchButton({
     <a
       href={href}
       onClick={onClick}
-      className="group pointer-events-auto relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-full border px-6 text-sm font-semibold tracking-wide transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-px"
+      className="group pointer-events-auto relative inline-flex h-9 sm:h-11 items-center gap-2 sm:gap-2.5 overflow-hidden rounded-full border px-4 sm:px-6 text-[13px] sm:text-sm font-semibold tracking-wide transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-px"
       style={{ background: bg, color: ink, borderColor: border, boxShadow: sheen }}
     >
       {/* diagonal hatch — oversized so it can slide on hover without exposing an edge */}
@@ -166,7 +166,7 @@ function HatchButton({
           style={{ backgroundImage: `repeating-linear-gradient(45deg, ${line} 0, ${line} 1px, transparent 1px, transparent 16px)` }}
         />
       ) : null}
-      {Icon ? <Icon className="relative z-[1] h-4 w-4 shrink-0" /> : null}
+      {Icon ? <Icon className="relative z-[1] h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> : null}
       <span className="relative z-[1] whitespace-nowrap">{label}</span>
     </a>
   );
