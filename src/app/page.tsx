@@ -505,10 +505,9 @@ export default function Home() {
   const cardsProgress = win(p, 0.16, 1.0);
   const cardsIn = smooth(win(p, 0.16, 0.22)); // settle fast so service 01 holds (not fading through its whole slot)
 
-  // headline / brand ink: dark on the light hero, fading to white as the overlay /
-  // photo (dark) takes over, so the persistent "See our services" stays legible.
-  const inkCh = Math.round(lerp(23, 255, overlayIn));
-  const headInk = `rgb(${inkCh}, ${inkCh}, ${inkCh})`;
+  // headline / brand ink: the hero photo carries a black scrim from the start,
+  // so the ink stays WHITE through the whole story.
+  const headInk = "#f3f5fa";
 
   return (
     <main className="relative w-full">
@@ -605,6 +604,13 @@ export default function Home() {
                 }}
               />
             </svg>
+            {/* black scrim over the hero photo so the headline + CTAs pop; hands
+                off with the cutout (the story's own overlays take over from there) */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-black/35"
+              style={{ opacity: reveal ? 1 - carFade : 0, transition: "opacity 220ms linear" }}
+            />
           </div>
 
           {/* brand lockup — top-left (persists; ink turns white over the photo).
@@ -689,8 +695,8 @@ export default function Home() {
               className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 rounded-full border px-5 py-2.5 backdrop-blur-md sm:gap-x-4 sm:px-6"
               style={{
                 color: headInk,
-                background: `rgba(${overlayIn > 0.5 ? "8,10,16" : "255,255,255"}, ${lerp(0.32, 0.26, overlayIn).toFixed(2)})`,
-                borderColor: `rgba(${overlayIn > 0.5 ? "255,255,255" : "10,14,26"}, 0.14)`,
+                background: "rgba(8,10,16,0.35)",
+                borderColor: "rgba(255,255,255,0.16)",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 14px 34px -18px rgba(0,0,0,0.45)",
               }}
             >
