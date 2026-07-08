@@ -1430,11 +1430,11 @@ export default function BookingForm() {
       className={`relative h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between ${mode}`}
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
-      {/* 1. Header — fixed with its own backdrop so anything scrolling passes underneath it */}
+      {/* 1. Header — fixed, no solid fill (a solid colour showed as a band over
+          the page's radial gradient). Transparent, so the gradient reads as one
+          continuous surface top-to-bottom. */}
       <header
-        className={`fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-5 sm:px-8 md:px-12 py-5 backdrop-blur-md border-b ${
-          isLight ? "bg-[#e2e8f0]/70 border-neutral-900/[0.06]" : "bg-[#101010]/60 border-white/[0.06]"
-        }`}
+        className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-5 sm:px-8 md:px-12 py-5"
       >
         {/* Logo and text wrapper — links back to the landing page */}
         <Link href="/" className={`flex items-center gap-2.5 ${heading}`}>
@@ -1647,8 +1647,21 @@ export default function BookingForm() {
             {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
             {currentStep === 3 && (
               <div className="w-full flex flex-col items-center">
+                {/* Something else — sits at the top of the car selector; opens the
+                    bespoke request overlay for any make/model not in the fleet. */}
+                <button
+                  type="button"
+                  onClick={() => setCustomCarOpen(true)}
+                  className={`pointer-events-auto -mt-1 mb-1 inline-flex items-center gap-1.5 rounded-full border border-dashed px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-all duration-300 hover:scale-[1.03] ${
+                    isCustomCar
+                      ? isLight ? "border-[#00209C] bg-[#00209C]/[0.06] text-[#00209C]" : "border-[#FDBA16] bg-[#FDBA16]/[0.08] text-[#FDBA16]"
+                      : isLight ? "border-[#00209C]/60 text-[#00209C] hover:bg-[#00209C]/[0.05]" : "border-[#FDBA16]/60 text-[#FDBA16] hover:bg-[#FDBA16]/[0.05]"
+                  }`}
+                >
+                  Something else?
+                </button>
                 <div
-                  className="relative w-full h-[28vh] max-h-[290px] flex items-center justify-center mt-2"
+                  className="relative w-full h-[28vh] max-h-[290px] flex items-center justify-center mt-1"
                   {...makeSwipeHandlers((dir) => spinCar(dir))}
                 >
 
@@ -2372,8 +2385,7 @@ export default function BookingForm() {
               const isCompleted = currentStep > idx || currentStep === 8;
               const isActive = currentStep === idx;
               // Car Type is pre-decided by the fleet hand-off: the step is skipped
-              // and its tracker entry sits blurred. Clicking it still works as the
-              // deliberate "actually, let me change the car" escape hatch.
+              // and its tracker entry sits blurred AND inert — it can't be clicked open.
               const isSkipped = idx === 3 && !!preselectedCar;
 
               const accentHex = isLight ? "#00209C" : "#FDBA16";
@@ -2382,8 +2394,8 @@ export default function BookingForm() {
                 <div key={stepName} className={`flex flex-col items-center transition-all duration-300 ${isSkipped ? "blur-[2px] opacity-50" : ""}`}>
                   <div className="h-4 flex items-center justify-center">
                     <button
-                      onClick={() => currentStep <= 7 && setCurrentStep(idx)}
-                      disabled={currentStep > 7}
+                      onClick={() => !isSkipped && currentStep <= 7 && setCurrentStep(idx)}
+                      disabled={currentStep > 7 || isSkipped}
                       className={`relative transition-all duration-300 focus:outline-none before:absolute before:content-[''] before:inset-[-11px] ${isActive
                         ? "w-3.5 h-3.5 border rounded-full shadow-md scale-110 cursor-pointer"
                         : "w-2.5 h-2.5 border-2 rounded-full cursor-pointer"
