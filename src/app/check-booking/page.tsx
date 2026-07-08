@@ -9,7 +9,7 @@ import { toPng } from "html-to-image";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import type { Booking } from "@/lib/bookings";
 
-const AMBER = "#FDBA16";
+const BLUE = "#00209C";
 
 function toRide(b: Booking): RideBooking {
   return {
@@ -91,20 +91,20 @@ export default function CheckBookingPage() {
 
   return (
     <main
-      className="min-h-dvh w-full px-5 py-14 sm:py-20"
-      style={{ background: "radial-gradient(130% 120% at 50% -10%, #14171e 0%, #0a0c10 65%, #06070a 100%)", color: "#eef1f6" }}
+      className="min-h-dvh w-full px-5 py-14 text-neutral-900 sm:py-20"
+      style={{ background: "radial-gradient(130% 120% at 50% -10%, #f4f6fb 0%, #e2e8f0 65%, #cbd5e1 100%)" }}
     >
       <div className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
         <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold tracking-[0.22em]">
           <svg width="20" height="22" viewBox="0 0 139 152" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M66.7703 0C74.2372 0.18897 76.7497 3.24329 80.4577 9.45514C96.9025 37.0697 113.133 64.7208 129.466 92.4111C132.151 96.9622 139.831 108.081 138.677 113.593C138.253 115.617 136.012 120.237 134.195 120.71C116.289 125.374 88.0411 98.6954 72.0326 94.5106L71.1219 94.2792C53.5024 94.4998 25.6138 124.146 7.85784 122.039C5.40108 121.748 3.01758 120.715 1.57899 118.62C0.14955 116.539 -0.25924 113.594 0.151192 111.127C1.14272 105.174 52.8722 16.4895 59.8853 6.52736C61.8259 3.7719 64.0013 1.89386 66.7703 0Z" fill={AMBER} />
-            <path d="M65.4483 103.057C78.6429 100.845 91.1706 109.627 93.5891 122.784C96.0076 135.941 87.4218 148.605 74.3037 151.23C65.6331 152.964 56.7001 149.891 50.9324 143.189C45.1639 136.487 43.4564 127.196 46.4643 118.882C49.4713 110.567 56.7276 104.518 65.4483 103.057Z" fill={AMBER} />
+            <path d="M66.7703 0C74.2372 0.18897 76.7497 3.24329 80.4577 9.45514C96.9025 37.0697 113.133 64.7208 129.466 92.4111C132.151 96.9622 139.831 108.081 138.677 113.593C138.253 115.617 136.012 120.237 134.195 120.71C116.289 125.374 88.0411 98.6954 72.0326 94.5106L71.1219 94.2792C53.5024 94.4998 25.6138 124.146 7.85784 122.039C5.40108 121.748 3.01758 120.715 1.57899 118.62C0.14955 116.539 -0.25924 113.594 0.151192 111.127C1.14272 105.174 52.8722 16.4895 59.8853 6.52736C61.8259 3.7719 64.0013 1.89386 66.7703 0Z" fill="#0c1222" />
+            <path d="M65.4483 103.057C78.6429 100.845 91.1706 109.627 93.5891 122.784C96.0076 135.941 87.4218 148.605 74.3037 151.23C65.6331 152.964 56.7001 149.891 50.9324 143.189C45.1639 136.487 43.4564 127.196 46.4643 118.882C49.4713 110.567 56.7276 104.518 65.4483 103.057Z" fill={BLUE} />
           </svg>
           APEX
         </Link>
 
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Find your ride pass</h1>
-        <p className="mt-2 text-sm text-white/55">Enter your booking number to pull up your card.</p>
+        <p className="mt-2 text-sm text-neutral-500">Enter your booking number to pull up your card.</p>
 
         <form onSubmit={search} className="mt-6 flex w-full items-center gap-2">
           <input
@@ -113,36 +113,36 @@ export default function CheckBookingPage() {
             placeholder="e.g. APX-482719"
             inputMode="text"
             autoCapitalize="characters"
-            className="h-12 w-full rounded-xl border border-white/12 bg-white/[0.04] px-4 text-sm tracking-wide outline-none transition-colors placeholder:text-white/30 focus:border-[#FDBA16]"
+            className="h-12 w-full rounded-xl border border-neutral-900/12 bg-white px-4 text-base tracking-wide outline-none transition-colors placeholder:text-neutral-400 focus:border-[#00209C] sm:text-sm"
           />
           <button
             type="submit"
             disabled={status === "loading" || !ref.trim()}
-            className="h-12 shrink-0 rounded-xl bg-[#FDBA16] px-6 text-[11px] font-bold uppercase tracking-widest text-neutral-950 transition-colors hover:bg-[#e5a912] disabled:opacity-50"
+            className="h-12 shrink-0 rounded-xl bg-[#00209C] px-6 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#001a80] disabled:opacity-50"
           >
             {status === "loading" ? "…" : "Find"}
           </button>
         </form>
 
         {status === "notfound" && (
-          <p className="mt-6 text-sm text-white/55">
+          <p className="mt-6 text-sm text-neutral-500">
             No booking found for “{ref.trim()}”. Double-check the number and try again.
           </p>
         )}
         {status === "error" && (
-          <p className="mt-6 text-sm text-white/55">Something went wrong looking that up. Please try again.</p>
+          <p className="mt-6 text-sm text-neutral-500">Something went wrong looking that up. Please try again.</p>
         )}
 
         {status === "found" && booking && (
           <div className="mt-4 flex w-full flex-col items-center">
             <div ref={cardRef} className="flex w-full justify-center">
-              <RidePass booking={toRide(booking)} light={booking.light} />
+              <RidePass booking={toRide(booking)} light />
             </div>
             <button
               type="button"
               onClick={saveCard}
               disabled={saving}
-              className="-mt-1 rounded-full bg-[#FDBA16] px-7 py-3 text-[11px] font-bold uppercase tracking-widest text-neutral-950 transition-colors hover:bg-[#e5a912] disabled:opacity-60"
+              className="-mt-1 rounded-full bg-[#00209C] px-7 py-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#001a80] disabled:opacity-60"
             >
               {saving ? "Preparing…" : "Save card to photos"}
             </button>
