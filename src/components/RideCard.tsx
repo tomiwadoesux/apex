@@ -59,6 +59,7 @@ export type RideBooking = {
   email?: string;
   pickupImg?: { light: string; dark: string };
   dropoffImg?: { light: string; dark: string };
+  maxW?: string;
 };
 
 /* ── visual-tweak model (the /holo-card sliders drive this) ────────────────── */
@@ -198,6 +199,7 @@ export type RideCardProps = {
   email?: string;
   pickupImg?: { light: string; dark: string };
   dropoffImg?: { light: string; dark: string };
+  maxW?: string; // display width clamp (default min(460px,88vw))
 };
 
 export function RideCard({
@@ -221,6 +223,7 @@ export function RideCard({
   email = CONCIERGE_EMAIL,
   pickupImg,
   dropoffImg,
+  maxW = "min(460px, 88vw)",
 }: RideCardProps) {
   const reduced = useReducedMotion();
   // touch devices can't hover, so we auto-play a GENTLE version of the hover there
@@ -369,10 +372,10 @@ export function RideCard({
   );
 
   return (
-    <div className="flex items-center justify-center py-6" style={vars}>
+    <div className="flex items-center justify-center py-3" style={vars}>
       {/* Phones get a taller, phone-length card (≈9:18) so the pass fills the
           screen like a wallet pass; larger screens keep the classic 5:7.5. */}
-      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative aspect-[9/18] sm:aspect-[5/7.5]" style={{ width: "min(460px, 88vw)" }}>
+      <div ref={stageRef} onPointerMove={onMove} onPointerEnter={onEnter} onPointerLeave={onLeave} className="relative aspect-[9/18] sm:aspect-[5/7.5] [&_*]:select-text" style={{ width: maxW }}>
         <div
           className="absolute inset-0 overflow-hidden"
           data-ride-card
@@ -414,8 +417,8 @@ export function RideCard({
               </div>
             </div>
 
-            {/* hero: the car */}
-            <div className="relative mt-[1cqw]" style={{ height: "72cqw", marginInline: "-7cqw" }}>
+            {/* hero: the car — bleeds wide so long SUVs render big, not letterboxed */}
+            <div className="relative mt-[1cqw]" style={{ height: "80cqw", marginInline: "-11cqw" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 key={car.name + (light ? "l" : "d")}
@@ -455,14 +458,14 @@ export function RideCard({
             {/* booking number (+ passenger, if any) */}
             <div className="mt-[2cqw] text-center">
               <div style={{ borderTop: `2px dotted ${light ? "rgba(10,18,40,.3)" : "rgba(255,255,255,.26)"}`, margin: "2cqw 0 2.5cqw" }} />
+              {/* the shareable link sits ABOVE the booking number */}
+              <div style={{ fontSize: "2.3cqw", letterSpacing: "0.01em", color: accent, marginBottom: "1.4cqw", whiteSpace: "nowrap" }}>apex.ayotomcs.me/booking/{bookingRef.replace(/\s+/g, "")}</div>
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.3em", color: dim }}>BOOKING No.</div>
               <div style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600, fontSize: "5.6cqw", letterSpacing: "0.2em", color: ink, marginTop: "1.2cqw" }}>{bookingRef}</div>
-              {passengerName ? (
-                <div style={{ fontSize: "2.4cqw", letterSpacing: "0.04em", color: dim, marginTop: "1.4cqw" }}>
-                  Issued to <span style={{ color: ink, fontWeight: 600 }}>{passengerName}</span>
+              {passengerName && (
+                <div style={{ fontSize: "3cqw", letterSpacing: "0.02em", color: dim, marginTop: "1.8cqw" }}>
+                  Issued to <span style={{ color: ink, fontWeight: 700, fontSize: "3.4cqw" }}>{passengerName}</span>
                 </div>
-              ) : (
-                <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apex.ayotomcs.me/booking/{bookingRef.replace(/\s+/g, "")}</div>
               )}
             </div>
 
@@ -498,14 +501,17 @@ export function RidePass({
   booking,
   light,
   settings = DEFAULTS,
+  maxW,
 }: {
   booking: RideBooking;
   light: boolean;
   settings?: Settings;
+  maxW?: string;
 }) {
   const t = passTheme(light, settings.accent);
   return (
     <RideCard
+      maxW={maxW}
       light={light}
       s={settings}
       accent={t.accent}

@@ -1478,7 +1478,7 @@ export default function BookingForm() {
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
-      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 pt-28 pb-44 z-10 ${currentStep === 6 || currentStep === 8 ? "justify-start overflow-y-auto" : "justify-center"}`}>
+      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 z-10 ${currentStep === 8 ? "pt-20 pb-6 justify-center overflow-y-auto" : "pt-28 pb-44"} ${currentStep === 6 ? "justify-start overflow-y-auto" : currentStep === 8 ? "" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -2325,7 +2325,9 @@ export default function BookingForm() {
             </p>
 
             <div ref={passCardRef} className="w-full flex justify-center">
-              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} />
+              {/* clamp by viewport HEIGHT too so the whole pass + buttons fit a laptop
+                  screen without scrolling (aspect ~5:7.5 → width ≈ 0.55 × height) */}
+              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} maxW="min(400px, 84vw, 47vh)" />
             </div>
 
             <div className="-mt-1 flex flex-wrap items-center justify-center gap-3">
@@ -2350,8 +2352,10 @@ export default function BookingForm() {
 
       </div>
 
-      {/* 3. Stepper progress tracker floating glass-morphic dock (8 indicators) */}
-      <div className="pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[88vw] sm:max-w-[70vw] px-0 z-20 select-none">
+      {/* 3. Stepper progress tracker floating glass-morphic dock (8 indicators).
+          Hidden on the success screen (booking done — nothing left to navigate,
+          and it was overlapping the Save/Book-another buttons). */}
+      <div className={`pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[88vw] sm:max-w-[70vw] px-0 z-20 select-none ${currentStep === 8 ? "hidden" : ""}`}>
         <div className="relative px-0 py-5 transition-all duration-300">
           <div className="relative grid grid-cols-8 items-start">
             {/* The horizontal connecting line */}
