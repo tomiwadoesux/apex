@@ -10,6 +10,7 @@ import { toPng } from "html-to-image";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
+import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
@@ -349,6 +350,8 @@ export default function BookingForm() {
   const [bookingTime, setBookingTime] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
+  const [paymentDone, setPaymentDone] = useState(false); // receipt submitted → final confirmation
+  const [paySubmitting, setPaySubmitting] = useState(false);
   // Schedule step: which path the guest chose, and which month the calendar shows.
   const [scheduleMode, setScheduleMode] = useState<"quick" | "custom" | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
@@ -391,6 +394,19 @@ export default function BookingForm() {
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_CONFIG);
   useEffect(() => {
     fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
+  }, []);
+
+  // A booking placed but not yet paid for is kept in localStorage — restore it so
+  // the payment step reappears (even after a tab/app close) until they've paid.
+  useEffect(() => {
+    const p = loadPending();
+    if (p) {
+      setConfirmedBooking(p.booking);
+      setBookingId(p.booking.id);
+      setPayment({ ...EMPTY_PAYMENT, note: p.note });
+      setPaymentDone(false);
+      setCurrentStep(8);
+    }
   }, []);
   const durationServices: ServiceItem[] = cfg.durations.map((d) => ({
     id: d.id, name: d.name, desc: d.desc, group: "duration" as const,
@@ -1207,34 +1223,53 @@ export default function BookingForm() {
       date: formatCardDate(bookingDate),
       time: bookingTime,
       light: isLight,
-      paymentNote: payment.note.trim() || null,
     };
 
     setSubmitting(true);
+    let placed: Booking;
     try {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, receipt: payment.receipt, receiptName: payment.receiptName }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.booking) {
-        const b = data.booking as Booking;
-        setConfirmedBooking(b);
-        setBookingId(b.id);
+        placed = data.booking as Booking;
       } else {
         throw new Error("save failed");
       }
     } catch {
       // Offline / API down: still show the pass with a local reference (it just
       // won't be retrievable at /check-booking until saved server-side).
-      const fallbackId = "APX-" + Math.floor(100000 + Math.random() * 900000);
-      setConfirmedBooking({ ...payload, id: fallbackId, createdAt: Date.now() });
-      setBookingId(fallbackId);
-    } finally {
-      setSubmitting(false);
-      setCurrentStep(8);
+      placed = { ...payload, id: "APX-" + Math.floor(100000 + Math.random() * 900000), createdAt: Date.now() };
     }
+    setConfirmedBooking(placed);
+    setBookingId(placed.id);
+    // Persist so the payment step survives a tab/app close until they've paid.
+    savePending({ booking: placed, note: payment.note });
+    setPaymentDone(false);
+    setSubmitting(false);
+    setCurrentStep(8);
+  };
+
+  // The guest transferred the fare and is submitting their receipt for the placed
+  // booking. Emails the team, clears the saved-until-paid record, then finishes.
+  const submitPayment = async () => {
+    if (!confirmedBooking || paySubmitting) return;
+    setPaySubmitting(true);
+    try {
+      await fetch(`/api/bookings/${encodeURIComponent(confirmedBooking.id)}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentNote: payment.note.trim() || null, receipt: payment.receipt, receiptName: payment.receiptName }),
+      });
+    } catch {
+      /* don't block completion if the email send is unreachable */
+    }
+    clearPending();
+    setPaySubmitting(false);
+    setPaymentDone(true);
   };
 
   const nextStep = () => {
@@ -1306,6 +1341,8 @@ export default function BookingForm() {
     setBookingTime("");
     setSpecialRequests("");
     setPayment(EMPTY_PAYMENT);
+    setPaymentDone(false);
+    clearPending();
     setBookingId("");
     setConfirmedBooking(null);
     setIsCustomCar(false);
@@ -1482,7 +1519,7 @@ export default function BookingForm() {
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
-      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 z-10 ${currentStep === 8 ? "pt-24 sm:pt-20 pb-4 justify-center overflow-hidden" : "pt-28 pb-44"} ${currentStep === 6 || currentStep === 7 ? "justify-start overflow-y-auto" : currentStep === 8 ? "" : "justify-center"}`}>
+      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 z-10 ${currentStep === 8 ? (paymentDone ? "pt-24 sm:pt-20 pb-4 justify-center overflow-hidden" : "pt-24 sm:pt-20 pb-10 justify-start overflow-y-auto") : "pt-28 pb-44"} ${currentStep === 6 || currentStep === 7 ? "justify-start overflow-y-auto" : currentStep === 8 ? "" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -2218,16 +2255,6 @@ export default function BookingForm() {
 
                </div>
 
-                {/* Payment — bank transfer details, receipt upload, note */}
-                <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left`}>
-                  <div className="mb-4">
-                    <div className="text-xs font-bold uppercase tracking-widest" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                      Payment
-                    </div>
-                  </div>
-                  <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight={isLight} />
-                </div>
-
               </div>
             )}
 
@@ -2305,23 +2332,75 @@ export default function BookingForm() {
           </div>
         )}
 
-        {/* Step 9: Confirmation. The card itself is rendered off-screen only, so
-            the guest can still download it, but the screen shows a clean receipt
-            and points them to the check-booking site. */}
-        {currentStep === 8 && confirmedBooking && (
+        {/* Step 9a: Payment. The booking is placed; now they transfer the fare and
+            submit their receipt. This screen is saved to localStorage and comes
+            back (even after a tab/app close) until payment is submitted. */}
+        {currentStep === 8 && confirmedBooking && !paymentDone && (
+          <div className="w-full max-w-lg flex flex-col gap-4 pt-2">
+            <div className="text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+                Booking placed
+              </p>
+              <h2 className={`mt-1.5 font-josefin text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
+                Work order {confirmedBooking.id}
+              </h2>
+              <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
+                Your ride is reserved. Complete the transfer below to confirm it — this step stays saved until you&apos;ve paid, so you can leave and come back.
+              </p>
+            </div>
+
+            <div className={`p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[1.75rem] border ${cardBgStyle} text-left`}>
+              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight={isLight} />
+            </div>
+
+            <button
+              type="button"
+              onClick={submitPayment}
+              disabled={paySubmitting}
+              className={`h-12 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all duration-300 disabled:opacity-60 ${isLight ? "bg-[#00209C] text-white hover:bg-[#001a80]" : "bg-[#FDBA16] text-neutral-950 hover:bg-[#e5a912]"}`}
+            >
+              {paySubmitting ? "Sending…" : "I've paid — submit receipt"}
+            </button>
+
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={saveCard}
+                disabled={saving}
+                className={`rounded-full border px-6 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 disabled:opacity-60 ${isLight ? "border-neutral-300 text-neutral-700 hover:bg-neutral-100" : "border-white/20 text-white/80 hover:bg-white/10"}`}
+              >
+                {saving ? "Preparing…" : "Download ride pass"}
+              </button>
+              <Link
+                href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`}
+                className={`rounded-full border px-6 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${isLight ? "border-neutral-300 text-neutral-700 hover:bg-neutral-100" : "border-white/20 text-white/80 hover:bg-white/10"}`}
+              >
+                Track booking
+              </Link>
+            </div>
+
+            {/* off-screen card kept mounted purely so the download can rasterise it */}
+            <div ref={passCardRef} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 opacity-0">
+              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} />
+            </div>
+          </div>
+        )}
+
+        {/* Step 9b: Final confirmation, shown once the receipt is submitted. */}
+        {currentStep === 8 && confirmedBooking && paymentDone && (
           <div className="w-full flex flex-col items-center gap-5 text-center pt-2">
             <span className={`grid h-16 w-16 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
               <span className="scale-[1.35]"><CheckIcon /></span>
             </span>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                Booking received
+                Payment received
               </p>
               <h2 className={`mt-2 font-josefin text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
                 Work order {confirmedBooking.id}
               </h2>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-                Our team will reach out shortly to confirm. Keep your work order ID — you can view or
+                Your receipt is with our team and we&apos;ll confirm shortly. Keep your work order ID — view or
                 download your ride pass anytime at{" "}
                 <Link href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`} className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
                   the check-booking page
@@ -2338,12 +2417,6 @@ export default function BookingForm() {
               >
                 {saving ? "Preparing…" : "Download ride pass"}
               </button>
-              <Link
-                href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`}
-                className={`rounded-full border px-7 py-3 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${isLight ? "border-neutral-300 text-neutral-700 hover:bg-neutral-100" : "border-white/20 text-white/80 hover:bg-white/10"}`}
-              >
-                Track booking
-              </Link>
               <button
                 type="button"
                 onClick={resetForm}

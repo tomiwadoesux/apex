@@ -24,6 +24,7 @@ import { ratePerHour, naira } from "@/lib/pricing";
 // per-car rate: admin override first, then the code default
 const rateFor = (rates: Record<string, number>, id: string) => rates[id] ?? ratePerHour(id);
 import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
+import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 
 const BLUE = "#00209C";
@@ -114,9 +115,23 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
   const [submitting, setSubmitting] = useState(false);
+  const [paySubmitting, setPaySubmitting] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
+  const [resumed, setResumed] = useState(false); // opened by a saved, unpaid booking
   const passRef = useRef<HTMLDivElement>(null);
+
+  // A booking placed but not yet paid for is kept in localStorage — restore it so
+  // the payment step reappears (even after a tab/app close) until they've paid.
+  useEffect(() => {
+    const p = loadPending();
+    if (p) {
+      setBooking(p.booking);
+      setPayment({ ...EMPTY_PAYMENT, note: p.note });
+      setStep(5);
+      setResumed(true);
+    }
+  }, []);
 
   // The horizontal date strip: today + the next DAYS_AHEAD days.
   const days = useMemo(() => {
@@ -131,8 +146,8 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
   // Esc closes (progress is kept); lock page scroll while open.
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (!open && !resumed) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setResumed(false); onClose(); } };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -140,7 +155,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open, resumed, onClose]);
 
   const submit = async () => {
     if (!car || !duration || !date || !time || submitting) return;
@@ -154,28 +169,48 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       date: formatCardDate(date),
       time,
       light: true,
-      paymentNote: payment.note.trim() || null,
     };
     setSubmitting(true);
+    let placed: Booking;
     try {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...bookingPayload, receipt: payment.receipt, receiptName: payment.receiptName }),
+        body: JSON.stringify(bookingPayload),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.booking) {
-        setBooking(data.booking as Booking);
+        placed = data.booking as Booking;
       } else {
         throw new Error("save failed");
       }
     } catch {
-      // Offline / API down: still show the pass with a local reference.
-      setBooking({ ...bookingPayload, id: "APX-" + Math.floor(100000 + Math.random() * 900000), createdAt: Date.now() });
-    } finally {
-      setSubmitting(false);
-      setStep(6);
+      // Offline / API down: still give them a pass with a local reference.
+      placed = { ...bookingPayload, id: "APX-" + Math.floor(100000 + Math.random() * 900000), createdAt: Date.now() };
     }
+    setBooking(placed);
+    // Persist so the payment step survives a tab/app close until they've paid.
+    savePending({ booking: placed, note: payment.note });
+    setSubmitting(false);
+    setStep(5); // → payment
+  };
+
+  // Submit the transfer receipt + note for the placed booking, then finish.
+  const submitPayment = async () => {
+    if (!booking || paySubmitting) return;
+    setPaySubmitting(true);
+    try {
+      await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentNote: payment.note.trim() || null, receipt: payment.receipt, receiptName: payment.receiptName }),
+      });
+    } catch {
+      /* even if the email send is unreachable, let them finish — we don't block */
+    }
+    clearPending();
+    setPaySubmitting(false);
+    setStep(6); // → done
   };
 
   // Render the card to a PNG, then share it (phones → Photos) or download it.
@@ -220,9 +255,17 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     setPhoneTouched(false);
     setPayment(EMPTY_PAYMENT);
     setBooking(null);
+    setResumed(false);
+    clearPending();
   };
 
-  if (!open) return null;
+  // Closing keeps any unpaid booking in localStorage — it re-opens next visit.
+  const handleClose = () => {
+    setResumed(false);
+    onClose();
+  };
+
+  if (!open && !resumed) return null;
 
   const phoneBad = phoneTouched && phone.trim() !== "" && !validPhone(phone);
   const contactReady = name.trim() !== "" && validPhone(phone);
@@ -245,7 +288,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   return (
     <div
       className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:px-6"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         role="dialog"
@@ -261,11 +304,12 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             <h2 className="mt-1 font-josefin text-xl font-light tracking-tight">
               {step <= 5 ? STEP_TITLES[step] : "You're booked!"}
             </h2>
-            {step <= 5 && <div className="mt-0.5 text-[11px] text-neutral-400">Step {step + 1} of 6 — closing keeps your progress</div>}
+            {step <= 4 && <div className="mt-0.5 text-[11px] text-neutral-400">Step {step + 1} of 5 — closing keeps your progress</div>}
+            {step === 5 && <div className="mt-0.5 text-[11px] text-neutral-400">Booking {booking?.id} placed — complete payment</div>}
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="mt-0.5 text-[11px] font-semibold uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-900"
           >
             Close
@@ -462,29 +506,37 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               </div>
               <button
                 type="button"
-                disabled={!contactReady}
-                onClick={() => setStep(5)}
-                className={continueBtn}
-                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
-              >
-                Continue to payment
-              </button>
-            </div>
-          )}
-
-          {/* 6 — payment */}
-          {step === 5 && (
-            <div className="flex flex-col gap-4">
-              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight />
-              <button
-                type="button"
-                disabled={submitting}
+                disabled={!contactReady || submitting}
                 onClick={() => void submit()}
                 className={continueBtn}
                 style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
               >
-                {submitting ? "Booking…" : "Book my ride"}
+                {submitting ? "Placing your booking…" : "Book my ride"}
               </button>
+            </div>
+          )}
+
+          {/* 6 — payment (after the booking is placed; persists until paid) */}
+          {step === 5 && (
+            <div className="flex flex-col gap-4">
+              <div className="rounded-2xl border border-[#00209C]/15 bg-[#00209C]/[0.04] px-4 py-3 text-center">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Work order</div>
+                <div className="text-lg font-semibold tracking-tight" style={{ color: BLUE }}>{booking?.id}</div>
+                <div className="mt-0.5 text-[11px] text-neutral-500">Your ride is reserved. Complete the transfer below to confirm it.</div>
+              </div>
+              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight />
+              <button
+                type="button"
+                disabled={paySubmitting}
+                onClick={() => void submitPayment()}
+                className={continueBtn}
+                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
+              >
+                {paySubmitting ? "Sending…" : "I've paid — submit receipt"}
+              </button>
+              <p className="text-center text-[10px] leading-relaxed text-neutral-400">
+                Haven&apos;t paid yet? You can close this — your work order is saved and this step comes back next time until payment is done.
+              </p>
             </div>
           )}
 
@@ -498,10 +550,10 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 </svg>
               </span>
               <div>
-                <h3 className="font-josefin text-lg font-medium tracking-tight">Booking confirmed</h3>
+                <h3 className="font-josefin text-lg font-medium tracking-tight">All done — payment received</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-neutral-500">
-                  Your work order <span className="font-semibold text-neutral-900">{booking.id}</span> is in.
-                  {booking.passenger.phone ? ` We'll call ${booking.passenger.phone} shortly to confirm.` : ""}
+                  Your work order <span className="font-semibold text-neutral-900">{booking.id}</span> is confirmed and your receipt is with our team.
+                  {booking.passenger.phone ? ` We'll call ${booking.passenger.phone} shortly.` : ""}
                 </p>
               </div>
 
@@ -545,8 +597,9 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           )}
         </div>
 
-        {/* footer — back / summary line (no step dots) */}
-        {step >= 1 && step <= 5 && (
+        {/* footer — back / summary line (no step dots); hidden once the booking
+            is placed (payment step onward) so they can't step back into it */}
+        {step >= 1 && step <= 4 && (
           <div className="flex shrink-0 items-center justify-between border-t border-neutral-100 px-5 py-3">
             <button
               type="button"

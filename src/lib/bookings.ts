@@ -147,7 +147,7 @@ export async function listBookings(): Promise<Booking[]> {
 
 export async function updateBooking(
   ref: string,
-  patch: Partial<Pick<Booking, "status" | "driver" | "notes">>,
+  patch: Partial<Pick<Booking, "status" | "driver" | "notes" | "paymentNote">>,
 ): Promise<Booking | null> {
   const digits = digitsOf(ref);
   if (!digits) return null;

@@ -90,6 +90,15 @@ async function sendPush(b: Booking): Promise<void> {
   if (!res.ok) throw new Error(`ntfy ${res.status}`);
 }
 
+async function sendPushText(title: string, body: string): Promise<void> {
+  const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    method: "POST",
+    headers: { Title: title, Priority: "high", Tags: "money_with_wings" },
+    body,
+  });
+  if (!res.ok) throw new Error(`ntfy ${res.status}`);
+}
+
 // Which channels the server actually has configured — surfaced in /admin so a
 // missing env var is visible instead of a silent skip.
 export function notificationStatus() {
@@ -192,5 +201,47 @@ export async function notifyBookingCreated(
   const results = await Promise.allSettled(jobs);
   for (const r of results) {
     if (r.status === "rejected") console.error("[notify] send failed", r.reason);
+  }
+}
+
+// Fired when the guest submits their transfer receipt for an existing booking.
+// Emails the team the receipt + payment note and pushes a heads-up.
+export async function notifyPaymentReceived(
+  b: Booking,
+  extras?: { receipt?: string | null; receiptName?: string | null },
+): Promise<void> {
+  if (!RESEND_KEY && !NTFY_TOPIC) return;
+  const jobs: Promise<void>[] = [];
+  const receipt = receiptAttachment(extras?.receipt, extras?.receiptName);
+
+  if (RESEND_KEY && COMPANY_EMAIL) {
+    jobs.push(
+      sendEmail(
+        COMPANY_EMAIL,
+        `Payment submitted — ${b.id} — ${b.passenger.name || "unknown"}`,
+        emailShell(
+          "A payment receipt just came in",
+          receipt
+            ? `The guest has transferred the fare for booking ${esc(b.id)} and attached their receipt (below). Confirm it against the account, then mark the booking paid.`
+            : `The guest submitted payment details for booking ${esc(b.id)}. No receipt image was attached — the details are below.`,
+          b,
+        ),
+        receipt ? [receipt] : undefined,
+      ),
+    );
+  }
+
+  if (NTFY_TOPIC) {
+    jobs.push(
+      sendPushText(
+        `Payment received — ${b.id}`,
+        `${b.passenger.name || "A guest"} submitted a receipt.\n${b.paymentNote || ""}`.trim(),
+      ),
+    );
+  }
+
+  const results = await Promise.allSettled(jobs);
+  for (const r of results) {
+    if (r.status === "rejected") console.error("[notify] payment send failed", r.reason);
   }
 }
