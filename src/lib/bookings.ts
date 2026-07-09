@@ -34,6 +34,7 @@ export type Booking = {
   status?: BookingStatus; // defaults to "new"
   driver?: string; // assigned chauffeur
   notes?: string; // internal team notes
+  paid?: boolean; // team has verified the transfer
   updatedAt?: number;
 };
 
@@ -147,7 +148,7 @@ export async function listBookings(): Promise<Booking[]> {
 
 export async function updateBooking(
   ref: string,
-  patch: Partial<Pick<Booking, "status" | "driver" | "notes" | "paymentNote">>,
+  patch: Partial<Pick<Booking, "status" | "driver" | "notes" | "paymentNote" | "paid">>,
 ): Promise<Booking | null> {
   const digits = digitsOf(ref);
   if (!digits) return null;

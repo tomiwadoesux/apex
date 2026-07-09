@@ -3,7 +3,7 @@ import { isAdmin } from "@/lib/adminAuth";
 import { updateBooking } from "@/lib/bookings";
 import { BOOKING_STATUSES, type BookingStatus } from "@/lib/siteConfigDefaults";
 
-// PATCH { status?, driver?, notes? } — the /admin panel's booking updates.
+// PATCH { status?, driver?, notes?, paid? } — the /admin panel's booking updates.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
@@ -11,6 +11,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     status?: BookingStatus;
     driver?: string;
     notes?: string;
+    paid?: boolean;
   };
   const patch: Parameters<typeof updateBooking>[1] = {};
   if (body.status !== undefined) {
@@ -21,6 +22,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (body.driver !== undefined) patch.driver = String(body.driver).slice(0, 120);
   if (body.notes !== undefined) patch.notes = String(body.notes).slice(0, 2000);
+  if (body.paid !== undefined) patch.paid = Boolean(body.paid);
   const booking = await updateBooking(id, patch);
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ booking });

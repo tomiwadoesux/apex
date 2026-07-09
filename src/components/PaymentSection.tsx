@@ -10,12 +10,23 @@ import { PAYMENT } from "@/lib/payment";
 import type { PaymentInfo } from "@/lib/siteConfigDefaults";
 
 export type PaymentDetails = {
-  note: string; // account name + amount + rough time paid
+  accountName: string; // name on the account they paid from
+  amount: string; // how much they sent
+  timePaid: string; // roughly when (a 10-minute window is fine)
   receipt: string | null; // data URL of the uploaded receipt image
   receiptName: string | null;
 };
 
-export const EMPTY_PAYMENT: PaymentDetails = { note: "", receipt: null, receiptName: null };
+export const EMPTY_PAYMENT: PaymentDetails = { accountName: "", amount: "", timePaid: "", receipt: null, receiptName: null };
+
+// The three fields, folded into one human line for the booking record / email.
+export function paymentNoteText(v: PaymentDetails): string {
+  const parts: string[] = [];
+  if (v.accountName.trim()) parts.push(`Account name: ${v.accountName.trim()}`);
+  if (v.amount.trim()) parts.push(`Amount paid: ${v.amount.trim()}`);
+  if (v.timePaid.trim()) parts.push(`Time paid: ${v.timePaid.trim()}`);
+  return parts.join(" · ");
+}
 
 const MAX_RECEIPT_BYTES = 6 * 1024 * 1024; // 6 MB — comfortably under the email attachment ceiling
 
@@ -91,6 +102,12 @@ export default function PaymentSection({
     : "flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5";
   const labelCls = isLight ? "text-[10px] uppercase tracking-wider text-neutral-400" : "text-[10px] uppercase tracking-wider text-white/40";
   const valueCls = isLight ? "text-sm font-semibold text-neutral-900" : "text-sm font-semibold text-white";
+  const fieldLabel = `mb-1.5 block text-xs font-semibold tracking-wide ${isLight ? "text-neutral-500" : "text-white/55"}`;
+  const fieldCls = `w-full rounded-xl border px-4 py-3 text-base outline-none sm:text-sm transition-colors ${
+    isLight
+      ? "border-neutral-900/10 bg-white/70 text-neutral-900 placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+      : "border-white/10 bg-white/[0.04] text-white placeholder:text-white/30 focus:border-[#FDBA16] focus:ring-1 focus:ring-[#FDBA16]"
+  }`;
 
   const detail = (field: string, label: string, text: string, mono = false) => (
     <div className={rowCls}>
@@ -165,22 +182,25 @@ export default function PaymentSection({
         {fileError && <p className="mt-1.5 text-[10px] font-medium text-red-600">{fileError}</p>}
       </div>
 
-      {/* Payment note */}
-      <div>
-        <label className={`mb-1.5 block text-xs font-semibold tracking-wide ${isLight ? "text-neutral-500" : "text-white/55"}`}>
-          Payment details
-        </label>
-        <textarea
-          value={value.note}
-          onChange={(e) => onChange({ ...value, note: e.target.value })}
-          maxLength={400}
-          placeholder="Account name you paid from, how much you sent, and roughly when (a 10-minute window is fine — e.g. 'John Doe, ₦180,000, around 2:30pm')."
-          className={`h-24 w-full resize-none rounded-xl border px-4 py-3 text-base outline-none sm:text-sm transition-colors ${
-            isLight
-              ? "border-neutral-900/10 bg-white/70 text-neutral-900 placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
-              : "border-white/10 bg-white/[0.04] text-white placeholder:text-white/30 focus:border-[#FDBA16] focus:ring-1 focus:ring-[#FDBA16]"
-          }`}
-        />
+      {/* Payment details — three separate fields */}
+      <div className="flex flex-col gap-3">
+        <div>
+          <label className={fieldLabel}>Name on the account you paid from</label>
+          <input type="text" value={value.accountName} onChange={(e) => onChange({ ...value, accountName: e.target.value })} maxLength={120} placeholder="e.g. John Doe" className={fieldCls} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={fieldLabel}>Amount paid</label>
+            <input type="text" inputMode="numeric" value={value.amount} onChange={(e) => onChange({ ...value, amount: e.target.value })} maxLength={40} placeholder="e.g. ₦180,000" className={fieldCls} />
+          </div>
+          <div>
+            <label className={fieldLabel}>Time paid</label>
+            <input type="text" value={value.timePaid} onChange={(e) => onChange({ ...value, timePaid: e.target.value })} maxLength={60} placeholder="e.g. around 2:30pm" className={fieldCls} />
+          </div>
+        </div>
+        <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-400" : "text-white/40"}`}>
+          The exact time isn&apos;t needed — a 10-minute window is fine.
+        </p>
       </div>
     </div>
   );

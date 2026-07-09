@@ -23,7 +23,7 @@ import { RidePass, type RideBooking } from "@/components/RideCard";
 import { ratePerHour, naira } from "@/lib/pricing";
 // per-car rate: admin override first, then the code default
 const rateFor = (rates: Record<string, number>, id: string) => rates[id] ?? ratePerHour(id);
-import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
+import PaymentSection, { EMPTY_PAYMENT, paymentNoteText, type PaymentDetails } from "@/components/PaymentSection";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 
@@ -127,7 +127,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     const p = loadPending();
     if (p) {
       setBooking(p.booking);
-      setPayment({ ...EMPTY_PAYMENT, note: p.note });
+      setPayment({ ...EMPTY_PAYMENT, accountName: p.accountName, amount: p.amount, timePaid: p.timePaid });
       setStep(5);
       setResumed(true);
     }
@@ -190,7 +190,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     }
     setBooking(placed);
     // Persist so the payment step survives a tab/app close until they've paid.
-    savePending({ booking: placed, note: payment.note });
+    savePending({ booking: placed, accountName: payment.accountName, amount: payment.amount, timePaid: payment.timePaid });
     setSubmitting(false);
     setStep(5); // → payment
   };
@@ -203,7 +203,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentNote: payment.note.trim() || null, receipt: payment.receipt, receiptName: payment.receiptName }),
+        body: JSON.stringify({ paymentNote: paymentNoteText(payment) || null, receipt: payment.receipt, receiptName: payment.receiptName }),
       });
     } catch {
       /* even if the email send is unreachable, let them finish — we don't block */
@@ -550,10 +550,12 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 </svg>
               </span>
               <div>
-                <h3 className="font-josefin text-lg font-medium tracking-tight">All done — payment received</h3>
+                <h3 className="font-josefin text-lg font-medium tracking-tight">Receipt received</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-neutral-500">
-                  Your work order <span className="font-semibold text-neutral-900">{booking.id}</span> is confirmed and your receipt is with our team.
-                  {booking.passenger.phone ? ` We'll call ${booking.passenger.phone} shortly.` : ""}
+                  Your work order is <span className="font-semibold text-neutral-900">{booking.id}</span>.
+                </p>
+                <p className="mx-auto mt-2 max-w-xs rounded-xl bg-[#00209C]/[0.06] px-3 py-2 text-[11px] leading-relaxed text-neutral-600">
+                  Your booking becomes <span className="font-semibold">valid once we verify your payment</span>. We&apos;ll notify you{booking.passenger.phone ? ` on ${booking.passenger.phone}` : ""} as soon as it&apos;s gone through.
                 </p>
               </div>
 

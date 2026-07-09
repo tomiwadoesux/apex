@@ -9,7 +9,7 @@ import { gsap } from "gsap";
 import { toPng } from "html-to-image";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
-import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
+import PaymentSection, { EMPTY_PAYMENT, paymentNoteText, type PaymentDetails } from "@/components/PaymentSection";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
@@ -403,7 +403,7 @@ export default function BookingForm() {
     if (p) {
       setConfirmedBooking(p.booking);
       setBookingId(p.booking.id);
-      setPayment({ ...EMPTY_PAYMENT, note: p.note });
+      setPayment({ ...EMPTY_PAYMENT, accountName: p.accountName, amount: p.amount, timePaid: p.timePaid });
       setPaymentDone(false);
       setCurrentStep(8);
     }
@@ -1247,7 +1247,7 @@ export default function BookingForm() {
     setConfirmedBooking(placed);
     setBookingId(placed.id);
     // Persist so the payment step survives a tab/app close until they've paid.
-    savePending({ booking: placed, note: payment.note });
+    savePending({ booking: placed, accountName: payment.accountName, amount: payment.amount, timePaid: payment.timePaid });
     setPaymentDone(false);
     setSubmitting(false);
     setCurrentStep(8);
@@ -1262,7 +1262,7 @@ export default function BookingForm() {
       await fetch(`/api/bookings/${encodeURIComponent(confirmedBooking.id)}/payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentNote: payment.note.trim() || null, receipt: payment.receipt, receiptName: payment.receiptName }),
+        body: JSON.stringify({ paymentNote: paymentNoteText(payment) || null, receipt: payment.receipt, receiptName: payment.receiptName }),
       });
     } catch {
       /* don't block completion if the email send is unreachable */
@@ -2394,14 +2394,16 @@ export default function BookingForm() {
             </span>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                Payment received
+                Receipt received
               </p>
               <h2 className={`mt-2 font-josefin text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
                 Work order {confirmedBooking.id}
               </h2>
+              <p className={`mx-auto mt-3 max-w-sm rounded-xl px-4 py-2.5 text-xs leading-relaxed ${isLight ? "bg-[#00209C]/[0.06] text-neutral-700" : "bg-[#FDBA16]/[0.08] text-white/70"}`}>
+                Your booking becomes <span className="font-semibold">valid once we verify your payment</span>. We&apos;ll notify you{confirmedBooking.passenger.phone ? ` on ${confirmedBooking.passenger.phone}` : ""} as soon as it&apos;s gone through.
+              </p>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-                Your receipt is with our team and we&apos;ll confirm shortly. Keep your work order ID — view or
-                download your ride pass anytime at{" "}
+                Keep your work order ID — view or download your ride pass anytime at{" "}
                 <Link href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`} className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
                   the check-booking page
                 </Link>.

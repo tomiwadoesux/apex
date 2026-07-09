@@ -93,7 +93,26 @@ export default function AdminPage() {
     }
   };
 
-  const patchBooking = async (ref: string, patch: Partial<Pick<Booking, "status" | "driver" | "notes">>) => {
+  // WhatsApp "payment verified" message, pre-filled with the booking details.
+  const whatsappVerifyLink = (b: Booking) => {
+    const digits = b.passenger.phone.replace(/\D/g, "").replace(/^0/, "234");
+    const lines = [
+      `Hi ${b.passenger.name || "there"}, your payment has been verified ✅`,
+      "",
+      "Your ApexRide booking is confirmed:",
+      `• Work order: ${b.id}`,
+      `• Car: ${b.car.name}${b.car.klass ? ` (${b.car.klass})` : ""}`,
+      `• Date: ${b.date} at ${b.time}`,
+      `• Pickup: ${b.pickup}`,
+      ...(b.dropoff ? [`• Drop-off: ${b.dropoff}`] : []),
+      ...(b.duration ? [`• Duration: ${b.duration}`] : []),
+      "",
+      "Thank you for choosing ApexRide.",
+    ];
+    return `https://wa.me/${digits}?text=${encodeURIComponent(lines.join("\n"))}`;
+  };
+
+  const patchBooking = async (ref: string, patch: Partial<Pick<Booking, "status" | "driver" | "notes" | "paid">>) => {
     // optimistic — the row updates immediately, the server confirms
     setBookings((all) => all.map((b) => (b.id === ref ? { ...b, ...patch } : b)));
     await fetch(`/api/admin/bookings/${encodeURIComponent(ref)}`, {
@@ -274,8 +293,42 @@ export default function AdminPage() {
                           <a href={`https://wa.me/${b.passenger.phone.replace(/\D/g, "").replace(/^0/, "234")}`} style={{ color: ACCENT }}>WhatsApp</a>
                         </div>
                         {b.passenger.email && <div><span className="font-semibold text-neutral-900">Email:</span> {b.passenger.email}</div>}
+                        {b.paymentNote && (
+                          <div className="mt-2 rounded-lg bg-neutral-50 p-2.5">
+                            <span className="font-semibold text-neutral-900">Payment submitted:</span> {b.paymentNote}
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col gap-3">
+                        {/* Payment verification + one-tap WhatsApp confirmation */}
+                        <div
+                          className="rounded-xl border p-3"
+                          style={{ borderColor: b.paid ? "#16a34a55" : "rgba(0,0,0,0.1)", background: b.paid ? "#16a34a10" : "transparent" }}
+                        >
+                          <label className="flex cursor-pointer items-center gap-2.5">
+                            <input
+                              type="checkbox"
+                              checked={!!b.paid}
+                              onChange={(e) => void patchBooking(b.id, { paid: e.target.checked })}
+                              className="h-4 w-4 accent-[#16a34a]"
+                            />
+                            <span className="text-sm font-semibold text-neutral-900">Payment verified (paid)</span>
+                          </label>
+                          {b.paid && (
+                            <a
+                              href={whatsappVerifyLink(b)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2.5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition-transform hover:-translate-y-px"
+                              style={{ background: "#25D366" }}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M17.5 14.4c-.3-.15-1.77-.87-2-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.95 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.9-.8-1.5-1.78-1.67-2.08-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.48-.5-.67-.5h-.57c-.2 0-.52.07-.8.37s-1.05 1.02-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54.72.3 1.28.5 1.71.63.72.23 1.37.2 1.89.12.58-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35zM12 2a10 10 0 0 0-8.6 15.05L2 22l5.05-1.32A10 10 0 1 0 12 2z"/>
+                              </svg>
+                              Notify on WhatsApp: payment verified
+                            </a>
+                          )}
+                        </div>
                         <div>
                           <label className={label}>Status</label>
                           <select value={status} onChange={(e) => void patchBooking(b.id, { status: e.target.value as BookingStatus })} className={input}>
