@@ -50,6 +50,22 @@ export async function PUT(req: Request) {
     hiddenCars: Array.isArray(body.hiddenCars)
       ? body.hiddenCars.map((n) => str(n, 80)).filter(Boolean)
       : current.hiddenCars,
+    carRates:
+      body.carRates && typeof body.carRates === "object" && !Array.isArray(body.carRates)
+        ? Object.fromEntries(
+            Object.entries(body.carRates as Record<string, unknown>)
+              .map(([k, v]) => [str(k, 40), Math.max(0, Math.min(1_000_000_000, Math.round(Number(v) || 0)))] as const)
+              .filter(([k, v]) => k && v > 0),
+          )
+        : current.carRates,
+    payment:
+      body.payment && typeof body.payment === "object"
+        ? {
+            bankName: str(body.payment.bankName, 80) || current.payment.bankName,
+            accountNumber: str(body.payment.accountNumber, 40) || current.payment.accountNumber,
+            accountName: str(body.payment.accountName, 80) || current.payment.accountName,
+          }
+        : current.payment,
   };
   await setSiteConfig(next);
   return NextResponse.json(next);

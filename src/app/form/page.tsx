@@ -2242,7 +2242,7 @@ export default function BookingForm() {
                       Payment
                     </div>
                   </div>
-                  <PaymentSection value={payment} onChange={setPayment} isLight={isLight} />
+                  <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight={isLight} />
                 </div>
 
               </div>

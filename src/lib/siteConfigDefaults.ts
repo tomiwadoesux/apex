@@ -3,6 +3,9 @@
 // Quick Booking popup fetch /api/config and fall back to these when a field was
 // never edited. Plain data only — imported by both client and server code.
 
+import { RATE_PER_HOUR } from "./pricing";
+import { PAYMENT } from "./payment";
+
 export type ConfigCar = {
   id: string;
   name: string;
@@ -11,6 +14,9 @@ export type ConfigCar = {
   specs: string[]; // e.g. ["5 seats", "AWD", "V8"]
   image: string | null; // an EXISTING /images/cars path or null (no upload — images stay code assets)
 };
+
+// ApexRide's bank details, shown on the payment step (editable in /admin).
+export type PaymentInfo = { bankName: string; accountNumber: string; accountName: string };
 
 export type SiteConfig = {
   // Step 2 — the six one-tap pickup spots (3 Lagos, 3 Abuja by default).
@@ -27,6 +33,11 @@ export type SiteConfig = {
   extraCars: ConfigCar[];
   // Built-in photographed cars HIDDEN from the pickers (by exact name).
   hiddenCars: string[];
+  // Per-hour chauffeur rate in Naira, keyed by fleet variant id (or extra-car id).
+  // Shown beside each car in Quick Booking. Missing id → the code default.
+  carRates: Record<string, number>;
+  // ApexRide's bank details for the payment step.
+  payment: PaymentInfo;
 };
 
 export const DEFAULT_CONFIG: SiteConfig = {
@@ -60,6 +71,8 @@ export const DEFAULT_CONFIG: SiteConfig = {
   ],
   extraCars: [],
   hiddenCars: [],
+  carRates: { ...RATE_PER_HOUR },
+  payment: { ...PAYMENT },
 };
 
 export type BookingStatus = "new" | "confirmed" | "assigned" | "completed" | "cancelled";

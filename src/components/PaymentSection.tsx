@@ -7,6 +7,7 @@
 
 import { useRef, useState } from "react";
 import { PAYMENT } from "@/lib/payment";
+import type { PaymentInfo } from "@/lib/siteConfigDefaults";
 
 export type PaymentDetails = {
   note: string; // account name + amount + rough time paid
@@ -37,10 +38,12 @@ function CheckIcon() {
 export default function PaymentSection({
   value,
   onChange,
+  bank = PAYMENT,
   isLight = true,
 }: {
   value: PaymentDetails;
   onChange: (v: PaymentDetails) => void;
+  bank?: PaymentInfo;
   isLight?: boolean;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -114,9 +117,9 @@ export default function PaymentSection({
         Transfer the fare to the account below, then attach your receipt and a short note so our team can confirm your booking.
       </p>
 
-      {detail("bank", "Bank", PAYMENT.bankName)}
-      {detail("account", "Account number", PAYMENT.accountNumber, true)}
-      {detail("name", "Account name", PAYMENT.accountName)}
+      {detail("bank", "Bank", bank.bankName)}
+      {detail("account", "Account number", bank.accountNumber, true)}
+      {detail("name", "Account name", bank.accountName)}
 
       {/* Receipt attachment */}
       <div>

@@ -419,6 +419,60 @@ export default function AdminPage() {
                 </button>
               </div>
             </section>
+
+            {/* per-hour prices */}
+            <section className={card}>
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Prices per hour (₦)</h2>
+              <p className="mb-3 text-xs text-neutral-500">
+                Shown beside each car in Quick Booking. Leave a car blank to use its built-in default rate.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
+                    <span className="text-sm text-neutral-400">₦</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={config.carRates[c.id] ?? ""}
+                      placeholder="default"
+                      onChange={(e) => {
+                        const next = { ...config.carRates };
+                        if (e.target.value === "") delete next[c.id];
+                        else next[c.id] = Number(e.target.value);
+                        set("carRates", next);
+                      }}
+                      className={`${input} !w-32 text-right tabular-nums`}
+                    />
+                    <span className="text-[11px] text-neutral-400">/hr</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* payment / bank details */}
+            <section className={card}>
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Payment details</h2>
+              <p className="mb-3 text-xs text-neutral-500">
+                Shown on the last step of Quick Booking and the form, with a copy button beside each. This is where
+                customers transfer the fare.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={label}>Bank name</label>
+                  <input value={config.payment.bankName} onChange={(e) => set("payment", { ...config.payment, bankName: e.target.value })} className={input} placeholder="e.g. GTBank" />
+                </div>
+                <div>
+                  <label className={label}>Account number</label>
+                  <input value={config.payment.accountNumber} onChange={(e) => set("payment", { ...config.payment, accountNumber: e.target.value })} className={`${input} tabular-nums`} placeholder="0123456789" inputMode="numeric" />
+                </div>
+                <div>
+                  <label className={label}>Account name</label>
+                  <input value={config.payment.accountName} onChange={(e) => set("payment", { ...config.payment, accountName: e.target.value })} className={input} placeholder="ApexRide Logistics" />
+                </div>
+              </div>
+            </section>
           </div>
         )}
       </div>

@@ -21,6 +21,8 @@ import { CARS, type Variant } from "@/components/fleet/data";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import { ratePerHour, naira } from "@/lib/pricing";
+// per-car rate: admin override first, then the code default
+const rateFor = (rates: Record<string, number>, id: string) => rates[id] ?? ratePerHour(id);
 import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
 import type { Booking } from "@/lib/bookings";
 
@@ -298,7 +300,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                       <span className="block truncate text-[11px] text-neutral-400">{c.year} · {c.type}</span>
                     </span>
                     <span className="shrink-0 text-right">
-                      <span className="block text-sm font-bold tabular-nums" style={{ color: active ? BLUE : "#171717" }}>{naira(ratePerHour(c.id))}</span>
+                      <span className="block text-sm font-bold tabular-nums" style={{ color: active ? BLUE : "#171717" }}>{naira(rateFor(cfg.carRates, c.id))}</span>
                       <span className="block text-[10px] font-medium uppercase tracking-wider text-neutral-400">per hour</span>
                     </span>
                   </button>
@@ -327,7 +329,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   <span className="text-sm font-semibold tracking-tight">{d.name}</span>
                   {car && (
                     <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-white/70" : "text-neutral-500"}`}>
-                      ≈ {naira(ratePerHour(car.id) * d.hours)}
+                      ≈ {naira(rateFor(cfg.carRates, car.id) * d.hours)}
                     </span>
                   )}
                 </div>
@@ -479,7 +481,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           {/* 6 — payment */}
           {step === 5 && (
             <div className="flex flex-col gap-4">
-              <PaymentSection value={payment} onChange={setPayment} isLight />
+              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight />
               <button
                 type="button"
                 disabled={submitting}
