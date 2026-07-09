@@ -420,6 +420,35 @@ export default function AdminPage() {
               </div>
             </section>
 
+            {/* quick booking cars */}
+            <section className={card}>
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Quick Booking cars</h2>
+              <p className="mb-3 text-xs text-neutral-500">
+                Pick which cars appear in the Quick Booking pop-up. {config.quickCars.length === 0 ? "None selected — all cars show." : `${config.quickCars.length} selected.`}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => {
+                  const on = config.quickCars.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => set("quickCars", on ? config.quickCars.filter((id) => id !== c.id) : [...config.quickCars, c.id])}
+                      className="rounded-full border px-3 py-1 text-[11px] font-medium transition-colors"
+                      style={on ? { borderColor: BLUE, background: BLUE, color: "#fff" } : { borderColor: "rgba(0,0,0,0.12)", color: "#525252" }}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {config.quickCars.length > 0 && (
+                <button type="button" onClick={() => set("quickCars", [])} className="mt-3 text-xs font-semibold text-neutral-400 hover:text-neutral-700">
+                  Clear (show all)
+                </button>
+              )}
+            </section>
+
             {/* per-hour prices */}
             <section className={card}>
               <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Prices per hour (₦)</h2>

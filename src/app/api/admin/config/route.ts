@@ -50,6 +50,9 @@ export async function PUT(req: Request) {
     hiddenCars: Array.isArray(body.hiddenCars)
       ? body.hiddenCars.map((n) => str(n, 80)).filter(Boolean)
       : current.hiddenCars,
+    quickCars: Array.isArray(body.quickCars)
+      ? body.quickCars.map((n) => str(n, 40)).filter(Boolean).slice(0, 40)
+      : current.quickCars,
     carRates:
       body.carRates && typeof body.carRates === "object" && !Array.isArray(body.carRates)
         ? Object.fromEntries(

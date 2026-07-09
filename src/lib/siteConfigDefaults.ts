@@ -33,6 +33,8 @@ export type SiteConfig = {
   extraCars: ConfigCar[];
   // Built-in photographed cars HIDDEN from the pickers (by exact name).
   hiddenCars: string[];
+  // Car ids shown in Quick Booking's opening list. Empty → every available car.
+  quickCars: string[];
   // Per-hour chauffeur rate in Naira, keyed by fleet variant id (or extra-car id).
   // Shown beside each car in Quick Booking. Missing id → the code default.
   carRates: Record<string, number>;
@@ -71,6 +73,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   ],
   extraCars: [],
   hiddenCars: [],
+  quickCars: [],
   carRates: { ...RATE_PER_HOUR },
   payment: { ...PAYMENT },
 };

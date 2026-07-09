@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Josefin_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
@@ -18,6 +18,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Apex Ride - Premium Car Hire",
   description: "Chauffeur-driven luxury across Lagos & Abuja — trusted, effortless, and ready whenever you are. 24/7.",
+};
+
+// Lock the mobile zoom: no pinch-zoom and, crucially, no auto zoom-in when a
+// field or card is tapped/opened — the site behaves like a native app.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

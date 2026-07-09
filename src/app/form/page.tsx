@@ -1254,7 +1254,7 @@ export default function BookingForm() {
     if (!node || saving) return;
     setSaving(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt
+      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust — reuse the already-loaded image so export is instant)
       const fileName = `apexride-pass-${bookingId.replace(/[^a-z0-9]/gi, "")}.png`;
       try {
         const blob = await (await fetch(dataUrl)).blob();
@@ -1482,7 +1482,7 @@ export default function BookingForm() {
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
-      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 z-10 ${currentStep === 8 ? "pt-24 sm:pt-20 pb-4 justify-center overflow-hidden" : "pt-28 pb-44"} ${currentStep === 6 ? "justify-start overflow-y-auto" : currentStep === 8 ? "" : "justify-center"}`}>
+      <div data-lenis-prevent className={`flex-1 min-h-0 flex flex-col items-center px-4 z-10 ${currentStep === 8 ? "pt-24 sm:pt-20 pb-4 justify-center overflow-hidden" : "pt-28 pb-44"} ${currentStep === 6 || currentStep === 7 ? "justify-start overflow-y-auto" : currentStep === 8 ? "" : "justify-center"}`}>
 
         {currentStep <= 7 && (
           <div className={`w-full flex flex-col items-center text-center transition-all duration-300 ${currentStep === 3 ? "max-w-7xl" : "max-w-5xl"
@@ -2122,22 +2122,15 @@ export default function BookingForm() {
               <div className="w-full max-w-xl mt-8 flex flex-col gap-6 lg:max-w-5xl">
                <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
 
-                {/* Booking Summary Recap Card */}
-                <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
-                  <div className="mb-5 flex items-start justify-between gap-4">
-                    <div>
-                      <div
-                        className="text-xs font-bold uppercase tracking-widest"
-                        style={{ color: isLight ? "#00209C" : "#FDBA16" }}
-                      >
-                        Review Request
-                      </div>
-                      <p className={`mt-2 text-xs leading-relaxed ${isLight ? "text-neutral-900/55" : "text-white/50"}`}>
-                        Green sections are ready. Red still needs your attention. Tap any section to edit it.
-                      </p>
+                {/* Booking Summary Recap Card — compact status rows */}
+                <div className={`p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[1.75rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
+                  <div className="mb-3 flex items-baseline justify-between gap-3">
+                    <div className="text-xs font-bold uppercase tracking-widest" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+                      Review Request
                     </div>
+                    <p className={`text-[10px] ${isLight ? "text-neutral-900/45" : "text-white/40"}`}>Tap a row to edit</p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
                     {[
                       { label: "Contact", value: `${contactName} · ${contactPhone}`, step: 0, required: true, done: contactComplete },
                       { label: "Pickup", value: pickupLabel, step: 1, required: true, done: pickupComplete },
@@ -2147,39 +2140,29 @@ export default function BookingForm() {
                       { label: "Schedule", value: scheduleSummary, step: 6, required: true, done: scheduleComplete },
                     ].map((item) => {
                       const incomplete = item.required && !item.done;
-                      const tone = incomplete ? badColor : item.done ? okColor : null;
+                      const tone = incomplete ? badColor : item.done ? okColor : (isLight ? "#9ca3af" : "#6b7280");
                       return (
                         <button
                           key={item.label}
                           type="button"
                           onClick={() => setCurrentStep(item.step)}
                           aria-label={incomplete ? `${item.label} incomplete, tap to complete` : `Edit ${item.label}`}
-                          className="w-full rounded-2xl border p-3.5 text-left transition-colors hover:brightness-[0.98] active:translate-y-px"
+                          className="flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors hover:brightness-[0.98] active:translate-y-px"
                           style={{
-                            borderColor: tone ? `${tone}66` : isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)",
-                            backgroundColor: tone ? `${tone}14` : isLight ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.04)",
+                            borderColor: tone ? `${tone}55` : isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)",
+                            backgroundColor: incomplete ? `${tone}12` : isLight ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.04)",
                           }}
                         >
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <span className={`text-[10px] uppercase tracking-wider ${isLight ? "text-neutral-900/40" : "text-white/45"}`}>
-                              {item.label}
-                            </span>
-                            <span
-                              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                              style={{
-                                color: tone ?? (isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.45)"),
-                                backgroundColor: tone ? `${tone}1F` : "transparent",
-                              }}
-                            >
-                              {incomplete ? "! Incomplete" : item.done ? "✓ Done" : "Optional"}
-                            </span>
-                          </div>
-                          <div
-                            className="font-semibold leading-snug"
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: tone }} />
+                          <span className={`w-16 shrink-0 text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-neutral-900/45" : "text-white/45"}`}>
+                            {item.label}
+                          </span>
+                          <span
+                            className="min-w-0 flex-1 truncate text-xs font-semibold"
                             style={{ color: incomplete ? badColor : isLight ? "#171717" : "#ffffff" }}
                           >
-                            {incomplete ? "Field incomplete. Tap to complete." : item.value}
-                          </div>
+                            {incomplete ? "Tap to complete" : item.value}
+                          </span>
                         </button>
                       );
                     })}

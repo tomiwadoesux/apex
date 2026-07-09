@@ -27,13 +27,11 @@ import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components
 import type { Booking } from "@/lib/bookings";
 
 const BLUE = "#00209C";
-const ACCENT = "#2A4FD0";
 
 /* ── options ────────────────────────────────────────────────────────────────── */
 
 // The short car list ("don't show all — just 4"), expandable to the full roster.
 const AVAILABLE_CARS: Variant[] = CARS.filter((c) => c.image);
-const SHORT_LIST = 4;
 const DAYS_AHEAD = 60; // how far out the horizontal date strip runs
 
 /* ── helpers ────────────────────────────────────────────────────────────────── */
@@ -97,13 +95,14 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
   }, []);
   const durations = cfg.durations.filter((d) => d.id !== "multiday").map((d) => ({ id: d.id, badge: "Fixed Duration", name: d.name, hours: d.hours ?? 6, desc: d.desc }));
-  const availableCars: Variant[] = [
+  const allCars: Variant[] = [
     ...AVAILABLE_CARS.filter((c) => !cfg.hiddenCars.includes(c.name)),
     ...cfg.extraCars.map((c) => ({ id: c.id, label: c.year, name: c.name, year: Number(c.year) || 2025, type: c.type || "Fleet selection", specs: c.specs, image: c.image })),
   ];
+  // Admin can hand-pick which cars appear in Quick Booking; empty → all of them.
+  const availableCars: Variant[] = cfg.quickCars.length ? allCars.filter((c) => cfg.quickCars.includes(c.id)) : allCars;
 
   const [car, setCar] = useState<Variant | null>(null);
-  const [showAllCars, setShowAllCars] = useState(false);
   const [duration, setDuration] = useState<(typeof durations)[number] | null>(null);
   const [date, setDate] = useState<string>(""); // ISO yyyy-mm-dd
   const [time, setTime] = useState<string>(""); // HH:MM (24h)
@@ -185,7 +184,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     if (!node || !booking || saving) return;
     setSaving(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt
+      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust — reuse the already-loaded image so export is instant)
       const fileName = `apexride-pass-${booking.id.replace(/[^a-z0-9]/gi, "")}.png`;
       try {
         const blob = await (await fetch(dataUrl)).blob();
@@ -210,7 +209,6 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const startOver = () => {
     setStep(0);
     setCar(null);
-    setShowAllCars(false);
     setDuration(null);
     setDate("");
     setTime("");
@@ -275,11 +273,11 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
         </div>
 
         {/* body */}
-        <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto p-4">
-          {/* 1 — car with per-hour price */}
+        <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-4">
+          {/* 1 — car with per-hour price (the full Quick-Booking roster) */}
           {step === 0 && (
             <>
-              {(showAllCars ? availableCars : availableCars.slice(0, SHORT_LIST)).map((c) => {
+              {availableCars.map((c) => {
                 const active = car?.id === c.id;
                 return (
                   <button
@@ -306,16 +304,6 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   </button>
                 );
               })}
-              {availableCars.length > SHORT_LIST && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllCars((v) => !v)}
-                  className="mt-1 text-[11px] font-semibold uppercase tracking-widest transition-colors"
-                  style={{ color: ACCENT }}
-                >
-                  {showAllCars ? "Show fewer cars" : `Show all ${availableCars.length} cars`}
-                </button>
-              )}
             </>
           )}
 
@@ -343,7 +331,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold tracking-wide text-neutral-500">Pick a date</label>
-                <div data-lenis-prevent className="accent-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+                <div data-lenis-prevent className="accent-scrollbar -mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-2" style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}>
                   {days.map((d, i) => {
                     const iso = toIsoDate(d);
                     const active = date === iso;
@@ -451,15 +439,21 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Phone number *</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  autoComplete="tel"
-                  onChange={(e) => setPhone(e.target.value)}
-                  onBlur={() => setPhoneTouched(true)}
-                  placeholder="08012345678"
-                  className={inputCls}
-                />
+                <div className="flex w-full items-center gap-2 rounded-xl border border-neutral-900/10 bg-white/70 px-3 transition-colors focus-within:border-[#00209C] focus-within:ring-1 focus-within:ring-[#00209C]">
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-neutral-500">
+                    <span className="text-base leading-none">🇳🇬</span> +234
+                  </span>
+                  <span className="h-5 w-px bg-neutral-900/10" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    autoComplete="tel"
+                    onChange={(e) => setPhone(e.target.value)}
+                    onBlur={() => setPhoneTouched(true)}
+                    placeholder="0801 234 5678"
+                    className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none placeholder:text-neutral-400 sm:text-sm"
+                  />
+                </div>
                 {phoneBad && (
                   <p className="mt-1.5 text-[10px] font-medium text-red-600">
                     Invalid Nigerian phone number. Must be 11 digits starting with 0 (e.g. 08012345678).
