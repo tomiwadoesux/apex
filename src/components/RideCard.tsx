@@ -33,8 +33,8 @@ export const AMBER = "#FDBA16";
 export const BLUE = "#00209C";
 
 /* ── default concierge contact (shown when a booking has no contact of its own) */
-const CONCIERGE_PHONE = "+234 814 168 1273";
-const CONCIERGE_EMAIL = "concierge@apex.ayotomcs.me";
+const CONCIERGE_PHONE = "0904 338 0193";
+const CONCIERGE_EMAIL = "apexrental08@gmail.com";
 
 /* ── the booked car ───────────────────────────────────────────────────────── */
 export type RideCar = {

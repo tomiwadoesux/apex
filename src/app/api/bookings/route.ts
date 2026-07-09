@@ -38,17 +38,22 @@ export async function POST(request: Request) {
     date: str(body.date, 60),
     time: str(body.time, 20),
     light: Boolean(body.light),
+    paymentNote: strOrNull(body.paymentNote, 400),
   };
 
   if (!input.pickup || !input.car.name || !input.service) {
     return Response.json({ error: "Missing required booking fields" }, { status: 400 });
   }
 
+  // Receipt image is emailed to the team, not stored on the booking record.
+  const receipt = typeof body.receipt === "string" && body.receipt.startsWith("data:image/") ? body.receipt : null;
+  const receiptName = str(body.receiptName, 120) || null;
+
   try {
     const booking = await createBooking(input);
     // Emails + team push. Awaited so serverless doesn't kill the sends, but
     // notifyBookingCreated never throws — a failed email can't fail the booking.
-    await notifyBookingCreated(booking);
+    await notifyBookingCreated(booking, { receipt, receiptName });
     return Response.json({ booking }, { status: 201 });
   } catch (err) {
     console.error("[bookings] create failed", err);

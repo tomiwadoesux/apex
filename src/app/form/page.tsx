@@ -9,6 +9,7 @@ import { gsap } from "gsap";
 import { toPng } from "html-to-image";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
+import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
@@ -347,6 +348,7 @@ export default function BookingForm() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
+  const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
   // Schedule step: which path the guest chose, and which month the calendar shows.
   const [scheduleMode, setScheduleMode] = useState<"quick" | "custom" | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
@@ -1205,6 +1207,7 @@ export default function BookingForm() {
       date: formatCardDate(bookingDate),
       time: bookingTime,
       light: isLight,
+      paymentNote: payment.note.trim() || null,
     };
 
     setSubmitting(true);
@@ -1212,7 +1215,7 @@ export default function BookingForm() {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, receipt: payment.receipt, receiptName: payment.receiptName }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.booking) {
@@ -1302,6 +1305,7 @@ export default function BookingForm() {
     setBookingDate("");
     setBookingTime("");
     setSpecialRequests("");
+    setPayment(EMPTY_PAYMENT);
     setBookingId("");
     setConfirmedBooking(null);
     setIsCustomCar(false);
@@ -2115,7 +2119,8 @@ export default function BookingForm() {
 
             {/* Step 8: Special Requests (with Booking Summary Card) */}
             {currentStep === 7 && (
-              <div className="w-full max-w-xl mt-8 flex flex-col gap-6 lg:max-w-5xl lg:flex-row lg:items-start">
+              <div className="w-full max-w-xl mt-8 flex flex-col gap-6 lg:max-w-5xl">
+               <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
 
                 {/* Booking Summary Recap Card */}
                 <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
@@ -2228,6 +2233,18 @@ export default function BookingForm() {
                   </div>
                 </div>
 
+               </div>
+
+                {/* Payment — bank transfer details, receipt upload, note */}
+                <div className={`p-5 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] border ${cardBgStyle} text-left`}>
+                  <div className="mb-4">
+                    <div className="text-xs font-bold uppercase tracking-widest" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+                      Payment
+                    </div>
+                  </div>
+                  <PaymentSection value={payment} onChange={setPayment} isLight={isLight} />
+                </div>
+
               </div>
             )}
 
@@ -2305,40 +2322,45 @@ export default function BookingForm() {
           </div>
         )}
 
-        {/* Step 9: Confirmation — the ride-pass card, populated with the booking. */}
+        {/* Step 9: Confirmation. The card itself is rendered off-screen only, so
+            the guest can still download it, but the screen shows a clean receipt
+            and points them to the check-booking site. */}
         {currentStep === 8 && confirmedBooking && (
-          <div className="w-full flex flex-col items-center text-center pt-2">
-            <div className="flex items-center gap-2">
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full ${isLight ? "bg-[#00209C] text-white" : "bg-[#FDBA16] text-neutral-950"}`}>
-                <span className="scale-[0.55]"><CheckIcon /></span>
-              </span>
+          <div className="w-full flex flex-col items-center gap-5 text-center pt-2">
+            <span className={`grid h-16 w-16 place-items-center rounded-full ${isLight ? "bg-[#00209C]/10 text-[#00209C]" : "bg-[#FDBA16]/12 text-[#FDBA16]"}`}>
+              <span className="scale-[1.35]"><CheckIcon /></span>
+            </span>
+            <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
                 Booking received
               </p>
-            </div>
-            <p className={`mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-              Save your ride pass below. Your booking number is{" "}
-              <span className="font-semibold">{confirmedBooking.id}</span>; look it up anytime at{" "}
-              <Link href="/check-booking" className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
-                check booking
-              </Link>.
-            </p>
-
-            <div ref={passCardRef} className="w-full flex justify-center">
-              {/* clamp by viewport HEIGHT too so the whole pass + buttons fit a laptop
-                  screen without scrolling (aspect ~5:7.5 → width ≈ 0.55 × height) */}
-              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} maxW="min(400px, 84vw, 47vh)" />
+              <h2 className={`mt-2 font-josefin text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
+                Work order {confirmedBooking.id}
+              </h2>
+              <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
+                Our team will reach out shortly to confirm. Keep your work order ID — you can view or
+                download your ride pass anytime at{" "}
+                <Link href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`} className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
+                  the check-booking page
+                </Link>.
+              </p>
             </div>
 
-            <div className="-mt-1 flex flex-wrap items-center justify-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={saveCard}
                 disabled={saving}
                 className={`rounded-full px-7 py-3 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 disabled:opacity-60 ${isLight ? "bg-[#00209C] text-white hover:bg-[#001a80]" : "bg-[#FDBA16] text-neutral-950 hover:bg-[#e5a912]"}`}
               >
-                {saving ? "Preparing…" : "Save card to photos"}
+                {saving ? "Preparing…" : "Download ride pass"}
               </button>
+              <Link
+                href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`}
+                className={`rounded-full border px-7 py-3 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${isLight ? "border-neutral-300 text-neutral-700 hover:bg-neutral-100" : "border-white/20 text-white/80 hover:bg-white/10"}`}
+              >
+                Track booking
+              </Link>
               <button
                 type="button"
                 onClick={resetForm}
@@ -2346,6 +2368,11 @@ export default function BookingForm() {
               >
                 Book another
               </button>
+            </div>
+
+            {/* off-screen card kept mounted purely so the download can rasterise it */}
+            <div ref={passCardRef} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 opacity-0">
+              <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} />
             </div>
           </div>
         )}

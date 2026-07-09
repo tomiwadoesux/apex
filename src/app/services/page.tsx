@@ -163,8 +163,8 @@ function pickPosition(current: Pos): Pos {
 }
 
 const CONTACTS = [
-  { label: "Email", value: "contact@apex.ayotomcs.me", href: "mailto:contact@apex.ayotomcs.me" },
-  { label: "WhatsApp", value: "+234 814 168 1273", href: "https://wa.me/2348141681273" },
+  { label: "Email", value: "apexrental08@gmail.com", href: "mailto:apexrental08@gmail.com" },
+  { label: "WhatsApp", value: "0904 338 0193", href: "https://wa.me/2349043380193" },
   { label: "Instagram", value: "@apexride", href: "https://instagram.com/apexride" },
 ];
 

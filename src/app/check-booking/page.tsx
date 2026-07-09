@@ -3,7 +3,7 @@
 /* Look up a saved booking by its reference and show that person's ride-pass card.
    The card image (if the car has one) is pulled from the site. */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toPng } from "html-to-image";
 import { RidePass, type RideBooking } from "@/components/RideCard";
@@ -36,9 +36,9 @@ export default function CheckBookingPage() {
   const [saving, setSaving] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const search = async (e?: React.FormEvent) => {
+  const search = async (e?: React.FormEvent, override?: string) => {
     e?.preventDefault();
-    const q = ref.trim();
+    const q = (override ?? ref).trim();
     if (!q || status === "loading") return;
     setStatus("loading");
     setBooking(null);
@@ -59,6 +59,17 @@ export default function CheckBookingPage() {
       setStatus("error");
     }
   };
+
+  // Deep link from the booking confirmation / email: /check-booking?ref=APX-123456
+  // pre-fills the field and looks it up straight away.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("ref");
+    if (p) {
+      setRef(p);
+      void search(undefined, p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const saveCard = async () => {
     const node = cardRef.current?.querySelector("[data-ride-card]") as HTMLElement | null;

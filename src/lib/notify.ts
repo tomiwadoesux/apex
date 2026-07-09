@@ -34,6 +34,7 @@ function rows(b: Booking): string {
     row("Destination", b.dropoff),
     row("Duration", b.duration),
     row("Date", `${b.date} at ${b.time}`),
+    row("Payment note", b.paymentNote ?? null),
   ].join("");
 }
 
@@ -49,19 +50,31 @@ function emailShell(heading: string, intro: string, b: Booking, cta?: { label: s
       <p style="color:#475569;font-size:14px;line-height:1.6;margin:10px 0 18px">${intro}</p>
       <table style="border-collapse:collapse">${rows(b)}</table>
       ${cta ? `<a href="${cta.href}" style="display:inline-block;margin-top:20px;background:#2A4FD0;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:999px">${cta.label}</a>` : ""}
-      <p style="color:#94a3b8;font-size:12px;margin:22px 0 0">Questions? Call or WhatsApp us on +234 814 168 1273.</p>
+      <p style="color:#94a3b8;font-size:12px;margin:22px 0 0">Questions? Call or WhatsApp us on 0904 338 0193.</p>
     </div>
   </div>
 </div>`;
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+type Attachment = { filename: string; content: string }; // content = base64 (no data-URL prefix)
+
+async function sendEmail(to: string, subject: string, html: string, attachments?: Attachment[]): Promise<void> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+    body: JSON.stringify({ from: FROM, to: [to], subject, html, ...(attachments?.length ? { attachments } : {}) }),
   });
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text().catch(() => "")}`);
+}
+
+// "data:image/png;base64,AAAA" → { filename, content: "AAAA" }, or null if it
+// isn't a base64 image data URL we can attach.
+function receiptAttachment(dataUrl: string | null | undefined, name: string | null | undefined): Attachment | null {
+  if (!dataUrl) return null;
+  const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(dataUrl);
+  if (!m) return null;
+  const ext = m[1].split("/")[1].replace("jpeg", "jpg");
+  return { filename: name || `receipt.${ext}`, content: m[2] };
 }
 
 async function sendPush(b: Booking): Promise<void> {
@@ -131,12 +144,16 @@ export async function sendTestNotifications(): Promise<{ channel: string; ok: bo
   return results;
 }
 
-export async function notifyBookingCreated(b: Booking): Promise<void> {
+export async function notifyBookingCreated(
+  b: Booking,
+  extras?: { receipt?: string | null; receiptName?: string | null },
+): Promise<void> {
   if (!RESEND_KEY && !NTFY_TOPIC) {
     console.warn("[notify] skipped — no RESEND_API_KEY or NTFY_TOPIC configured");
     return;
   }
   const jobs: Promise<void>[] = [];
+  const receipt = receiptAttachment(extras?.receipt, extras?.receiptName);
 
   if (RESEND_KEY && b.passenger.email) {
     jobs.push(
@@ -145,9 +162,9 @@ export async function notifyBookingCreated(b: Booking): Promise<void> {
         `Your ApexRide booking ${b.id}`,
         emailShell(
           "Your ride is booked",
-          `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. We've received your booking — our team will reach out shortly to confirm the details below.`,
+          `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. We've received your booking — our team will reach out shortly to confirm the details below. Your work order ID is <strong>${esc(b.id)}</strong>; keep it to track your booking anytime.`,
           b,
-          { label: "View your booking", href: `${SITE_URL}/booking/${b.id.replace(/\D/g, "")}` },
+          { label: "Check your booking", href: `${SITE_URL}/check-booking?ref=${encodeURIComponent(b.id)}` },
         ),
       ),
     );
@@ -158,7 +175,14 @@ export async function notifyBookingCreated(b: Booking): Promise<void> {
       sendEmail(
         COMPANY_EMAIL,
         `New booking ${b.id} — ${b.passenger.name || "unknown"}`,
-        emailShell("Someone just booked a ride", "A new booking has come in. Review it and assign a driver in the admin panel.", b),
+        emailShell(
+          "Someone just booked a ride",
+          receipt
+            ? "A new booking has come in with a payment receipt attached. Review it and assign a driver in the admin panel."
+            : "A new booking has come in. Review it and assign a driver in the admin panel.",
+          b,
+        ),
+        receipt ? [receipt] : undefined,
       ),
     );
   }

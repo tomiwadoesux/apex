@@ -832,7 +832,7 @@ export default function Home() {
                 { label: "Services", href: "/services" },
                 { label: "Book a ride", href: "/form" },
                 { label: "Check booking", href: "/check-booking" },
-                { label: "Contact", href: "mailto:contact@apex.ayotomcs.me" },
+                { label: "Contact", href: "mailto:apexrental08@gmail.com" },
               ].map((l) => (
                 <a key={l.label} href={l.href} className="text-white/55 transition-colors hover:text-white">
                   {l.label}

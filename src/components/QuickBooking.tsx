@@ -2,26 +2,26 @@
 
 // Quick Booking — a compact, resumable booking flow that pops up ON the landing
 // page (no navigation, no step dots). Six quick taps:
-//   1. Pickup time   — In 2 hours / In 5 hours / Tomorrow by 9AM, each showing
-//                      the actual Nigerian (WAT) clock time it resolves to.
-//   2. Trip type     — Custom / Interstate / Airport Transfer / Point-to-Point.
-//   3. Duration      — fixed 6 / 12 / 24 hour blocks.
-//   4. Pickup spot   — state chips (pre-picked from the visitor's IP when we can
-//                      tell which Nigerian state they're in) + a free address.
-//   5. Car           — "Our available cars": a short list of 4 (expandable).
-//   6. Contact       — name + phone, then Book.
+//   1. Car        — the fleet with its per-hour Naira rate beside each, pick one.
+//   2. Duration   — fixed 6 / 12 / 24 hour blocks.
+//   3. When       — a horizontal scroll of dates from today, plus a pickup time.
+//   4. Route      — pickup address (+ optional popular landmark) and drop-off.
+//   5. Contact    — name + phone.
+//   6. Payment    — ApexRide's bank details (copyable), receipt upload + a note.
 // Success shows the same downloadable ride-pass card as the full form.
 //
 // The component stays MOUNTED on the landing page and only hides its overlay,
 // so a guest who closes it mid-way (or scrolls anywhere on the page) resumes
 // exactly where they stopped when they reopen it. Only a reload starts over.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { toPng } from "html-to-image";
 import { CARS, type Variant } from "@/components/fleet/data";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 import { RidePass, type RideBooking } from "@/components/RideCard";
+import { ratePerHour, naira } from "@/lib/pricing";
+import PaymentSection, { EMPTY_PAYMENT, type PaymentDetails } from "@/components/PaymentSection";
 import type { Booking } from "@/lib/bookings";
 
 const BLUE = "#00209C";
@@ -29,25 +29,12 @@ const ACCENT = "#2A4FD0";
 
 /* ── options ────────────────────────────────────────────────────────────────── */
 
-const STATES = ["Lagos", "Abuja"];
-
 // The short car list ("don't show all — just 4"), expandable to the full roster.
 const AVAILABLE_CARS: Variant[] = CARS.filter((c) => c.image);
 const SHORT_LIST = 4;
+const DAYS_AHEAD = 60; // how far out the horizontal date strip runs
 
 /* ── helpers ────────────────────────────────────────────────────────────────── */
-
-// Nigerian (WAT) clock time for a Date — what the guest will actually be booked for.
-const watTime = (d: Date) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit" }).format(d);
-
-const hoursFromNow = (h: number) => new Date(Date.now() + h * 60 * 60 * 1000);
-const tomorrowAt9 = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(9, 0, 0, 0);
-  return d;
-};
 
 const toIsoDate = (d: Date) => {
   const y = d.getFullYear();
@@ -55,7 +42,15 @@ const toIsoDate = (d: Date) => {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
-const toClock = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+// "18:30" → "6:30 PM" for the summary line.
+function formatClock12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h)) return hhmm;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 // "2026-06-28" → "Sat, 28 Jun 2026" for the ride-pass card (same as the form).
 function formatCardDate(iso: string): string {
@@ -82,80 +77,55 @@ function bookingToRide(b: Booking): RideBooking {
 const validPhone = (phone: string) => /^(?:\+234|234|0)[789]\d{9}$/.test(phone.replace(/[^\d+]/g, ""));
 
 const STEP_TITLES = [
-  "When do you need the ride?",
-  "What kind of trip?",
+  "Choose your car",
   "For how long?",
-  "Where do we pick you up?",
-  "Our available cars",
+  "When do you need it?",
+  "Pickup & drop-off",
   "Who is riding?",
+  "Payment",
 ];
 
 /* ── component ──────────────────────────────────────────────────────────────── */
 
 export default function QuickBooking({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
-  // Admin-edited options (trip types, durations, car list) — defaults until /api/config loads.
+  // Admin-edited options (durations, car list) — defaults until /api/config loads.
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_CONFIG);
   useEffect(() => {
     fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
   }, []);
-  const tripTypes = cfg.tripTypes.map((t) => ({ id: t.id, badge: t.id === "custom" ? "Flexible" : "Trip Type", name: t.name, desc: t.desc }));
   const durations = cfg.durations.filter((d) => d.id !== "multiday").map((d) => ({ id: d.id, badge: "Fixed Duration", name: d.name, hours: d.hours ?? 6, desc: d.desc }));
   const availableCars: Variant[] = [
     ...AVAILABLE_CARS.filter((c) => !cfg.hiddenCars.includes(c.name)),
     ...cfg.extraCars.map((c) => ({ id: c.id, label: c.year, name: c.name, year: Number(c.year) || 2025, type: c.type || "Fleet selection", specs: c.specs, image: c.image })),
   ];
-  const [pickupWhen, setPickupWhen] = useState<{ label: string; date: Date } | null>(null);
-  const [tripType, setTripType] = useState<(typeof tripTypes)[number] | null>(null);
-  const [duration, setDuration] = useState<(typeof durations)[number] | null>(null);
-  const [state, setState] = useState<string>("Lagos");
-  const [stateDetected, setStateDetected] = useState(false); // true once the IP lookup filled it in
-  const [address, setAddress] = useState("");
+
   const [car, setCar] = useState<Variant | null>(null);
   const [showAllCars, setShowAllCars] = useState(false);
+  const [duration, setDuration] = useState<(typeof durations)[number] | null>(null);
+  const [date, setDate] = useState<string>(""); // ISO yyyy-mm-dd
+  const [time, setTime] = useState<string>(""); // HH:MM (24h)
+  const [pickup, setPickup] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [dropoff, setDropoff] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
-  const [cardZoom, setCardZoom] = useState(1);
   const passRef = useRef<HTMLDivElement>(null);
 
-  // Shrink the ride-pass card just enough that the WHOLE pass (plus its buttons)
-  // fits inside the modal with no scrolling. The card is a fixed 5:7.5 stage
-  // min(460px, 88vw) wide, so its natural height is fully predictable.
-  useEffect(() => {
-    if (step !== 6) return;
-    const fit = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const cardW = Math.min(460, vw * 0.88, 416); // 416 = modal max-w minus padding
-      const ratio = vw >= 640 ? 1.5 : 2; // 5:7.5 on desktop, phone-length 9:18 on mobile
-      const naturalH = cardW * ratio + 48; // aspect + the card's own py-6
-      const modalMaxH = vh * (vw >= 640 ? 0.82 : 0.86);
-      const avail = modalMaxH - 96 - 150; // header + confirm line + buttons
-      setCardZoom(Math.max(0.5, Math.min(1, avail / naturalH)));
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, [step]);
-
-  // Best-effort: pre-pick the guest's Nigerian state from their IP. Silent on
-  // any failure — Lagos stays the default and the chips remain one tap away.
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("https://ipapi.co/json/", { signal: controller.signal })
-      .then((r) => r.json())
-      .then((d: { country_code?: string; region?: string }) => {
-        if (d?.country_code !== "NG" || !d.region) return;
-        const region = /abuja|federal capital/i.test(d.region) ? "Abuja" : d.region;
-        setState(region);
-        setStateDetected(true);
-      })
-      .catch(() => { /* offline / blocked / non-NG — keep the default */ });
-    return () => controller.abort();
+  // The horizontal date strip: today + the next DAYS_AHEAD days.
+  const days = useMemo(() => {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    return Array.from({ length: DAYS_AHEAD }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d;
+    });
   }, []);
 
   // Esc closes (progress is kept); lock page scroll while open.
@@ -171,31 +141,26 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     };
   }, [open, onClose]);
 
-  const timeOptions = [
-    { label: "In 2 hours", date: hoursFromNow(2) },
-    { label: "In 5 hours", date: hoursFromNow(5) },
-    { label: "Tomorrow by 9AM", date: tomorrowAt9() },
-  ];
-
   const submit = async () => {
-    if (!pickupWhen || !tripType || !duration || !car || submitting) return;
-    const payload = {
+    if (!car || !duration || !date || !time || submitting) return;
+    const bookingPayload = {
       passenger: { name: name.trim(), phone: phone.trim(), email: "" },
       car: { name: car.name, klass: car.type, image: car.image ? car.image.replace(/^\/images\//, "") : null },
-      service: tripType.name,
-      pickup: address.trim() ? `${address.trim()}, ${state}` : state,
-      dropoff: null,
+      service: "Chauffeur service",
+      pickup: landmark.trim() ? `${pickup.trim()} (near ${landmark.trim()})` : pickup.trim(),
+      dropoff: dropoff.trim() || null,
       duration: `${duration.hours} hours`,
-      date: formatCardDate(toIsoDate(pickupWhen.date)),
-      time: toClock(pickupWhen.date),
+      date: formatCardDate(date),
+      time,
       light: true,
+      paymentNote: payment.note.trim() || null,
     };
     setSubmitting(true);
     try {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...bookingPayload, receipt: payment.receipt, receiptName: payment.receiptName }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.booking) {
@@ -205,7 +170,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       }
     } catch {
       // Offline / API down: still show the pass with a local reference.
-      setBooking({ ...payload, id: "APX-" + Math.floor(100000 + Math.random() * 900000), createdAt: Date.now() });
+      setBooking({ ...bookingPayload, id: "APX-" + Math.floor(100000 + Math.random() * 900000), createdAt: Date.now() });
     } finally {
       setSubmitting(false);
       setStep(6);
@@ -242,15 +207,18 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
   const startOver = () => {
     setStep(0);
-    setPickupWhen(null);
-    setTripType(null);
-    setDuration(null);
-    setAddress("");
     setCar(null);
     setShowAllCars(false);
+    setDuration(null);
+    setDate("");
+    setTime("");
+    setPickup("");
+    setLandmark("");
+    setDropoff("");
     setName("");
     setPhone("");
     setPhoneTouched(false);
+    setPayment(EMPTY_PAYMENT);
     setBooking(null);
   };
 
@@ -269,6 +237,10 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const badgeCls = (active: boolean) =>
     `text-[9px] font-bold uppercase tracking-[0.22em] ${active ? "text-white/60" : "text-neutral-400"}`;
   const descCls = (active: boolean) => `mt-1 text-[11px] leading-relaxed ${active ? "text-white/65" : "text-neutral-500"}`;
+  const inputCls =
+    "w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]";
+  const continueBtn =
+    "mt-1 h-11 rounded-full text-sm font-semibold tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div
@@ -302,106 +274,8 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
         {/* body */}
         <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto p-4">
-          {/* 1 — pickup time */}
-          {step === 0 && timeOptions.map((o) => {
-            const active = pickupWhen?.label === o.label;
-            return (
-              <button key={o.label} type="button" onClick={() => { setPickupWhen(o); setStep(1); }} className={cardCls(active)}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm font-semibold tracking-tight">{o.label}</span>
-                  <span className={`text-[10px] font-medium tabular-nums ${active ? "text-white/60" : "text-neutral-400"}`}>
-                    {watTime(o.date)} WAT
-                  </span>
-                </div>
-                <div className={descCls(active)}>
-                  Pickup at {watTime(o.date)} Nigerian time{o.label.startsWith("Tomorrow") ? " tomorrow" : " today"}.
-                </div>
-              </button>
-            );
-          })}
-
-          {/* 2 — trip type */}
-          {step === 1 && tripTypes.map((t) => {
-            const active = tripType?.id === t.id;
-            return (
-              <button key={t.id} type="button" onClick={() => { setTripType(t); setStep(2); }} className={cardCls(active)}>
-                <div className={badgeCls(active)}>{t.badge}</div>
-                <div className="mt-0.5 text-sm font-semibold tracking-tight">{t.name}</div>
-                <div className={descCls(active)}>{t.desc}</div>
-              </button>
-            );
-          })}
-
-          {/* 3 — duration */}
-          {step === 2 && durations.map((d) => {
-            const active = duration?.id === d.id;
-            return (
-              <button key={d.id} type="button" onClick={() => { setDuration(d); setStep(3); }} className={cardCls(active)}>
-                <div className={badgeCls(active)}>{d.badge}</div>
-                <div className="mt-0.5 text-sm font-semibold tracking-tight">{d.name}</div>
-                <div className={descCls(active)}>{d.desc}</div>
-              </button>
-            );
-          })}
-
-          {/* 4 — pickup location */}
-          {step === 3 && (
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-semibold tracking-wide text-neutral-500">State</label>
-                  {stateDetected && (
-                    <span className="text-[10px] font-medium" style={{ color: ACCENT }}>Detected from your location</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {[...new Set([...STATES, state])].map((s) => {
-                    const active = state === s;
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => { setState(s); setStateDetected(false); }}
-                        className="rounded-full border px-3.5 py-1.5 text-[11px] font-semibold tracking-wide transition-colors"
-                        style={{
-                          borderColor: active ? BLUE : "rgba(0,0,0,0.12)",
-                          backgroundColor: active ? BLUE : "transparent",
-                          color: active ? "#fff" : "#525252",
-                        }}
-                      >
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">
-                  {tripType?.id === "airport" ? "Airport / terminal or address *" : "Pickup address *"}
-                </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Location must be accurate"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
-                  onKeyDown={(e) => { if (e.key === "Enter" && address.trim()) setStep(4); }}
-                />
-              </div>
-              <button
-                type="button"
-                disabled={!address.trim()}
-                onClick={() => setStep(4)}
-                className="mt-1 h-11 rounded-full text-sm font-semibold tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"
-                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
-              >
-                Continue
-              </button>
-            </div>
-          )}
-
-          {/* 5 — car */}
-          {step === 4 && (
+          {/* 1 — car with per-hour price */}
+          {step === 0 && (
             <>
               {(showAllCars ? availableCars : availableCars.slice(0, SHORT_LIST)).map((c) => {
                 const active = car?.id === c.id;
@@ -409,41 +283,158 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => { setCar(c); setStep(5); }}
-                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${active ? "bg-[#00209C]/[0.07]" : "hover:bg-neutral-100"}`}
+                    onClick={() => { setCar(c); setStep(1); }}
+                    className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? "border-[#00209C] bg-[#00209C]/[0.06]" : "border-neutral-900/10 bg-white/60 hover:border-[#00209C]/40 hover:bg-white"}`}
                   >
-                    <span className="relative block h-9 w-16 shrink-0">
+                    <span className="relative block h-10 w-18 shrink-0" style={{ width: "4.5rem" }}>
                       {c.image ? (
-                        <Image src={c.image} alt="" fill sizes="64px" className="object-contain" />
+                        <Image src={c.image} alt="" fill sizes="72px" className="object-contain" />
                       ) : (
                         <span className="grid h-full w-full place-items-center text-sm text-neutral-300">—</span>
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate text-sm font-medium ${active ? "text-[#00209C]" : "text-neutral-900"}`}>{c.name}</span>
+                      <span className={`block truncate text-sm font-semibold ${active ? "text-[#00209C]" : "text-neutral-900"}`}>{c.name}</span>
                       <span className="block truncate text-[11px] text-neutral-400">{c.year} · {c.type}</span>
                     </span>
-                    {active && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
+                    <span className="shrink-0 text-right">
+                      <span className="block text-sm font-bold tabular-nums" style={{ color: active ? BLUE : "#171717" }}>{naira(ratePerHour(c.id))}</span>
+                      <span className="block text-[10px] font-medium uppercase tracking-wider text-neutral-400">per hour</span>
+                    </span>
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => setShowAllCars((v) => !v)}
-                className="mt-1 text-[11px] font-semibold uppercase tracking-widest transition-colors"
-                style={{ color: ACCENT }}
-              >
-                {showAllCars ? "Show fewer cars" : `Show all ${availableCars.length} cars`}
-              </button>
+              {availableCars.length > SHORT_LIST && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCars((v) => !v)}
+                  className="mt-1 text-[11px] font-semibold uppercase tracking-widest transition-colors"
+                  style={{ color: ACCENT }}
+                >
+                  {showAllCars ? "Show fewer cars" : `Show all ${availableCars.length} cars`}
+                </button>
+              )}
             </>
           )}
 
-          {/* 6 — contact */}
-          {step === 5 && (
+          {/* 2 — duration */}
+          {step === 1 && durations.map((d) => {
+            const active = duration?.id === d.id;
+            return (
+              <button key={d.id} type="button" onClick={() => { setDuration(d); setStep(2); }} className={cardCls(active)}>
+                <div className={badgeCls(active)}>{d.badge}</div>
+                <div className="mt-0.5 flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-semibold tracking-tight">{d.name}</span>
+                  {car && (
+                    <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-white/70" : "text-neutral-500"}`}>
+                      ≈ {naira(ratePerHour(car.id) * d.hours)}
+                    </span>
+                  )}
+                </div>
+                <div className={descCls(active)}>{d.desc}</div>
+              </button>
+            );
+          })}
+
+          {/* 3 — when: horizontal date scroll + time */}
+          {step === 2 && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="mb-2 block text-xs font-semibold tracking-wide text-neutral-500">Pick a date</label>
+                <div data-lenis-prevent className="accent-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+                  {days.map((d, i) => {
+                    const iso = toIsoDate(d);
+                    const active = date === iso;
+                    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-GB", { weekday: "short" });
+                    return (
+                      <button
+                        key={iso}
+                        type="button"
+                        onClick={() => setDate(iso)}
+                        className={`flex shrink-0 flex-col items-center gap-0.5 rounded-2xl border px-3 py-2.5 transition-all ${
+                          active
+                            ? "border-[#00209C] bg-[#00209C] text-white shadow-lg shadow-[#00209C]/20"
+                            : "border-neutral-900/10 bg-white/60 text-neutral-900 hover:border-[#00209C]/40 hover:bg-white"
+                        }`}
+                        style={{ minWidth: "4rem" }}
+                      >
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${active ? "text-white/70" : "text-neutral-400"}`}>{label}</span>
+                        <span className="text-lg font-semibold leading-none tabular-nums">{d.getDate()}</span>
+                        <span className={`text-[10px] font-medium uppercase ${active ? "text-white/70" : "text-neutral-400"}`}>{d.toLocaleDateString("en-GB", { month: "short" })}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Pickup time</label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!date || !time}
+                onClick={() => setStep(3)}
+                className={continueBtn}
+                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* 4 — pickup & drop-off */}
+          {step === 3 && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Pickup address *</label>
+                <input
+                  type="text"
+                  value={pickup}
+                  onChange={(e) => setPickup(e.target.value)}
+                  placeholder="Where should we pick you up?"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Popular landmark <span className="font-normal text-neutral-400">(optional)</span></label>
+                <input
+                  type="text"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                  placeholder="e.g. near Eko Hotel, Ikeja City Mall"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Drop-off address *</label>
+                <input
+                  type="text"
+                  value={dropoff}
+                  onChange={(e) => setDropoff(e.target.value)}
+                  placeholder="Where are you headed?"
+                  className={inputCls}
+                  onKeyDown={(e) => { if (e.key === "Enter" && pickup.trim() && dropoff.trim()) setStep(4); }}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={!pickup.trim() || !dropoff.trim()}
+                onClick={() => setStep(4)}
+                className={continueBtn}
+                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* 5 — contact */}
+          {step === 4 && (
             <div className="flex flex-col gap-3">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Full name *</label>
@@ -453,7 +444,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   autoComplete="name"
                   onChange={(e) => setName(e.target.value)}
                   placeholder="John Doe"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+                  className={inputCls}
                 />
               </div>
               <div>
@@ -465,7 +456,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={() => setPhoneTouched(true)}
                   placeholder="08012345678"
-                  className="w-full rounded-xl border border-neutral-900/10 bg-white/70 px-4 py-3 text-base outline-none sm:text-sm transition-colors placeholder:text-neutral-400 focus:border-[#00209C] focus:ring-1 focus:ring-[#00209C]"
+                  className={inputCls}
                 />
                 {phoneBad && (
                   <p className="mt-1.5 text-[10px] font-medium text-red-600">
@@ -475,9 +466,25 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               </div>
               <button
                 type="button"
-                disabled={!contactReady || submitting}
+                disabled={!contactReady}
+                onClick={() => setStep(5)}
+                className={continueBtn}
+                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
+              >
+                Continue to payment
+              </button>
+            </div>
+          )}
+
+          {/* 6 — payment */}
+          {step === 5 && (
+            <div className="flex flex-col gap-4">
+              <PaymentSection value={payment} onChange={setPayment} isLight />
+              <button
+                type="button"
+                disabled={submitting}
                 onClick={() => void submit()}
-                className="mt-1 h-11 rounded-full text-sm font-semibold tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                className={continueBtn}
                 style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
               >
                 {submitting ? "Booking…" : "Book my ride"}
@@ -485,20 +492,23 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </div>
           )}
 
-          {/* 7 — confirmation: the downloadable ride-pass card */}
+          {/* 7 — confirmation (the card itself is rendered off-screen only so it
+              can still be exported to an image on demand) */}
           {step === 6 && booking && (
-            <div className="flex flex-col items-center gap-3 text-center">
-              <p className="text-xs leading-relaxed text-neutral-500">
-                Booking <span className="font-semibold text-neutral-900">{booking.id}</span> confirmed —
-                save your ride pass below.
-              </p>
-              <div ref={passRef} className="flex w-full justify-center">
-                {/* `zoom` scales layout too (unlike transform), so the shrunken card
-                    leaves no dead space and the buttons stay right below it. */}
-                <div style={{ zoom: cardZoom }}>
-                  <RidePass booking={bookingToRide(booking)} light />
-                </div>
+            <div className="flex flex-col items-center gap-4 py-3 text-center">
+              <span className="grid h-16 w-16 place-items-center rounded-full" style={{ background: BLUE + "12", color: BLUE }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
+              <div>
+                <h3 className="font-josefin text-lg font-medium tracking-tight">Booking confirmed</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-neutral-500">
+                  Your work order <span className="font-semibold text-neutral-900">{booking.id}</span> is in.
+                  {booking.passenger.phone ? ` We'll call ${booking.passenger.phone} shortly to confirm.` : ""}
+                </p>
               </div>
+
               <div className="flex flex-wrap items-center justify-center gap-2.5">
                 <button
                   type="button"
@@ -507,15 +517,33 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   className="rounded-full px-6 py-2.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all disabled:opacity-60"
                   style={{ background: BLUE }}
                 >
-                  {saving ? "Preparing…" : "Save card to photos"}
+                  {saving ? "Preparing…" : "Download ride pass"}
                 </button>
-                <button
-                  type="button"
-                  onClick={startOver}
+                <a
+                  href={`/check-booking?ref=${encodeURIComponent(booking.id)}`}
                   className="rounded-full border border-neutral-300 px-6 py-2.5 text-[11px] font-bold uppercase tracking-widest text-neutral-600 transition-colors hover:bg-neutral-100"
                 >
-                  Book another
-                </button>
+                  Track booking
+                </a>
+              </div>
+
+              <p className="max-w-xs text-[11px] leading-relaxed text-neutral-400">
+                Keep your work order ID. You can view or download this booking anytime at{" "}
+                <a href="/check-booking" className="font-semibold underline" style={{ color: BLUE }}>apex.ayotomcs.me/check-booking</a>.
+                A copy has been sent to the team.
+              </p>
+
+              <button
+                type="button"
+                onClick={startOver}
+                className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-900"
+              >
+                Book another
+              </button>
+
+              {/* off-screen card kept mounted purely so the download can rasterise it */}
+              <div ref={passRef} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 opacity-0">
+                <RidePass booking={bookingToRide(booking)} light />
               </div>
             </div>
           )}
@@ -533,7 +561,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               Back
             </button>
             <span className="max-w-[60%] truncate text-right text-[10px] text-neutral-400">
-              {[pickupWhen?.label, tripType?.name, duration?.name, car?.name].filter(Boolean).join(" · ")}
+              {[car?.name, duration?.name, date ? `${formatCardDate(date).replace(/,.*/, "")}${time ? ` · ${formatClock12(time)}` : ""}` : null].filter(Boolean).join(" · ")}
             </span>
           </div>
         )}

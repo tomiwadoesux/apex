@@ -29,6 +29,7 @@ export type Booking = {
   date: string; // human-readable, e.g. "Sat, 21 Jun 2026"
   time: string; // "18:30"
   light: boolean; // theme the card was created in
+  paymentNote?: string | null; // guest's transfer note (account name, amount, rough time paid)
   // ── operations (managed from /admin) ──
   status?: BookingStatus; // defaults to "new"
   driver?: string; // assigned chauffeur
