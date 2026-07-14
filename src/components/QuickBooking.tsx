@@ -23,7 +23,7 @@ import { RidePass, type RideBooking } from "@/components/RideCard";
 import { ratePerHour, naira } from "@/lib/pricing";
 // per-car rate: admin override first, then the code default
 const rateFor = (rates: Record<string, number>, id: string) => rates[id] ?? ratePerHour(id);
-import PaymentSection, { EMPTY_PAYMENT, paymentNoteText, type PaymentDetails } from "@/components/PaymentSection";
+import PaystackPay from "@/components/PaystackPay";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 
@@ -79,7 +79,7 @@ const validPhone = (phone: string) => /^(?:\+234|234|0)[789]\d{9}$/.test(phone.r
 
 const STEP_TITLES = [
   "Choose your car",
-  "For how long?",
+  "Which service?",
   "When do you need it?",
   "Pickup & drop-off",
   "Who is riding?",
@@ -95,7 +95,14 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   useEffect(() => {
     fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
   }, []);
-  const durations = cfg.durations.filter((d) => d.id !== "multiday").map((d) => ({ id: d.id, badge: "Fixed Duration", name: d.name, hours: d.hours ?? 6, desc: d.desc }));
+  // Quick Booking offers 12h, 24h and Airport Transfer (a flat-rate service).
+  const airportType = cfg.tripTypes.find((t) => t.id === "airport");
+  const durations = [
+    ...cfg.durations
+      .filter((d) => d.id === "12h" || d.id === "24h")
+      .map((d) => ({ id: d.id, badge: "Fixed Duration", name: d.name, hours: d.hours ?? 12, desc: d.desc } as const)),
+    ...(airportType ? [{ id: "airport", badge: "Flat Rate", name: airportType.name, hours: null, desc: airportType.desc } as const] : []),
+  ];
   const allCars: Variant[] = [
     ...AVAILABLE_CARS.filter((c) => !cfg.hiddenCars.includes(c.name)),
     ...cfg.extraCars.map((c) => ({ id: c.id, label: c.year, name: c.name, year: Number(c.year) || 2025, type: c.type || "Fleet selection", specs: c.specs, image: c.image })),
@@ -113,9 +120,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
-  const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
   const [submitting, setSubmitting] = useState(false);
-  const [paySubmitting, setPaySubmitting] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
   const [resumed, setResumed] = useState(false); // opened by a saved, unpaid booking
@@ -127,7 +132,6 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     const p = loadPending();
     if (p) {
       setBooking(p.booking);
-      setPayment({ ...EMPTY_PAYMENT, accountName: p.accountName, amount: p.amount, timePaid: p.timePaid });
       setStep(5);
       setResumed(true);
     }
@@ -159,16 +163,19 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
   const submit = async () => {
     if (!car || !duration || !date || !time || submitting) return;
+    // Fare: rate × hours for 12h/24h; the flat airport rate for a transfer.
+    const amount = duration.hours ? rateFor(cfg.carRates, car.id) * duration.hours : cfg.airportRate;
     const bookingPayload = {
       passenger: { name: name.trim(), phone: phone.trim(), email: "" },
       car: { name: car.name, klass: car.type, image: car.image ? car.image.replace(/^\/images\//, "") : null },
-      service: "Chauffeur service",
+      service: duration.hours ? "Chauffeur service" : duration.name,
       pickup: landmark.trim() ? `${pickup.trim()} (near ${landmark.trim()})` : pickup.trim(),
       dropoff: dropoff.trim() || null,
-      duration: `${duration.hours} hours`,
+      duration: duration.hours ? `${duration.hours} hours` : null,
       date: formatCardDate(date),
       time,
       light: true,
+      amount,
     };
     setSubmitting(true);
     let placed: Booking;
@@ -190,26 +197,14 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     }
     setBooking(placed);
     // Persist so the payment step survives a tab/app close until they've paid.
-    savePending({ booking: placed, accountName: payment.accountName, amount: payment.amount, timePaid: payment.timePaid });
+    savePending({ booking: placed });
     setSubmitting(false);
     setStep(5); // → payment
   };
 
-  // Submit the transfer receipt + note for the placed booking, then finish.
-  const submitPayment = async () => {
-    if (!booking || paySubmitting) return;
-    setPaySubmitting(true);
-    try {
-      await fetch(`/api/bookings/${encodeURIComponent(booking.id)}/payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentNote: paymentNoteText(payment) || null, receipt: payment.receipt, receiptName: payment.receiptName }),
-      });
-    } catch {
-      /* even if the email send is unreachable, let them finish — we don't block */
-    }
+  // Called by Paystack after a verified payment.
+  const onPaid = () => {
     clearPending();
-    setPaySubmitting(false);
     setStep(6); // → done
   };
 
@@ -253,7 +248,6 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     setName("");
     setPhone("");
     setPhoneTouched(false);
-    setPayment(EMPTY_PAYMENT);
     setBooking(null);
     setResumed(false);
     clearPending();
@@ -361,7 +355,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   <span className="text-sm font-semibold tracking-tight">{d.name}</span>
                   {car && (
                     <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-white/70" : "text-neutral-500"}`}>
-                      ≈ {naira(rateFor(cfg.carRates, car.id) * d.hours)}
+                      {d.hours ? `≈ ${naira(rateFor(cfg.carRates, car.id) * d.hours)}` : naira(cfg.airportRate)}
                     </span>
                   )}
                 </div>
@@ -522,20 +516,19 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               <div className="rounded-2xl border border-[#00209C]/15 bg-[#00209C]/[0.04] px-4 py-3 text-center">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Work order</div>
                 <div className="text-lg font-semibold tracking-tight" style={{ color: BLUE }}>{booking?.id}</div>
-                <div className="mt-0.5 text-[11px] text-neutral-500">Your ride is reserved. Complete the transfer below to confirm it.</div>
+                <div className="mt-0.5 text-[11px] text-neutral-500">Your ride is reserved. Pay below to confirm it.</div>
               </div>
-              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight />
-              <button
-                type="button"
-                disabled={paySubmitting}
-                onClick={() => void submitPayment()}
-                className={continueBtn}
-                style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}
-              >
-                {paySubmitting ? "Sending…" : "I've paid — submit receipt"}
-              </button>
+              {booking && (
+                <PaystackPay
+                  bookingId={booking.id}
+                  email={booking.passenger.email || `${booking.id.replace(/\D/g, "")}@apexride.ng`}
+                  amountNaira={booking.amount ?? 0}
+                  isLight
+                  onPaid={onPaid}
+                />
+              )}
               <p className="text-center text-[10px] leading-relaxed text-neutral-400">
-                Haven&apos;t paid yet? You can close this — your work order is saved and this step comes back next time until payment is done.
+                Not ready to pay? You can close this — your work order is saved and this step comes back next time until payment is done.
               </p>
             </div>
           )}
@@ -550,12 +543,12 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 </svg>
               </span>
               <div>
-                <h3 className="font-josefin text-lg font-medium tracking-tight">Receipt received</h3>
+                <h3 className="font-josefin text-lg font-medium tracking-tight">Payment received</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-neutral-500">
                   Your work order is <span className="font-semibold text-neutral-900">{booking.id}</span>.
                 </p>
                 <p className="mx-auto mt-2 max-w-xs rounded-xl bg-[#00209C]/[0.06] px-3 py-2 text-[11px] leading-relaxed text-neutral-600">
-                  Your booking becomes <span className="font-semibold">valid once we verify your payment</span>. We&apos;ll notify you{booking.passenger.phone ? ` on ${booking.passenger.phone}` : ""} as soon as it&apos;s gone through.
+                  Your booking is <span className="font-semibold">confirmed</span>. We&apos;ll reach out{booking.passenger.phone ? ` on ${booking.passenger.phone}` : ""} shortly with your driver details.
                 </p>
               </div>
 

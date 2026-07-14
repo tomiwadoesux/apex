@@ -9,8 +9,9 @@ import { gsap } from "gsap";
 import { toPng } from "html-to-image";
 import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
-import PaymentSection, { EMPTY_PAYMENT, paymentNoteText, type PaymentDetails } from "@/components/PaymentSection";
+import PaystackPay from "@/components/PaystackPay";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
+import { DEFAULT_RATE } from "@/lib/pricing";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
@@ -349,9 +350,7 @@ export default function BookingForm() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
-  const [payment, setPayment] = useState<PaymentDetails>(EMPTY_PAYMENT);
-  const [paymentDone, setPaymentDone] = useState(false); // receipt submitted → final confirmation
-  const [paySubmitting, setPaySubmitting] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false); // paid (or quote placed) → final confirmation
   // Schedule step: which path the guest chose, and which month the calendar shows.
   const [scheduleMode, setScheduleMode] = useState<"quick" | "custom" | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
@@ -403,7 +402,6 @@ export default function BookingForm() {
     if (p) {
       setConfirmedBooking(p.booking);
       setBookingId(p.booking.id);
-      setPayment({ ...EMPTY_PAYMENT, accountName: p.accountName, amount: p.amount, timePaid: p.timePaid });
       setPaymentDone(false);
       setCurrentStep(8);
     }
@@ -1213,6 +1211,17 @@ export default function BookingForm() {
           ? `${multiDayNum} day${multiDayNum > 1 ? "s" : ""}`
           : `${selectedService.durationHours} hours`
         : null;
+    // Fare: per-hour rate × hours for duration bookings, the flat airport rate for
+    // an airport transfer, and null (quote-on-request) for other trip types.
+    const fleetMatch = FLEET_CARS.find((c) => c.name === v.name);
+    const carRate = cfg.carRates[fleetMatch?.id ?? ""] ?? DEFAULT_RATE;
+    let amount: number | null = null;
+    if (!isType && selectedService) {
+      const hours = selectedService.id === "multiday" ? 24 * (Number(multiDayNum) || 1) : selectedService.durationHours ?? 0;
+      amount = hours > 0 ? carRate * hours : null;
+    } else if (selectedService?.id === "airport") {
+      amount = cfg.airportRate;
+    }
     const payload = {
       passenger: { name: contactName.trim(), phone: contactPhone.trim(), email: contactEmail.trim() },
       car: { name: v.name, klass: v.class, image: v.img.light.side },
@@ -1223,6 +1232,7 @@ export default function BookingForm() {
       date: formatCardDate(bookingDate),
       time: bookingTime,
       light: isLight,
+      amount,
     };
 
     setSubmitting(true);
@@ -1247,28 +1257,15 @@ export default function BookingForm() {
     setConfirmedBooking(placed);
     setBookingId(placed.id);
     // Persist so the payment step survives a tab/app close until they've paid.
-    savePending({ booking: placed, accountName: payment.accountName, amount: payment.amount, timePaid: payment.timePaid });
+    savePending({ booking: placed });
     setPaymentDone(false);
     setSubmitting(false);
     setCurrentStep(8);
   };
 
-  // The guest transferred the fare and is submitting their receipt for the placed
-  // booking. Emails the team, clears the saved-until-paid record, then finishes.
-  const submitPayment = async () => {
-    if (!confirmedBooking || paySubmitting) return;
-    setPaySubmitting(true);
-    try {
-      await fetch(`/api/bookings/${encodeURIComponent(confirmedBooking.id)}/payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentNote: paymentNoteText(payment) || null, receipt: payment.receipt, receiptName: payment.receiptName }),
-      });
-    } catch {
-      /* don't block completion if the email send is unreachable */
-    }
+  // Paystack verified the payment (or a quote-on-request booking was placed).
+  const finishPayment = () => {
     clearPending();
-    setPaySubmitting(false);
     setPaymentDone(true);
   };
 
@@ -1340,7 +1337,6 @@ export default function BookingForm() {
     setBookingDate("");
     setBookingTime("");
     setSpecialRequests("");
-    setPayment(EMPTY_PAYMENT);
     setPaymentDone(false);
     clearPending();
     setBookingId("");
@@ -2345,22 +2341,34 @@ export default function BookingForm() {
                 Work order {confirmedBooking.id}
               </h2>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-                Your ride is reserved. Complete the transfer below to confirm it — this step stays saved until you&apos;ve paid, so you can leave and come back.
+                Your ride is reserved. {confirmedBooking.amount ? "Pay below to confirm it" : "Our team will confirm your fare shortly"} — this step stays saved until it&apos;s done, so you can leave and come back.
               </p>
             </div>
 
             <div className={`p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[1.75rem] border ${cardBgStyle} text-left`}>
-              <PaymentSection value={payment} onChange={setPayment} bank={cfg.payment} isLight={isLight} />
+              {confirmedBooking.amount ? (
+                <PaystackPay
+                  bookingId={confirmedBooking.id}
+                  email={confirmedBooking.passenger.email || `${confirmedBooking.id.replace(/\D/g, "")}@apexride.ng`}
+                  amountNaira={confirmedBooking.amount}
+                  isLight={isLight}
+                  onPaid={finishPayment}
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <p className={`text-sm leading-relaxed ${isLight ? "text-neutral-700" : "text-white/70"}`}>
+                    This trip is quoted on request. Our team will confirm your fare and send you a secure Paystack payment link shortly.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={finishPayment}
+                    className={`h-11 rounded-full px-7 text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${isLight ? "bg-[#00209C] text-white hover:bg-[#001a80]" : "bg-[#FDBA16] text-neutral-950 hover:bg-[#e5a912]"}`}
+                  >
+                    Got it
+                  </button>
+                </div>
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={submitPayment}
-              disabled={paySubmitting}
-              className={`h-12 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all duration-300 disabled:opacity-60 ${isLight ? "bg-[#00209C] text-white hover:bg-[#001a80]" : "bg-[#FDBA16] text-neutral-950 hover:bg-[#e5a912]"}`}
-            >
-              {paySubmitting ? "Sending…" : "I've paid — submit receipt"}
-            </button>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
@@ -2394,13 +2402,17 @@ export default function BookingForm() {
             </span>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                Receipt received
+                {confirmedBooking.amount ? "Payment received" : "Booking placed"}
               </p>
               <h2 className={`mt-2 font-josefin text-2xl font-light tracking-tight ${isLight ? "text-neutral-900" : "text-white"}`}>
                 Work order {confirmedBooking.id}
               </h2>
               <p className={`mx-auto mt-3 max-w-sm rounded-xl px-4 py-2.5 text-xs leading-relaxed ${isLight ? "bg-[#00209C]/[0.06] text-neutral-700" : "bg-[#FDBA16]/[0.08] text-white/70"}`}>
-                Your booking becomes <span className="font-semibold">valid once we verify your payment</span>. We&apos;ll notify you{confirmedBooking.passenger.phone ? ` on ${confirmedBooking.passenger.phone}` : ""} as soon as it&apos;s gone through.
+                {confirmedBooking.amount ? (
+                  <>Your booking is <span className="font-semibold">confirmed</span>. We&apos;ll reach out{confirmedBooking.passenger.phone ? ` on ${confirmedBooking.passenger.phone}` : ""} shortly with your driver details.</>
+                ) : (
+                  <>Our team will confirm your fare and send a <span className="font-semibold">secure payment link</span>{confirmedBooking.passenger.phone ? ` to ${confirmedBooking.passenger.phone}` : ""} shortly.</>
+                )}
               </p>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
                 Keep your work order ID — view or download your ride pass anytime at{" "}

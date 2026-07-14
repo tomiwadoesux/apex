@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     date: str(body.date, 60),
     time: str(body.time, 20),
     light: Boolean(body.light),
+    amount: typeof body.amount === "number" && body.amount > 0 ? Math.min(1_000_000_000, Math.round(body.amount)) : null,
     paymentNote: strOrNull(body.paymentNote, 400),
   };
 

@@ -29,7 +29,8 @@ export type Booking = {
   date: string; // human-readable, e.g. "Sat, 21 Jun 2026"
   time: string; // "18:30"
   light: boolean; // theme the card was created in
-  paymentNote?: string | null; // guest's transfer note (account name, amount, rough time paid)
+  amount?: number | null; // fare to charge via Paystack, in Naira (null = quote-on-request)
+  paymentNote?: string | null; // payment reference / note recorded after paying
   // ── operations (managed from /admin) ──
   status?: BookingStatus; // defaults to "new"
   driver?: string; // assigned chauffeur

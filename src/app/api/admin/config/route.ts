@@ -61,6 +61,10 @@ export async function PUT(req: Request) {
               .filter(([k, v]) => k && v > 0),
           )
         : current.carRates,
+    airportRate:
+      body.airportRate !== undefined && Number(body.airportRate) >= 0
+        ? Math.min(1_000_000_000, Math.round(Number(body.airportRate)))
+        : current.airportRate,
     payment:
       body.payment && typeof body.payment === "object"
         ? {

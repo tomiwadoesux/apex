@@ -531,29 +531,35 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+              <div className="mt-4 flex max-w-xs items-center gap-2 border-t border-neutral-100 pt-4">
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800">Airport Transfer (flat)</span>
+                <span className="text-sm text-neutral-400">₦</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={config.airportRate}
+                  onChange={(e) => set("airportRate", Number(e.target.value) || 0)}
+                  className={`${input} !w-32 text-right tabular-nums`}
+                />
+              </div>
             </section>
 
-            {/* payment / bank details */}
+            {/* payment channel — Paystack */}
             <section className={card}>
-              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Payment details</h2>
-              <p className="mb-3 text-xs text-neutral-500">
-                Shown on the last step of Quick Booking and the form, with a copy button beside each. This is where
-                customers transfer the fare.
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Payment channel</h2>
+              <p className="text-xs leading-relaxed text-neutral-500">
+                Customers now pay online through <span className="font-semibold text-neutral-700">Paystack</span> on the last
+                step of Quick Booking and the form — card, bank transfer, or USSD. The fare is the per-hour price above ×
+                the hours (or the flat Airport Transfer rate). Quote-on-request trips are placed and you send a Paystack
+                link from your dashboard.
               </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={label}>Bank name</label>
-                  <input value={config.payment.bankName} onChange={(e) => set("payment", { ...config.payment, bankName: e.target.value })} className={input} placeholder="e.g. GTBank" />
-                </div>
-                <div>
-                  <label className={label}>Account number</label>
-                  <input value={config.payment.accountNumber} onChange={(e) => set("payment", { ...config.payment, accountNumber: e.target.value })} className={`${input} tabular-nums`} placeholder="0123456789" inputMode="numeric" />
-                </div>
-                <div>
-                  <label className={label}>Account name</label>
-                  <input value={config.payment.accountName} onChange={(e) => set("payment", { ...config.payment, accountName: e.target.value })} className={input} placeholder="ApexRide Logistics" />
-                </div>
-              </div>
+              <p className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-500">
+                Set your keys as environment variables (Vercel → Settings → Environment Variables):
+                <br />• <span className="font-mono font-semibold text-neutral-700">NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY</span> — your Paystack public key
+                <br />• <span className="font-mono font-semibold text-neutral-700">PAYSTACK_SECRET_KEY</span> — your Paystack secret key
+                <br />Until both are set, the pay button will say payments aren&apos;t configured yet.
+              </p>
             </section>
           </div>
         )}

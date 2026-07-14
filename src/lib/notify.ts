@@ -220,10 +220,10 @@ export async function notifyPaymentReceived(
         COMPANY_EMAIL,
         `Payment submitted — ${b.id} — ${b.passenger.name || "unknown"}`,
         emailShell(
-          "A payment receipt just came in",
+          "Payment received",
           receipt
-            ? `The guest has transferred the fare for booking ${esc(b.id)} and attached their receipt (below). Confirm it against the account, then mark the booking paid.`
-            : `The guest submitted payment details for booking ${esc(b.id)}. No receipt image was attached — the details are below.`,
+            ? `The guest has transferred the fare for booking ${esc(b.id)} and attached their receipt (below). Confirm it, then mark the booking paid.`
+            : `Payment has come in for booking ${esc(b.id)}. The details are below — mark the booking paid and let the guest know.`,
           b,
         ),
         receipt ? [receipt] : undefined,

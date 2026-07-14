@@ -8,9 +8,6 @@ import type { Booking } from "./bookings";
 
 export type PendingPayment = {
   booking: Booking;
-  accountName: string;
-  amount: string;
-  timePaid: string;
 };
 
 const KEY = "apexride:pendingPayment";
