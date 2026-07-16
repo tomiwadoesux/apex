@@ -35,7 +35,9 @@ const IMAGE_CHOICES = [...new Set(CARS.filter((c) => c.image).map((c) => c.image
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [tab, setTab] = useState<"bookings" | "options">("bookings");
 
@@ -143,29 +145,84 @@ export default function AdminPage() {
   /* ── login screen ── */
   if (authed === false) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-[#f4f6fb] px-6 text-neutral-900">
-        <div className={`w-full max-w-sm ${card}`}>
-          <div className="mb-5 flex items-center gap-2.5">
-            <Logo size={26} color="#0b0d12" accent={ACCENT} />
-            <span className="text-sm font-bold uppercase tracking-[0.08em]">
-              Apex<span style={{ color: ACCENT }}>Ride</span> · Admin
+      <main
+        className="grid min-h-dvh place-items-center px-6 py-10 text-neutral-900"
+        style={{ background: "radial-gradient(120% 100% at 50% 0%, #ffffff 0%, #eef2fb 45%, #dbe3f4 100%)" }}
+      >
+        <div className="w-full max-w-sm rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_30px_80px_-30px_rgba(0,32,156,0.35)] backdrop-blur-xl sm:p-8">
+          <div className="flex flex-col items-center text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl" style={{ background: BLUE + "12" }}>
+              <Logo size={30} color="#0b0d12" accent={ACCENT} />
             </span>
+            <h1 className="mt-4 font-josefin text-2xl font-light tracking-tight">
+              Apex<span style={{ color: ACCENT }}>Ride</span> Admin
+            </h1>
+            <p className="mt-1 text-xs text-neutral-500">Sign in to manage bookings, prices &amp; options.</p>
           </div>
-          <label className={label}>Admin password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void login()}
-            className={input}
-            placeholder="••••••••"
-            autoFocus
-          />
-          {loginError && <p className="mt-2 text-xs font-medium text-red-600">{loginError}</p>}
-          <button type="button" onClick={() => void login()} className={`${btn} mt-4 w-full`} style={{ background: BLUE }}>
-            Sign in
-          </button>
-          <Link href="/" className="mt-4 block text-center text-xs text-neutral-400 hover:text-neutral-700">
+
+          <form
+            className="mt-6 flex flex-col gap-3"
+            onSubmit={(e) => { e.preventDefault(); void login(); }}
+          >
+            <div>
+              <label className={label} htmlFor="admin-username">Username</label>
+              <input
+                id="admin-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={input}
+                placeholder="admin"
+              />
+            </div>
+
+            <div>
+              <label className={label} htmlFor="admin-password">Password</label>
+              <div className="relative">
+                <input
+                  id="admin-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${input} pr-11`}
+                  placeholder="Your admin password"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 grid w-11 place-items-center text-neutral-400 transition-colors hover:text-neutral-700"
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {loginError && <p className="text-xs font-medium text-red-600">{loginError}</p>}
+
+            <button type="submit" className={`${btn} mt-1 w-full`} style={{ background: BLUE }}>
+              Sign in
+            </button>
+          </form>
+
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-neutral-400">
+            Your browser will offer to save this login so you won&apos;t have to type it next time.
+          </p>
+          <Link href="/" className="mt-4 block text-center text-xs text-neutral-400 transition-colors hover:text-neutral-700">
             ← Back to the site
           </Link>
         </div>
