@@ -531,17 +531,25 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex max-w-xs items-center gap-2 border-t border-neutral-100 pt-4">
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800">Airport Transfer (flat)</span>
-                <span className="text-sm text-neutral-400">₦</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={config.airportRate}
-                  onChange={(e) => set("airportRate", Number(e.target.value) || 0)}
-                  className={`${input} !w-32 text-right tabular-nums`}
-                />
+              <div className="mt-4 border-t border-neutral-100 pt-4">
+                <p className="mb-2 text-xs text-neutral-500">Flat fare for each trip type (no hourly duration) — charged via Paystack.</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {config.tripTypes.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{t.name}</span>
+                      <span className="text-sm text-neutral-400">₦</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={config.tripRates[t.id] ?? ""}
+                        placeholder="0"
+                        onChange={(e) => set("tripRates", { ...config.tripRates, [t.id]: Number(e.target.value) || 0 })}
+                        className={`${input} !w-28 text-right tabular-nums`}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -551,8 +559,7 @@ export default function AdminPage() {
               <p className="text-xs leading-relaxed text-neutral-500">
                 Customers now pay online through <span className="font-semibold text-neutral-700">Paystack</span> on the last
                 step of Quick Booking and the form — card, bank transfer, or USSD. The fare is the per-hour price above ×
-                the hours (or the flat Airport Transfer rate). Quote-on-request trips are placed and you send a Paystack
-                link from your dashboard.
+                the hours, or the flat trip-type rate. Set any trip rate to 0 to make that trip &ldquo;contact us&rdquo; instead of pay-now.
               </p>
               <p className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-500">
                 Set your keys as environment variables (Vercel → Settings → Environment Variables):

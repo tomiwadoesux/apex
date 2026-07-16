@@ -1211,16 +1211,16 @@ export default function BookingForm() {
           ? `${multiDayNum} day${multiDayNum > 1 ? "s" : ""}`
           : `${selectedService.durationHours} hours`
         : null;
-    // Fare: per-hour rate × hours for duration bookings, the flat airport rate for
-    // an airport transfer, and null (quote-on-request) for other trip types.
+    // Fare: per-hour rate × hours for duration bookings; a flat per-trip-type rate
+    // (all editable in /admin) for the trip types.
     const fleetMatch = FLEET_CARS.find((c) => c.name === v.name);
     const carRate = cfg.carRates[fleetMatch?.id ?? ""] ?? DEFAULT_RATE;
     let amount: number | null = null;
     if (!isType && selectedService) {
       const hours = selectedService.id === "multiday" ? 24 * (Number(multiDayNum) || 1) : selectedService.durationHours ?? 0;
       amount = hours > 0 ? carRate * hours : null;
-    } else if (selectedService?.id === "airport") {
-      amount = cfg.airportRate;
+    } else if (isType && selectedService) {
+      amount = cfg.tripRates[selectedService.id] ?? null;
     }
     const payload = {
       passenger: { name: contactName.trim(), phone: contactPhone.trim(), email: contactEmail.trim() },

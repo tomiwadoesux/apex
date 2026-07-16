@@ -164,7 +164,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const submit = async () => {
     if (!car || !duration || !date || !time || submitting) return;
     // Fare: rate × hours for 12h/24h; the flat airport rate for a transfer.
-    const amount = duration.hours ? rateFor(cfg.carRates, car.id) * duration.hours : cfg.airportRate;
+    const amount = duration.hours ? rateFor(cfg.carRates, car.id) * duration.hours : (cfg.tripRates.airport ?? 40000);
     const bookingPayload = {
       passenger: { name: name.trim(), phone: phone.trim(), email: "" },
       car: { name: car.name, klass: car.type, image: car.image ? car.image.replace(/^\/images\//, "") : null },
@@ -355,7 +355,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   <span className="text-sm font-semibold tracking-tight">{d.name}</span>
                   {car && (
                     <span className={`text-[11px] font-semibold tabular-nums ${active ? "text-white/70" : "text-neutral-500"}`}>
-                      {d.hours ? `≈ ${naira(rateFor(cfg.carRates, car.id) * d.hours)}` : naira(cfg.airportRate)}
+                      {d.hours ? `≈ ${naira(rateFor(cfg.carRates, car.id) * d.hours)}` : naira(cfg.tripRates.airport ?? 40000)}
                     </span>
                   )}
                 </div>

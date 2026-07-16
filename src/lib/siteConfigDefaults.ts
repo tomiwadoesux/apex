@@ -38,8 +38,9 @@ export type SiteConfig = {
   // Per-hour chauffeur rate in Naira, keyed by fleet variant id (or extra-car id).
   // Shown beside each car in Quick Booking. Missing id → the code default.
   carRates: Record<string, number>;
-  // Flat Naira fare for an Airport Transfer (no hourly duration).
-  airportRate: number;
+  // Flat Naira fare for each trip type (no hourly duration) — keyed by trip-type
+  // id (custom / interstate / airport / point). Used to charge these via Paystack.
+  tripRates: Record<string, number>;
   // ApexRide's bank details — legacy; Paystack is the live channel now.
   payment: PaymentInfo;
 };
@@ -77,7 +78,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   hiddenCars: [],
   quickCars: [],
   carRates: { ...RATE_PER_HOUR },
-  airportRate: 40000,
+  tripRates: { custom: 100000, interstate: 150000, airport: 40000, point: 60000 },
   payment: { ...PAYMENT },
 };
 

@@ -61,10 +61,14 @@ export async function PUT(req: Request) {
               .filter(([k, v]) => k && v > 0),
           )
         : current.carRates,
-    airportRate:
-      body.airportRate !== undefined && Number(body.airportRate) >= 0
-        ? Math.min(1_000_000_000, Math.round(Number(body.airportRate)))
-        : current.airportRate,
+    tripRates:
+      body.tripRates && typeof body.tripRates === "object" && !Array.isArray(body.tripRates)
+        ? Object.fromEntries(
+            Object.entries(body.tripRates as Record<string, unknown>)
+              .map(([k, v]) => [str(k, 40), Math.max(0, Math.min(1_000_000_000, Math.round(Number(v) || 0)))] as const)
+              .filter(([k]) => k),
+          )
+        : current.tripRates,
     payment:
       body.payment && typeof body.payment === "object"
         ? {
