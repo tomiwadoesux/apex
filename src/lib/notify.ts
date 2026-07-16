@@ -15,7 +15,7 @@ const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.RESEND_FROM || "ApexRide <bookings@ayotomcs.me>";
 const COMPANY_EMAIL = process.env.COMPANY_EMAIL;
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
-const SITE_URL = process.env.SITE_URL || "https://apex.ayotomcs.me";
+const SITE_URL = process.env.SITE_URL || "https://apexriderental.com";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 

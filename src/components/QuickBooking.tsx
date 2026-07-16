@@ -572,7 +572,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
               <p className="max-w-xs text-[11px] leading-relaxed text-neutral-400">
                 Keep your work order ID. You can view or download this booking anytime at{" "}
-                <a href="/check-booking" className="font-semibold underline" style={{ color: BLUE }}>apex.ayotomcs.me/check-booking</a>.
+                <a href="/check-booking" className="font-semibold underline" style={{ color: BLUE }}>apexriderental.com/check-booking</a>.
                 A copy has been sent to the team.
               </p>
 

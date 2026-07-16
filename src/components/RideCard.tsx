@@ -459,7 +459,7 @@ export function RideCard({
             <div className="mt-[2cqw] text-center">
               <div style={{ borderTop: `2px dotted ${light ? "rgba(10,18,40,.3)" : "rgba(255,255,255,.26)"}`, margin: "2cqw 0 2.5cqw" }} />
               {/* the shareable link sits ABOVE the booking number */}
-              <div style={{ fontSize: "2.3cqw", letterSpacing: "0.01em", color: accent, marginBottom: "1.4cqw", whiteSpace: "nowrap" }}>apex.ayotomcs.me/booking/{bookingRef.replace(/\s+/g, "")}</div>
+              <div style={{ fontSize: "2.3cqw", letterSpacing: "0.01em", color: accent, marginBottom: "1.4cqw", whiteSpace: "nowrap" }}>apexriderental.com/booking/{bookingRef.replace(/\s+/g, "")}</div>
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.3em", color: dim }}>BOOKING No.</div>
               <div style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600, fontSize: "5.6cqw", letterSpacing: "0.2em", color: ink, marginTop: "1.2cqw" }}>{bookingRef}</div>
               {passengerName && (
