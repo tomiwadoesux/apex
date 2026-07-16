@@ -527,7 +527,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               {booking && (
                 <PaystackPay
                   bookingId={booking.id}
-                  email={booking.passenger.email || `${booking.id.replace(/\D/g, "")}@apexride.ng`}
+                  email={booking.passenger.email}
                   amountNaira={booking.amount ?? 0}
                   isLight
                   onPaid={onPaid}

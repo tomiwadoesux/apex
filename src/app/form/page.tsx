@@ -11,7 +11,7 @@ import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import PaystackPay from "@/components/PaystackPay";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
-import { DEFAULT_RATE } from "@/lib/pricing";
+import { DEFAULT_RATE, naira } from "@/lib/pricing";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
@@ -617,6 +617,16 @@ export default function BookingForm() {
       : selectedService.id === "custom"
         ? `Custom${customTripText.trim() ? ` · ${customTripText.trim()}` : ""}`
         : selectedService.name;
+
+  // Live running fare — the per-hour rate for the chosen car, and the total once a
+  // duration / trip type is picked. Shown on-screen so the guest sees the cost build.
+  const liveRate = cfg.carRates[FLEET_CARS.find((c) => c.name === selectedVehicle.name)?.id ?? ""] ?? DEFAULT_RATE;
+  const liveAmount: number | null = (() => {
+    if (!selectedService) return null;
+    if (selectedService.group === "type") return cfg.tripRates[selectedService.id] ?? null;
+    const hours = selectedService.id === "multiday" ? 24 * (multiDayNum || 1) : selectedService.durationHours ?? 0;
+    return hours > 0 ? liveRate * hours : null;
+  })();
 
   // The pickup / destination labels the summary + booking use: address, with the
   // optional landmark folded in for the chauffeur.
@@ -1487,6 +1497,27 @@ export default function BookingForm() {
       </header>
 
       {/* Floating step progress text, positioned constantly at the top */}
+      {/* Live fare pill — always visible from the car step on, so the guest can
+          watch the amount build as they pick the car, then the duration. */}
+      {currentStep >= 3 && currentStep <= 7 && (
+        <div className="fixed top-2 sm:top-3 left-1/2 -translate-x-1/2 z-40 select-none pointer-events-none">
+          <div
+            className="flex items-center gap-2 rounded-full border px-4 py-1.5 shadow-sm backdrop-blur"
+            style={{
+              borderColor: isLight ? "rgba(0,32,156,0.2)" : "rgba(253,186,22,0.3)",
+              background: isLight ? "rgba(255,255,255,0.9)" : "rgba(10,10,10,0.7)",
+            }}
+          >
+            <span className={`text-[9px] font-bold uppercase tracking-[0.18em] ${isLight ? "text-neutral-400" : "text-white/40"}`}>
+              {liveAmount != null ? "Total" : "Rate"}
+            </span>
+            <span className="text-sm font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+              {liveAmount != null ? naira(liveAmount) : `${naira(liveRate)}/hr`}
+            </span>
+          </div>
+        </div>
+      )}
+
       {currentStep <= 7 && (
         <div className="fixed top-[5.25rem] sm:top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
@@ -2349,7 +2380,7 @@ export default function BookingForm() {
               {confirmedBooking.amount ? (
                 <PaystackPay
                   bookingId={confirmedBooking.id}
-                  email={confirmedBooking.passenger.email || `${confirmedBooking.id.replace(/\D/g, "")}@apexride.ng`}
+                  email={confirmedBooking.passenger.email}
                   amountNaira={confirmedBooking.amount}
                   isLight={isLight}
                   onPaid={finishPayment}

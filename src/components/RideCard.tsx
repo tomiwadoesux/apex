@@ -292,41 +292,9 @@ export function RideCard({
     };
   }, []);
 
-  // Phones: tilt the card with the DEVICE — moving the phone reads like hovering.
-  // gamma (left/right roll) drives the x axis; beta (front/back pitch) drives y,
-  // centred on ~40° because that's how people naturally hold a phone. iOS 13+
-  // requires a user-gesture permission request, so we ask on the first touch.
-  useEffect(() => {
-    if (reduced) return;
-    if (typeof window === "undefined" || !window.matchMedia("(hover: none)").matches) return;
-    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-    const onOrient = (e: DeviceOrientationEvent) => {
-      if (e.beta == null || e.gamma == null) return;
-      motionRef.current = true;
-      target.current.x = clamp01(0.5 + (e.gamma / 28) * 0.5);
-      target.current.y = clamp01(0.5 + ((e.beta - 40) / 28) * 0.5);
-      target.current.active = 0.85;
-    };
-    const attach = () => window.addEventListener("deviceorientation", onOrient);
-    const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
-    let onFirstTouch: (() => void) | null = null;
-    if (typeof DOE?.requestPermission === "function") {
-      onFirstTouch = () => {
-        DOE.requestPermission!()
-          .then((state) => { if (state === "granted") attach(); })
-          .catch(() => { /* denied, the ambient float keeps playing instead */ });
-        window.removeEventListener("touchend", onFirstTouch!);
-      };
-      window.addEventListener("touchend", onFirstTouch);
-    } else {
-      attach();
-    }
-    return () => {
-      window.removeEventListener("deviceorientation", onOrient);
-      if (onFirstTouch) window.removeEventListener("touchend", onFirstTouch);
-      motionRef.current = false;
-    };
-  }, [reduced]);
+  // (Phone device-tilt was removed: it triggered an intrusive iOS "Access Motion
+  // and Orientation" permission prompt. The card still floats gently on its own
+  // and tilts under the pointer on desktop.)
 
   const onMove = useCallback((e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();

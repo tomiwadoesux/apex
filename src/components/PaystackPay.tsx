@@ -77,9 +77,15 @@ export default function PaystackPay({
     }
     setBusy(true);
     const ref = `APX${bookingId.replace(/\D/g, "")}-${Date.now()}`;
+    // Paystack requires a valid email. Use the guest's if they gave a real one,
+    // otherwise a valid placeholder on our own domain.
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const payerEmail = EMAIL_RE.test((email || "").trim())
+      ? email.trim()
+      : `ride-${bookingId.replace(/[^a-z0-9]/gi, "").toLowerCase()}@apexriderental.com`;
     const handler = window.PaystackPop.setup({
       key: publicKey,
-      email,
+      email: payerEmail,
       amount: Math.round(amountNaira * 100), // kobo
       currency: "NGN",
       ref,

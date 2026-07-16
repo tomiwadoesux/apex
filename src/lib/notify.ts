@@ -13,7 +13,9 @@ const RESEND_KEY = process.env.RESEND_API_KEY;
 // ayotomcs.me is the domain verified in Resend, so senders must live on it —
 // not on the apex. subdomain. RESEND_FROM overrides if that ever changes.
 const FROM = process.env.RESEND_FROM || "ApexRide <bookings@ayotomcs.me>";
-const COMPANY_EMAIL = process.env.COMPANY_EMAIL;
+// Where booking + payment alerts land. Defaults to the owner's inbox so it works
+// even before COMPANY_EMAIL is set in the environment.
+const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "apexrental08@gmail.com";
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const SITE_URL = process.env.SITE_URL || "https://apexriderental.com";
 
