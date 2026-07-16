@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { naira } from "@/lib/pricing";
 
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+const BUILD_TIME_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
 type PaystackHandler = { openIframe: () => void };
 type PaystackSetup = {
@@ -44,21 +44,30 @@ export default function PaystackPay({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | undefined>(BUILD_TIME_KEY);
   const accent = isLight ? "#00209C" : "#FDBA16";
 
-  // Load Paystack Inline once.
+  // Load Paystack Inline once, and — if the key wasn't baked in at build time —
+  // fetch it from the server at runtime so the button works as soon as it's set.
   useEffect(() => {
-    if (document.getElementById("paystack-inline")) return;
-    const s = document.createElement("script");
-    s.src = "https://js.paystack.co/v1/inline.js";
-    s.id = "paystack-inline";
-    s.async = true;
-    document.body.appendChild(s);
-  }, []);
+    if (!document.getElementById("paystack-inline")) {
+      const s = document.createElement("script");
+      s.src = "https://js.paystack.co/v1/inline.js";
+      s.id = "paystack-inline";
+      s.async = true;
+      document.body.appendChild(s);
+    }
+    if (!publicKey) {
+      fetch("/api/paystack/config")
+        .then((r) => r.json())
+        .then((d) => { if (d?.publicKey) setPublicKey(d.publicKey); })
+        .catch(() => {});
+    }
+  }, [publicKey]);
 
   const pay = () => {
     setError(null);
-    if (!PUBLIC_KEY) {
+    if (!publicKey) {
       setError("Online payment isn't set up yet. Please contact us to complete your booking.");
       return;
     }
@@ -69,7 +78,7 @@ export default function PaystackPay({
     setBusy(true);
     const ref = `APX${bookingId.replace(/\D/g, "")}-${Date.now()}`;
     const handler = window.PaystackPop.setup({
-      key: PUBLIC_KEY,
+      key: publicKey,
       email,
       amount: Math.round(amountNaira * 100), // kobo
       currency: "NGN",
