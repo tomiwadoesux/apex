@@ -28,7 +28,7 @@ export function paymentNoteText(v: PaymentDetails): string {
   return parts.join(" · ");
 }
 
-const MAX_RECEIPT_BYTES = 6 * 1024 * 1024; // 6 MB — comfortably under the email attachment ceiling
+const MAX_RECEIPT_BYTES = 6 * 1024 * 1024; // 6 MB, comfortably under the email attachment ceiling
 
 function CopyIcon() {
   return (
@@ -88,7 +88,7 @@ export default function PaymentSection({
       return;
     }
     if (file.size > MAX_RECEIPT_BYTES) {
-      setFileError("That image is over 6 MB — please attach a smaller photo.");
+      setFileError("That image is over 6 MB, please attach a smaller photo.");
       return;
     }
     const reader = new FileReader();
@@ -182,7 +182,7 @@ export default function PaymentSection({
         {fileError && <p className="mt-1.5 text-[10px] font-medium text-red-600">{fileError}</p>}
       </div>
 
-      {/* Payment details — three separate fields */}
+      {/* Payment details, three separate fields */}
       <div className="flex flex-col gap-3">
         <div>
           <label className={fieldLabel}>Name on the account you paid from</label>
@@ -199,7 +199,7 @@ export default function PaymentSection({
           </div>
         </div>
         <p className={`text-[10px] leading-relaxed ${isLight ? "text-neutral-400" : "text-white/40"}`}>
-          The exact time isn&apos;t needed — a 10-minute window is fine.
+          The exact time isn&apos;t needed, a 10-minute window is fine.
         </p>
       </div>
     </div>

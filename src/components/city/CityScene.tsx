@@ -111,7 +111,7 @@ function makeWindowTexture(): THREE.Texture {
   c.width = px;
   c.height = px;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#ffffff"; // wall — multiplied by the material colour
+  ctx.fillStyle = "#ffffff"; // wall, multiplied by the material colour
   ctx.fillRect(0, 0, px, px);
   ctx.fillStyle = "rgba(0,0,0,0.16)"; // panes: a touch darker than the wall
   const cols = 3;
@@ -195,7 +195,7 @@ function Billboard({
           <meshStandardMaterial color={post} flatShading />
         </mesh>
       ))}
-      {/* the AD panel — a brand-accent board (blinks on some billboards) */}
+      {/* the AD panel, a brand-accent board (blinks on some billboards) */}
       <mesh position={[0, 4.2, 0]} castShadow>
         <boxGeometry args={[3.5, 2.1, 0.14]} />
         <meshStandardMaterial
@@ -253,7 +253,7 @@ function RoadLogo({
   const logoW = 2.0; // smaller so it stays on the road, not overhanging buildings
   const logoH = (logoW * LOGO_H) / LOGO_W;
   const HOVER_Y = 0.8; // hovers just above the road surface (Y.lane ≈ 0.27)
-  const SPEED = 20; // svg units / second — a calm glide
+  const SPEED = 20; // svg units / second, a calm glide
 
   useFrame((state, dt) => {
     const g = ref.current;
@@ -475,7 +475,7 @@ function CinematicRig({
   const tex = useMemo(() => makeLogoTexture(), []);
   const logoW = 2.0;
   const logoH = (logoW * LOGO_H) / LOGO_W;
-  const SPEED = 5.4; // world units / second — a calm glide
+  const SPEED = 5.4; // world units / second, a calm glide
 
   // drei OrbitControls (makeDefault) registers itself here. Used only to attach
   // start/end listeners; per-frame reads/writes go through the useFrame state so

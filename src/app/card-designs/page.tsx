@@ -150,7 +150,7 @@ export default function CardDesigns() {
       <div className="relative mx-auto max-w-6xl">
         <header className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Services — bento</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Services, bento</h1>
             <p className={`mt-1 text-sm ${dim}`}>All six services as bento grids · squircle corners.</p>
           </div>
           <button
@@ -196,7 +196,7 @@ function Bento({
 
   return (
     <div className="grid grid-cols-4 gap-2.5">
-      {/* TITLE — tall hero cell with a big faint icon watermark */}
+      {/* TITLE, tall hero cell with a big faint icon watermark */}
       <div
         className={`${base} relative col-span-2 row-span-2 flex flex-col justify-between overflow-hidden`}
         style={neutral}
@@ -215,7 +215,7 @@ function Bento({
         </h3>
       </div>
 
-      {/* STAT — accent-filled cell for the colour pop */}
+      {/* STAT, accent-filled cell for the colour pop */}
       <div
         className={`${base} col-span-2 flex flex-col justify-center`}
         style={{ background: accent, borderColor: "transparent", color: inkOnAccent }}
@@ -229,7 +229,7 @@ function Bento({
         <p className={`text-[13px] leading-relaxed ${dim}`}>{s.blurb}</p>
       </div>
 
-      {/* FEATURE tiles — 2 × 2 */}
+      {/* FEATURE tiles, 2 × 2 */}
       {s.features.map((f) => (
         <div
           key={f.label}

@@ -169,7 +169,7 @@ export default function FleetPage() {
           <h2 className="mt-1 font-josefin text-2xl font-light leading-[1.06] tracking-tight sm:text-3xl">{group!.name}</h2>
         </motion.div>
 
-        {/* year / variant selector — only when the model has more than one */}
+        {/* year / variant selector, only when the model has more than one */}
         {group!.variants.length > 1 && (
           <div className={`mt-3 flex flex-wrap gap-1.5 ${chipsWrap}`}>
             {group!.variants.map((v, k) => {
@@ -193,7 +193,7 @@ export default function FleetPage() {
           </div>
         )}
 
-        {/* specs as quiet chips — scannable at a glance */}
+        {/* specs as quiet chips, scannable at a glance */}
         <div className={`mt-3 flex flex-wrap items-center gap-1.5 ${chipsWrap}`}>
           {variant!.specs.map((s) => (
             <span key={s} className="rounded-full border border-neutral-200 bg-white/70 px-3 py-1 text-[11px] font-medium tracking-wide text-neutral-600">
@@ -218,7 +218,7 @@ export default function FleetPage() {
       <div className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(78% 55% at 40% -4%, rgba(42,79,208,0.10), transparent 60%)" }} />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40" style={{ background: "linear-gradient(to top, rgba(42,79,208,0.05), transparent)" }} />
 
-      {/* header — site standard: logo (links home) + Contact Us */}
+      {/* header, site standard: logo (links home) + Contact Us */}
       <header className="relative z-20 flex shrink-0 items-center justify-between px-5 py-5 sm:px-10">
         <Link href="/" className="flex items-center gap-2.5">
           <Logo size={30} color="#0b0d12" accent={ACCENT} />
@@ -227,10 +227,10 @@ export default function FleetPage() {
         <button type="button" onClick={() => setContactOpen(true)} className={BTN} style={CONTACT_BTN_STYLE}>Contact</button>
       </header>
 
-      {/* page title — top centre, sitting over the car */}
+      {/* page title, top centre, sitting over the car */}
       <div className="relative z-10 shrink-0 px-5 text-center sm:px-10">
         <h1 className="font-josefin text-4xl font-light leading-none tracking-tight sm:text-5xl">Our fleet</h1>
-        {/* gallery link — see every car we've added */}
+        {/* gallery link, see every car we've added */}
         <div className="mt-2 flex flex-col items-center gap-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400">See our full gallery</span>
           <Link
@@ -244,16 +244,16 @@ export default function FleetPage() {
         </div>
       </div>
 
-      {/* content — fills the rest of the screen on desktop */}
+      {/* content, fills the rest of the screen on desktop */}
       <div className="relative z-10 grid grid-cols-1 gap-5 px-5 pb-6 pt-2 sm:px-10 lg:min-h-0 lg:flex-1 lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:gap-8">
-        {/* LEFT — the stage alone, so the car sits big and centred */}
+        {/* LEFT, the stage alone, so the car sits big and centred */}
         <section className="order-1 flex min-h-0 flex-col gap-3">
           <div
             className="relative flex h-[38vh] min-h-[220px] items-center justify-center gap-1 sm:h-[42vh] sm:gap-3 lg:h-auto lg:min-h-0 lg:flex-1"
             onTouchStart={onStageTouchStart}
             onTouchEnd={onStageTouchEnd}
           >
-            {/* giant model-name watermark — configurator-style depth behind the car.
+            {/* giant model-name watermark, configurator-style depth behind the car.
                 Font size scales inversely with the name length so every model fits. */}
             {!isCustom && (
               <div
@@ -293,7 +293,7 @@ export default function FleetPage() {
                     className="relative z-10 w-auto max-w-full select-none object-contain"
                     style={{ maxHeight: "78%", transform: variant!.flip ? "scaleX(-1)" : undefined }}
                   />
-                  {/* floor shadow — grounds the car on the canvas */}
+                  {/* floor shadow, grounds the car on the canvas */}
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2"
@@ -311,7 +311,7 @@ export default function FleetPage() {
 
             <button type="button" onClick={() => go(1)} aria-label="Next" className={arrowBtn}><Chevron dir="right" /></button>
 
-            {/* angle switcher — small text labels tucked UNDER the car; dims any
+            {/* angle switcher, small text labels tucked UNDER the car; dims any
                 angle with no photo */}
             {!isCustom && angles && (
               <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-neutral-200 bg-white/80 p-0.5 shadow-sm backdrop-blur-sm">
@@ -341,16 +341,16 @@ export default function FleetPage() {
             )}
           </div>
 
-          {/* details — centred under the stage on phones only */}
+          {/* details, centred under the stage on phones only */}
           <div className="flex shrink-0 flex-col items-center lg:hidden">{details(false, false)}</div>
         </section>
 
-        {/* RIGHT — roster grid with the details underneath, left-aligned to it */}
+        {/* RIGHT, roster grid with the details underneath, left-aligned to it */}
         <section className="order-2 flex min-h-0 flex-col gap-4">
           <div className="flex w-full shrink-0 flex-col rounded-2xl border border-neutral-200 bg-white/70 p-2.5 backdrop-blur-sm lg:min-h-0 lg:max-h-[46vh]">
             <div className="flex shrink-0 items-center justify-between px-1 pb-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-400">Models</span>
-              {/* list view — opens the compact all-cars list */}
+              {/* list view, opens the compact all-cars list */}
               <button
                 type="button"
                 onClick={() => setListOpen(true)}
@@ -410,7 +410,7 @@ export default function FleetPage() {
                 );
               })}
 
-              {/* "?" — anything not listed */}
+              {/* "?", anything not listed */}
               <button
                 ref={(el) => { tileRefs.current[CUSTOM] = el; }}
                 type="button"
@@ -428,7 +428,7 @@ export default function FleetPage() {
               </button>
             </div>
 
-            {/* accent scroll indicator — phones only; mirrors the strip's position */}
+            {/* accent scroll indicator, phones only; mirrors the strip's position */}
             <div className="mx-0.5 mt-2 h-[3px] shrink-0 overflow-hidden rounded-full bg-neutral-900/[0.07] lg:hidden">
               <div
                 className="h-full rounded-full"
@@ -437,12 +437,12 @@ export default function FleetPage() {
             </div>
           </div>
 
-          {/* details — desktop only, left-aligned to the grid above */}
+          {/* details, desktop only, left-aligned to the grid above */}
           <div data-lenis-prevent className="accent-scrollbar hidden min-h-0 flex-col overflow-y-auto px-0.5 lg:flex">{details(true, true)}</div>
         </section>
       </div>
 
-      {/* All-cars list — compact rows: photo left, name + class beside it.
+      {/* All-cars list, compact rows: photo left, name + class beside it.
           Bottom sheet on phones, centred card on larger screens. Tapping a row
           puts that car on the stage and closes the list. */}
       {listOpen && (
@@ -521,7 +521,7 @@ export default function FleetPage() {
         </div>
       )}
 
-      {/* Contact popup — shared site pattern */}
+      {/* Contact popup, shared site pattern */}
       {contactOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-6 backdrop-blur-md" onClick={() => setContactOpen(false)}>
           <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-neutral-900/85 p-7 text-white shadow-2xl" onClick={(e) => e.stopPropagation()}>

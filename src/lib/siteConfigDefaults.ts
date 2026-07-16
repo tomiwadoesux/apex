@@ -12,7 +12,7 @@ export type ConfigCar = {
   year: string;
   type: string;
   specs: string[]; // e.g. ["5 seats", "AWD", "V8"]
-  image: string | null; // an EXISTING /images/cars path or null (no upload — images stay code assets)
+  image: string | null; // an EXISTING /images/cars path or null (no upload, images stay code assets)
 };
 
 // ApexRide's bank details, shown on the payment step (editable in /admin).
@@ -61,7 +61,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
     { id: "multiday", name: "Multiple Days", desc: "Dedicated chauffeur across the number of days you choose." },
   ],
   tripTypes: [
-    { id: "custom", name: "Custom", desc: "Bespoke itinerary — tell us exactly what you need." },
+    { id: "custom", name: "Custom", desc: "Bespoke itinerary, tell us exactly what you need." },
     { id: "interstate", name: "Interstate", desc: "Long-distance executive transit between states." },
     { id: "airport", name: "Airport Transfer", desc: "Flat-rate transfer to or from airport terminals." },
     { id: "point", name: "Point-to-Point", desc: "Direct executive transit between custom coordinates." },

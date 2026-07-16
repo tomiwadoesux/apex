@@ -24,7 +24,7 @@ export const LOGO_PATHS = [
 
 export type LogoAnimation =
   | "none"
-  | "pulse" // breathing opacity — good for "live" / loading
+  | "pulse" // breathing opacity, good for "live" / loading
   | "spin" // slow flat (2D) rotation
   | "spin3d" // 3D horizontal turntable spin (rotateY)
   | "float" // gentle vertical bob

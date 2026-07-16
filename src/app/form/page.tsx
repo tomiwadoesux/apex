@@ -386,7 +386,7 @@ export default function BookingForm() {
   const logoContainerRef = useRef<HTMLDivElement>(null);
 
   const isLight = mode === "light";
-  const accent = "#2A4FD0"; // brand blue — matches the landing page lockup + popup
+  const accent = "#2A4FD0"; // brand blue, matches the landing page lockup + popup
 
   // Admin-edited options (pickup spots, tiers, chips, cars) — code defaults
   // until /api/config answers.
@@ -623,7 +623,7 @@ export default function BookingForm() {
   const joinPlace = (addr: string, landmark: string) => {
     const a = addr.trim();
     const l = landmark.trim();
-    return a ? (l ? `${a} — ${l}` : a) : "";
+    return a ? (l ? `${a}, ${l}` : a) : "";
   };
   const pickupLabel = joinPlace(pickupAddress, pickupLandmark);
   const destinationLabel = joinPlace(destination, destinationLandmark);
@@ -906,7 +906,7 @@ export default function BookingForm() {
 
   // Transition between cars: Symmetrical bidirectional sliding
   const spinCar = (dir: number) => {
-    setPreselectedCar(null); // browsing again — the fleet hand-off is no longer "the" choice
+    setPreselectedCar(null); // browsing again, the fleet hand-off is no longer "the" choice
     if (isCustomCar) {
       setIsCustomCar(false);
       return;
@@ -1286,7 +1286,7 @@ export default function BookingForm() {
     if (!node || saving) return;
     setSaving(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust — reuse the already-loaded image so export is instant)
+      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust, reuse the already-loaded image so export is instant)
       const fileName = `apexride-pass-${bookingId.replace(/[^a-z0-9]/gi, "")}.png`;
       try {
         const blob = await (await fetch(dataUrl)).blob();
@@ -1467,13 +1467,13 @@ export default function BookingForm() {
       className={`relative h-dvh w-full overflow-hidden transition-colors duration-500 flex flex-col justify-between ${mode}`}
       style={{ background: BG_GRADIENT[mode], colorScheme: mode }}
     >
-      {/* 1. Header — fixed, no solid fill (a solid colour showed as a band over
+      {/* 1. Header, fixed, no solid fill (a solid colour showed as a band over
           the page's radial gradient). Transparent, so the gradient reads as one
           continuous surface top-to-bottom. */}
       <header
         className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-5 sm:px-8 md:px-12 py-5"
       >
-        {/* Logo and text wrapper — links back to the landing page */}
+        {/* Logo and text wrapper, links back to the landing page */}
         <Link href="/" className={`flex items-center gap-2.5 ${heading}`}>
           <div ref={logoContainerRef} className="inline-flex">
             <Logo size={28} color={isLight ? "#0c1222" : "#f3f5fa"} accent={accent} />
@@ -1511,7 +1511,7 @@ export default function BookingForm() {
         </div>
       )}
 
-      {/* 2. Main content container — bounded to the viewport so the page never scrolls.
+      {/* 2. Main content container, bounded to the viewport so the page never scrolls.
           The Schedule step (6) carries a calendar + time picker that can exceed the
           viewport, so there it top-aligns and scrolls within the band between the
           fixed heading and footer instead of centering. */}
@@ -1621,7 +1621,7 @@ export default function BookingForm() {
                   />
                 </div>
 
-                {/* Popular pickup spots — one tap fills the address */}
+                {/* Popular pickup spots, one tap fills the address */}
                 <div className="flex flex-col gap-2">
                   <span className={labelStyle}>Popular pickup spots</span>
                   <div className="flex flex-wrap gap-1.5">
@@ -1681,10 +1681,10 @@ export default function BookingForm() {
               </div>
             )}
 
-            {/* Step 4: Car Type — the selected car shown from three angles (front · side · rear) */}
+            {/* Step 4: Car Type, the selected car shown from three angles (front · side · rear) */}
             {currentStep === 3 && (
               <div className="w-full flex flex-col items-center">
-                {/* Something else — sits at the top of the car selector; opens the
+                {/* Something else, sits at the top of the car selector; opens the
                     bespoke request overlay for any make/model not in the fleet. */}
                 <button
                   type="button"
@@ -1718,7 +1718,7 @@ export default function BookingForm() {
 
                   {/* Unilateral Sliding Carousel */}
                   <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible pointer-events-none">
-                    {/* Front — incoming flanker showing off-screen waiting vehicle */}
+                    {/* Front, incoming flanker showing off-screen waiting vehicle */}
                     <div
                       ref={incomingCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-0"
@@ -1741,7 +1741,7 @@ export default function BookingForm() {
                       />
                     </div>
 
-                    {/* Front — far-left flanker showing deep background vehicle */}
+                    {/* Front, far-left flanker showing deep background vehicle */}
                     <div
                       ref={farLeftCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-10"
@@ -1764,7 +1764,7 @@ export default function BookingForm() {
                       />
                     </div>
 
-                    {/* Front — left flanker showing next vehicle */}
+                    {/* Front, left flanker showing next vehicle */}
                     <div
                       ref={leftCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-20"
@@ -1787,7 +1787,7 @@ export default function BookingForm() {
                       />
                     </div>
 
-                    {/* Front — right flanker showing previous vehicle (used in custom car mode) */}
+                    {/* Front, right flanker showing previous vehicle (used in custom car mode) */}
                     <div
                       ref={rightCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-20"
@@ -1809,7 +1809,7 @@ export default function BookingForm() {
                       />
                     </div>
 
-                    {/* Front — active, centered hero */}
+                    {/* Front, active, centered hero */}
                     <div
                       ref={centerCarRef}
                       className="absolute w-[84%] max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl flex items-center justify-center z-30"
@@ -1991,7 +1991,7 @@ export default function BookingForm() {
                   </div>
                 )}
 
-                {/* Custom path — a tappable calendar plus an easy time spinner */}
+                {/* Custom path, a tappable calendar plus an easy time spinner */}
                 {scheduleMode === "custom" && (
                   <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
                     {/* Calendar */}
@@ -2052,7 +2052,7 @@ export default function BookingForm() {
                       </div>
                     </div>
 
-                    {/* Time spinner — hour / minute wheels plus an AM·PM toggle */}
+                    {/* Time spinner, hour / minute wheels plus an AM·PM toggle */}
                     <div>
                       <label className={labelStyle}>Select Time</label>
                       <div className={`flex items-center justify-center gap-2 sm:gap-3 rounded-2xl border p-3 ${isLight ? "border-neutral-900/10 bg-white/40" : "border-white/10 bg-white/[0.03]"}`}>
@@ -2155,7 +2155,7 @@ export default function BookingForm() {
               <div className="w-full max-w-xl mt-8 flex flex-col gap-6 lg:max-w-5xl">
                <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
 
-                {/* Booking Summary Recap Card — compact status rows */}
+                {/* Booking Summary Recap Card, compact status rows */}
                 <div className={`p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[1.75rem] border ${cardBgStyle} text-left lg:flex-1 lg:min-w-0`}>
                   <div className="mb-3 flex items-baseline justify-between gap-3">
                     <div className="text-xs font-bold uppercase tracking-widest" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
@@ -2209,7 +2209,7 @@ export default function BookingForm() {
                     Tap a common request below, or write your own. Helpful details: flight number, waiting instructions, luggage count, or preferred route.
                   </p>
 
-                  {/* Quick-add chips — toggle a ready-made line into the notes */}
+                  {/* Quick-add chips, toggle a ready-made line into the notes */}
                   <div className="mb-4 flex flex-wrap gap-2">
                     {cfg.quickRequests.map((phrase) => {
                       const active = isQuickRequestActive(phrase);
@@ -2257,10 +2257,10 @@ export default function BookingForm() {
             {/* Stepper Buttons constant position at the bottom */}
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-45 flex flex-col items-center gap-2.5 pointer-events-auto select-none">
               {/* Spacing lives INSIDE each collapsible wrapper (margins on the inner
-                  element, clipped with it) — a flex gap would leave phantom slots
+                  element, clipped with it), a flex gap would leave phantom slots
                   around collapsed wrappers, pushing the side buttons away from Next. */}
               <div className="flex items-center">
-                {/* Back — slides in beside Next from Step 2 onward (never on the first step) */}
+                {/* Back, slides in beside Next from Step 2 onward (never on the first step) */}
                 <div
                   className={`transition-all duration-500 ease-out overflow-hidden rounded-full flex items-center ${
                     currentStep > 0
@@ -2311,7 +2311,7 @@ export default function BookingForm() {
 
               </div>
 
-              {/* Hand-off note from the fleet page — shown until the user reaches Car Type */}
+              {/* Hand-off note from the fleet page, shown until the user reaches Car Type */}
               {preselectedCar && currentStep < 3 && (
                 <div
                   className={`pointer-events-none rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-wide ${
@@ -2341,7 +2341,7 @@ export default function BookingForm() {
                 Work order {confirmedBooking.id}
               </h2>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-                Your ride is reserved. {confirmedBooking.amount ? "Pay below to confirm it" : "Our team will confirm your fare shortly"} — this step stays saved until it&apos;s done, so you can leave and come back.
+                Your ride is reserved. {confirmedBooking.amount ? "Pay below to confirm it" : "Our team will confirm your fare shortly"}, this step stays saved until it&apos;s done, so you can leave and come back.
               </p>
             </div>
 
@@ -2387,6 +2387,16 @@ export default function BookingForm() {
               </Link>
             </div>
 
+            <div className="flex items-center justify-center gap-4">
+              <button type="button" onClick={resetForm} className={`text-[11px] font-bold uppercase tracking-widest transition-colors ${isLight ? "text-neutral-500 hover:text-neutral-900" : "text-white/50 hover:text-white"}`}>
+                Book another ride
+              </button>
+              <span className={`h-3 w-px ${isLight ? "bg-neutral-300" : "bg-white/20"}`} />
+              <button type="button" onClick={resetForm} className="text-[11px] font-bold uppercase tracking-widest text-red-600 transition-colors hover:text-red-700">
+                Cancel booking
+              </button>
+            </div>
+
             {/* off-screen card kept mounted purely so the download can rasterise it */}
             <div ref={passCardRef} aria-hidden className="pointer-events-none fixed -left-[9999px] top-0 opacity-0">
               <RidePass booking={bookingToRide(confirmedBooking)} light={isLight} />
@@ -2415,7 +2425,7 @@ export default function BookingForm() {
                 )}
               </p>
               <p className={`mx-auto mt-2 max-w-sm text-xs leading-relaxed ${isLight ? "text-neutral-600" : "text-white/55"}`}>
-                Keep your work order ID — view or download your ride pass anytime at{" "}
+                Keep your work order ID, view or download your ride pass anytime at{" "}
                 <Link href={`/check-booking?ref=${encodeURIComponent(confirmedBooking.id)}`} className={`font-semibold underline ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>
                   the check-booking page
                 </Link>.
@@ -2450,7 +2460,7 @@ export default function BookingForm() {
       </div>
 
       {/* 3. Stepper progress tracker floating glass-morphic dock (8 indicators).
-          Hidden on the success screen (booking done — nothing left to navigate,
+          Hidden on the success screen (booking done, nothing left to navigate,
           and it was overlapping the Save/Book-another buttons). */}
       <div className={`pointer-events-auto fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[88vw] sm:max-w-[70vw] px-0 z-20 select-none ${currentStep === 8 ? "hidden" : ""}`}>
         <div className="relative px-0 py-5 transition-all duration-300">
@@ -2539,7 +2549,7 @@ export default function BookingForm() {
         logoSize={28}
       />
 
-      {/* All-cars list (Car Type step) — same compact list as the fleet page:
+      {/* All-cars list (Car Type step), same compact list as the fleet page:
           photo left, name + class beside it. Bottom sheet on phones, centred
           card on larger screens. Tapping a row puts that car on the carousel. */}
       {carListOpen && (
@@ -2608,7 +2618,7 @@ export default function BookingForm() {
                 );
               })}
 
-              {/* team-added cars (from /admin) — booked via the bespoke path */}
+              {/* team-added cars (from /admin), booked via the bespoke path */}
               {cfg.extraCars.map((c) => {
                 const active = isCustomCar && selectedVehicle?.name === `${c.name}${c.year ? ` (${c.year})` : ""}`;
                 return (
@@ -2644,7 +2654,7 @@ export default function BookingForm() {
                       {c.image ? (
                         <Image src={c.image} alt="" fill sizes="64px" className="object-contain" />
                       ) : (
-                        <span className={`grid h-full w-full place-items-center text-sm ${isLight ? "text-neutral-300" : "text-white/25"}`}>—</span>
+                        <span className={`grid h-full w-full place-items-center text-sm ${isLight ? "text-neutral-300" : "text-white/25"}`}>, </span>
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -2655,7 +2665,7 @@ export default function BookingForm() {
                 );
               })}
 
-              {/* bespoke request row — opens the Other Options popup */}
+              {/* bespoke request row, opens the Other Options popup */}
               <button
                 type="button"
                 onClick={() => { setCarListOpen(false); setCustomCarOpen(true); }}
@@ -2675,7 +2685,7 @@ export default function BookingForm() {
               </button>
             </div>
 
-            {/* footer — jump to the full fleet page to browse every car in detail */}
+            {/* footer, jump to the full fleet page to browse every car in detail */}
             <Link
               href="/fleet"
               className={`flex shrink-0 items-center justify-center gap-2 border-t px-5 py-3.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
@@ -2691,7 +2701,7 @@ export default function BookingForm() {
         </div>
       )}
 
-      {/* Custom vehicle selection overlay — blurs the page and allows search input */}
+      {/* Custom vehicle selection overlay, blurs the page and allows search input */}
       <div
         ref={customOverlayRef}
         onClick={() => setCustomCarOpen(false)}

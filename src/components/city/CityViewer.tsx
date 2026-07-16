@@ -28,7 +28,7 @@ export default function CityViewer() {
     >
       <CityScene mode={mode} />
 
-      {/* Header — pointer-events-none so dragging the canvas underneath still
+      {/* Header, pointer-events-none so dragging the canvas underneath still
           works; the toggle re-enables pointer events on itself. */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-4 px-5 py-4 sm:px-8">
         <div>

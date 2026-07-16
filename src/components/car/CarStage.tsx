@@ -23,7 +23,7 @@ export type Mode = "light" | "dark";
 
 const CAR_PAINT = "bodypaint.002";
 const LOGO_MATERIALS = ["Logo_Circle_Black", "Logo_Triangle_Black"];
-const TYRE_RE = /tire_shader/i; // material(s) for the rubber — never black
+const TYRE_RE = /tire_shader/i; // material(s) for the rubber, never black
 const WHEEL_RE = /tire_shader|monoblock/i; // tyre + rim meshes (for spinning)
 // the red interior bits to recolor
 const INTERIOR = [
@@ -119,9 +119,9 @@ const MOBILE_DWELL = 0.62;
 // full roll once the camera reaches the WEDDING section and keep rolling for the
 // rest of the tour. Wedding is band 1 of the 7-band tour (6 services + footer):
 // reached at p ≈ 1/7 (0.143), held through ≈ 2/7 (0.286).
-const WHEEL_ROLL_START = 0.15; // ≈ 1/7 — Wedding section reached
+const WHEEL_ROLL_START = 0.15; // ≈ 1/7, Wedding section reached
 const WHEEL_ROLL_FULL = 0.25; // full roll while still on Wedding
-const SPIN = 0.08; // turntable speed once parked (rad/s) — slower for buttery look
+const SPIN = 0.08; // turntable speed once parked (rad/s), slower for buttery look
 const SPIN_RAMP = 2.5; // turntable eases in over this many seconds
 
 const easeOutCubic = (x: number) => 1 - Math.pow(1 - x, 3); // decelerate → "brake"
@@ -151,7 +151,7 @@ function Car({
   /** prefers-reduced-motion: skip the auto intro / orbit / spin / wheel roll */
   reduced?: boolean;
   /** force the parked, dead-still side view (no intro, orbit, spin, or wheel
-      roll) regardless of motion preference — the scroll tour still drives the
+      roll) regardless of motion preference, the scroll tour still drives the
       camera on top. Used by the landing page. */
   staticView?: boolean;
   /** world position the car comes to rest at — written here in setup so the
@@ -194,15 +194,15 @@ function Car({
     carStartZ: number; // car's off-frame start Z
     dist: number;
     wc: THREE.Vector3;
-    wsizeY: number; // car height Hc — pose multiplier base
-    L: number; // car length — pose distance / look-Z base
-    wx: number; // car width — pose look-X base
-    groundY: number; // world Y of the floor top the car sits on — camera floor
+    wsizeY: number; // car height Hc, pose multiplier base
+    L: number; // car length, pose distance / look-Z base
+    wx: number; // car width, pose look-X base
+    groundY: number; // world Y of the floor top the car sits on, camera floor
   } | null>(null);
   const introStart = useRef<number | null>(null);
   const spinStart = useRef<number | null>(null);
   const freezeT = useRef<number | null>(null); // debug: /#t=4.5 freezes the intro at 4.5s
-  const smoothTourP = useRef(0); // eased copy of tourProgress — the camera "catches up"
+  const smoothTourP = useRef(0); // eased copy of tourProgress, the camera "catches up"
 
   const targetCarColor = useRef(new THREE.Color(THEME[mode].car));
   const targetLogoColor = useRef(new THREE.Color(THEME[mode].logo));
@@ -786,7 +786,7 @@ function Car({
       <group ref={carGroup}>
         <primitive object={scene} />
       </group>
-      {/* static — the logo is re-parented here so it stays put while the car spins */}
+      {/* static, the logo is re-parented here so it stays put while the car spins */}
       <group ref={staticRef} />
     </>
   );
@@ -994,7 +994,7 @@ function FloorField({
       {/* soft contact shadow the car casts on the floor (sits just above the
           grid/logos so it grounds the car). The car is STATIC (only the camera
           moves), so once it's loaded we bake the shadow a single frame and FREEZE
-          it (key flip → remount → frames=1) — no more per-frame shadow render +
+          it (key flip → remount → frames=1), no more per-frame shadow render +
           blur during the whole scroll tour. Half-res map on phones. */}
       <ContactShadows
         key={shadowReady ? "baked" : "pending"}
@@ -1114,11 +1114,11 @@ export default function CarStage({
         floorAnchor={floorAnchor}
       />
       {/* city IBL gives the car its reflections; a much smaller cubemap on phones
-          (64 vs the 256 default) cuts GPU memory + PMREM processing — reflections
+          (64 vs the 256 default) cuts GPU memory + PMREM processing, reflections
           are slightly softer but the lighting/tone match the poster. */}
       <Environment preset="city" resolution={lowQuality ? 64 : 256} />
       {/* drop render resolution to dpr-min WHILE scrolling (Car's loop calls
-          performance.regress() as the camera moves), then back to full when idle —
+          performance.regress() as the camera moves), then back to full when idle, 
           smooth motion without permanently softening the still image. */}
       {!capture && <AdaptiveDpr />}
     </>

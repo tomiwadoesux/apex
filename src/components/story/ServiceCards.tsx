@@ -180,7 +180,7 @@ export default function ServiceCards({ progress }: { progress: number }) {
 
   return (
     <div className="absolute inset-0">
-      {/* background photos — each service's photo WIPES with a clip mask instead of
+      {/* background photos, each service's photo WIPES with a clip mask instead of
           crossfading. Desktop: draws in from the RIGHT, sweeps to the LEFT. Phones:
           draws in from the TOP, sweeps DOWN. (The card panel wipes the same axis.) */}
       <div className="absolute inset-0">

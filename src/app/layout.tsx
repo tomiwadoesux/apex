@@ -17,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Apex Ride - Premium Car Hire",
-  description: "Chauffeur-driven luxury across Lagos & Abuja — trusted, effortless, and ready whenever you are. 24/7.",
+  description: "Chauffeur-driven luxury across Lagos & Abuja, trusted, effortless, and ready whenever you are. 24/7.",
 };
 
 // Lock the mobile zoom: no pinch-zoom and, crucially, no auto zoom-in when a

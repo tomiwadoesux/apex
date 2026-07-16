@@ -70,7 +70,7 @@ export default function CityNotFound() {
           keeps cutting to random vantage points the driving logo passes through. */}
       <CityScene mode="light" cinematic unifiedBuildings />
 
-      {/* 404 header + button — pointer-events-none so dragging the canvas below
+      {/* 404 header + button, pointer-events-none so dragging the canvas below
           still orbits; the button re-enables pointer events on itself. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-3 px-5 py-10 text-center sm:py-14">
         <p className="text-6xl font-light tracking-tight text-black/80 sm:text-7xl">

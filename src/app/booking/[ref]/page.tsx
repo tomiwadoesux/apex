@@ -1,5 +1,5 @@
 /* The page a scanned ride-pass QR lands on: it shows the booking reference for
-   the number encoded in the QR (/booking/<digits>). Server component — the ref
+   the number encoded in the QR (/booking/<digits>). Server component, the ref
    comes in via the async `params` prop (Next 16 convention). */
 
 import Link from "next/link";
@@ -45,7 +45,7 @@ export default async function BookingPage({
         </div>
 
         <p className="mt-5 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,.6)" }}>
-          Your Apex ride is confirmed. Keep this reference handy — your chauffeur will use it at pickup.
+          Your Apex ride is confirmed. Keep this reference handy, your chauffeur will use it at pickup.
         </p>
 
         <Link href="/holo-card" className="mt-7 inline-block rounded-full px-5 py-2 text-xs font-semibold" style={{ background: AMBER, color: "#15161a" }}>

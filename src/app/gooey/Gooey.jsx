@@ -149,7 +149,7 @@ const Gooey = () => {
         {/* Invisible hover extension */}
         <div className="absolute -right-28 -bottom-24 -left-6 -top-20" />
 
-        {/* Main gooey group — inline SVG with filter on <g> for mobile Safari */}
+        {/* Main gooey group, inline SVG with filter on <g> for mobile Safari */}
         <div
           className="relative flex items-center justify-center"
           style={{ width: SIZE, height: SIZE }}
@@ -219,7 +219,7 @@ const Gooey = () => {
             </g>
           </svg>
 
-          {/* HTML overlays — arrow icon */}
+          {/* HTML overlays, arrow icon */}
           <motion.div
             className="absolute flex items-center justify-center cursor-pointer"
             initial={false}
@@ -265,7 +265,7 @@ const Gooey = () => {
             </motion.svg>
           </motion.div>
 
-          {/* HTML overlay — "Agent" text */}
+          {/* HTML overlay, "Agent" text */}
           <motion.div
             className="absolute flex items-center justify-center overflow-hidden pointer-events-none"
             initial={false}
@@ -304,7 +304,7 @@ const Gooey = () => {
             </motion.span>
           </motion.div>
 
-          {/* Main circle with robot icon — HTML overlay */}
+          {/* Main circle with robot icon, HTML overlay */}
           <div
             className="bg-foreground rounded-full relative z-10 cursor-pointer flex items-center justify-center"
             style={{ width: SIZE, height: SIZE }}
@@ -331,7 +331,7 @@ const Gooey = () => {
           </div>
         </div>
 
-        {/* Bouncing circles — inline SVG with filter on <g> for mobile Safari */}
+        {/* Bouncing circles, inline SVG with filter on <g> for mobile Safari */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: "none" }}
@@ -395,7 +395,7 @@ const Gooey = () => {
           </svg>
         </div>
 
-        {/* Foreground Icons & Texts (Crisp, above gooey) — HTML overlay */}
+        {/* Foreground Icons & Texts (Crisp, above gooey), HTML overlay */}
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
         >
@@ -584,7 +584,7 @@ const ProfileGooey = () => {
         onMouseMove={handleContainerMouseMove}
         style={{ width: PROFILE_SIZE, height: PROFILE_SIZE }}
       >
-        {/* Gooey group — inline SVG with filter on <g> for mobile Safari */}
+        {/* Gooey group, inline SVG with filter on <g> for mobile Safari */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: "none" }}
@@ -604,10 +604,10 @@ const ProfileGooey = () => {
               </filter>
             </defs>
             <g filter={isMobile ? "url(#ProfileGooeyFilterM)" : "url(#ProfileGooeyFilter)"}>
-              {/* Profile backing — rect to match other rects */}
+              {/* Profile backing, rect to match other rects */}
               <rect x={0} y={0} width={PROFILE_SIZE} height={PROFILE_SIZE} rx={PCX} style={{ fill: FG }} />
 
-              {/* Bottom shape — circle on hover, pill on expanded */}
+              {/* Bottom shape, circle on hover, pill on expanded */}
               <motion.rect
                 style={{ fill: FG }}
                 initial={false}
@@ -680,7 +680,7 @@ const ProfileGooey = () => {
           </svg>
         </div>
 
-        {/* Arrow icon — outside gooey so it's visible */}
+        {/* Arrow icon, outside gooey so it's visible */}
         <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: "none" }}>
           <motion.div
             className="absolute flex items-center justify-center cursor-pointer"
@@ -715,7 +715,7 @@ const ProfileGooey = () => {
           </motion.div>
         </div>
 
-        {/* 3 original circles — visible on hover AND expanded */}
+        {/* 3 original circles, visible on hover AND expanded */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: "none" }}
@@ -753,7 +753,7 @@ const ProfileGooey = () => {
           ))}
         </div>
 
-        {/* Extra dots — scale in one by one on expanded */}
+        {/* Extra dots, scale in one by one on expanded */}
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: "none" }}
@@ -791,7 +791,7 @@ const ProfileGooey = () => {
           ))}
         </div>
 
-        {/* Profile image — on top, outside gooey filter */}
+        {/* Profile image, on top, outside gooey filter */}
         <div
           className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer"
           onPointerEnter={(e) => { if (e.pointerType === 'mouse') handleProfileMouseEnter(); }}
@@ -848,7 +848,7 @@ const ProfileGooey = () => {
         </motion.div>
       )}
 
-      {/* Team text — outside gooey, on top of the pill bg */}
+      {/* Team text, outside gooey, on top of the pill bg */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <motion.div
           className="absolute flex items-center justify-center overflow-hidden"
@@ -901,7 +901,7 @@ const GooeySimple = ({ label = "Projects" }) => {
         {/* Invisible hover extension */}
         <div className="absolute -right-6 -bottom-16 -left-6 -top-6" />
 
-        {/* Gooey group — inline SVG with filter on <g> for mobile Safari */}
+        {/* Gooey group, inline SVG with filter on <g> for mobile Safari */}
         <div
           className="relative flex items-center justify-center"
           style={{ width: SIZE, height: SIZE }}
@@ -955,7 +955,7 @@ const GooeySimple = ({ label = "Projects" }) => {
             </g>
           </svg>
 
-          {/* HTML overlay — label text */}
+          {/* HTML overlay, label text */}
           <motion.div
             className="absolute flex items-center justify-center overflow-hidden pointer-events-none"
             initial={false}
@@ -994,7 +994,7 @@ const GooeySimple = ({ label = "Projects" }) => {
             </motion.span>
           </motion.div>
 
-          {/* Main circle with grid icon — HTML overlay */}
+          {/* Main circle with grid icon, HTML overlay */}
           <div
             className="bg-foreground rounded-full relative z-10 cursor-pointer flex items-center justify-center"
             style={{ width: SIZE, height: SIZE }}
@@ -1107,7 +1107,7 @@ const SearchGooey = () => {
         {/* Invisible hover extension */}
         <div className="absolute -right-10 -bottom-6 -left-10 -top-20" />
 
-        {/* Background blobs — inline SVG with filter on <g> for mobile Safari */}
+        {/* Background blobs, inline SVG with filter on <g> for mobile Safari */}
         <div
           className="relative flex items-center justify-center pointer-events-none"
           style={{ width: SEARCH_SIZE, height: SEARCH_SIZE }}

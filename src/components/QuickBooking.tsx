@@ -214,7 +214,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     if (!node || !booking || saving) return;
     setSaving(true);
     try {
-      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust — reuse the already-loaded image so export is instant)
+      const dataUrl = await toPng(node, { pixelRatio: 2, style: { transform: "none" } }); // export the card FLAT, never with the live hover/motion tilt (no cacheBust, reuse the already-loaded image so export is instant)
       const fileName = `apexride-pass-${booking.id.replace(/[^a-z0-9]/gi, "")}.png`;
       try {
         const blob = await (await fetch(dataUrl)).blob();
@@ -224,7 +224,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           await navigator.share({ files: [file], title: "ApexRide pass", text: `Booking ${booking.id}` });
           return;
         }
-      } catch { /* sharing unavailable — fall through to a download */ }
+      } catch { /* sharing unavailable, fall through to a download */ }
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = fileName;
@@ -253,9 +253,15 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     clearPending();
   };
 
-  // Closing keeps any unpaid booking in localStorage — it re-opens next visit.
+  // Closing keeps any unpaid booking in localStorage, it re-opens next visit.
   const handleClose = () => {
     setResumed(false);
+    onClose();
+  };
+
+  // Discard the placed-but-unpaid booking on THIS device so it stops reappearing.
+  const cancelBooking = () => {
+    startOver();
     onClose();
   };
 
@@ -298,8 +304,8 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             <h2 className="mt-1 font-josefin text-xl font-light tracking-tight">
               {step <= 5 ? STEP_TITLES[step] : "You're booked!"}
             </h2>
-            {step <= 4 && <div className="mt-0.5 text-[11px] text-neutral-400">Step {step + 1} of 5 — closing keeps your progress</div>}
-            {step === 5 && <div className="mt-0.5 text-[11px] text-neutral-400">Booking {booking?.id} placed — complete payment</div>}
+            {step <= 4 && <div className="mt-0.5 text-[11px] text-neutral-400">Step {step + 1} of 5, closing keeps your progress</div>}
+            {step === 5 && <div className="mt-0.5 text-[11px] text-neutral-400">Booking {booking?.id} placed, complete payment</div>}
           </div>
           <button
             type="button"
@@ -312,7 +318,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
 
         {/* body */}
         <div data-lenis-prevent className="accent-scrollbar flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-4">
-          {/* 1 — car with per-hour price (the full Quick-Booking roster) */}
+          {/* 1, car with per-hour price (the full Quick-Booking roster) */}
           {step === 0 && (
             <>
               {availableCars.map((c) => {
@@ -328,7 +334,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                       {c.image ? (
                         <Image src={c.image} alt="" fill sizes="72px" className="object-contain" />
                       ) : (
-                        <span className="grid h-full w-full place-items-center text-sm text-neutral-300">—</span>
+                        <span className="grid h-full w-full place-items-center text-sm text-neutral-300">, </span>
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -345,7 +351,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </>
           )}
 
-          {/* 2 — duration */}
+          {/* 2, duration */}
           {step === 1 && durations.map((d) => {
             const active = duration?.id === d.id;
             return (
@@ -364,7 +370,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             );
           })}
 
-          {/* 3 — when: horizontal date scroll + time */}
+          {/* 3, when: horizontal date scroll + time */}
           {step === 2 && (
             <div className="flex flex-col gap-4">
               <div>
@@ -415,7 +421,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </div>
           )}
 
-          {/* 4 — pickup & drop-off */}
+          {/* 4, pickup & drop-off */}
           {step === 3 && (
             <div className="flex flex-col gap-3">
               <div>
@@ -461,7 +467,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </div>
           )}
 
-          {/* 5 — contact */}
+          {/* 5, contact */}
           {step === 4 && (
             <div className="flex flex-col gap-3">
               <div>
@@ -510,7 +516,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </div>
           )}
 
-          {/* 6 — payment (after the booking is placed; persists until paid) */}
+          {/* 6, payment (after the booking is placed; persists until paid) */}
           {step === 5 && (
             <div className="flex flex-col gap-4">
               <div className="rounded-2xl border border-[#00209C]/15 bg-[#00209C]/[0.04] px-4 py-3 text-center">
@@ -528,12 +534,21 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 />
               )}
               <p className="text-center text-[10px] leading-relaxed text-neutral-400">
-                Not ready to pay? You can close this — your work order is saved and this step comes back next time until payment is done.
+                Not ready to pay? You can close this. Your work order is saved and this step comes back next time until payment is done.
               </p>
+              <div className="flex items-center justify-center gap-4 pt-1">
+                <button type="button" onClick={startOver} className="text-[11px] font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:text-neutral-900">
+                  Book another ride
+                </button>
+                <span className="h-3 w-px bg-neutral-300" />
+                <button type="button" onClick={cancelBooking} className="text-[11px] font-bold uppercase tracking-widest text-red-600 transition-colors hover:text-red-700">
+                  Cancel booking
+                </button>
+              </div>
             </div>
           )}
 
-          {/* 7 — confirmation (the card itself is rendered off-screen only so it
+          {/* 7, confirmation (the card itself is rendered off-screen only so it
               can still be exported to an image on demand) */}
           {step === 6 && booking && (
             <div className="flex flex-col items-center gap-4 py-3 text-center">
@@ -592,7 +607,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           )}
         </div>
 
-        {/* footer — back / summary line (no step dots); hidden once the booking
+        {/* footer, back / summary line (no step dots); hidden once the booking
             is placed (payment step onward) so they can't step back into it */}
         {step >= 1 && step <= 4 && (
           <div className="flex shrink-0 items-center justify-between border-t border-neutral-100 px-5 py-3">

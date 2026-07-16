@@ -29,7 +29,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     // gsap.ticker time is in SECONDS; Lenis' raf wants milliseconds.
     const raf = (time: number) => lenisRef.current?.lenis?.raf(time * 1000);
     gsap.ticker.add(raf);
-    gsap.ticker.lagSmoothing(0); // never "catch up" after a stall — keep scroll exact
+    gsap.ticker.lagSmoothing(0); // never "catch up" after a stall, keep scroll exact
 
     // Keep ScrollTrigger's cached scroll position locked to Lenis' smoothed position.
     const lenis = lenisRef.current?.lenis;

@@ -39,7 +39,7 @@ import {
 const EASE = [0.76, 0, 0.24, 1] as const;
 const ACCENT = "#2A4FD0"; // brand blue (light mode)
 const PANEL_BG = "#00209C"; // the deep blue square from the mock
-const WIPE_S = 1.2; // card draw-in / draw-out (s) — a touch slower, more deliberate
+const WIPE_S = 1.2; // card draw-in / draw-out (s), a touch slower, more deliberate
 const STEP_LOCK_MS = 1800; // one scroll = one step; hold the card before the next
 
 type Feat = { label: string; Icon: LucideIcon };
@@ -280,7 +280,7 @@ export default function ServicesPage() {
         </button>
       </div>
 
-      {/* Page title — top centre */}
+      {/* Page title, top centre */}
       <div className="pointer-events-none fixed inset-x-0 top-16 z-20 flex flex-col items-center px-6 text-center">
         <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/55">
           Our Services
@@ -290,7 +290,7 @@ export default function ServicesPage() {
         </h1>
       </div>
 
-      {/* ── The blue service panel — clip-mask reveal from the LEFT. On each step
+      {/* ── The blue service panel, clip-mask reveal from the LEFT. On each step
             the old one retracts left while the new one draws in from the left. ── */}
       <div className="pointer-events-none absolute inset-0 z-30">
         <AnimatePresence>
@@ -355,7 +355,7 @@ export default function ServicesPage() {
                 }}
               />
 
-              {/* full offering set — 2 × 2 bordered tiles */}
+              {/* full offering set, 2 × 2 bordered tiles */}
               <div className="relative grid grid-cols-2 gap-2.5">
                 {service.features.map((f) => (
                   <div
@@ -379,7 +379,7 @@ export default function ServicesPage() {
         </AnimatePresence>
       </div>
 
-      {/* Book Now — centred over the image */}
+      {/* Book Now, centred over the image */}
       <div className="pointer-events-none fixed inset-x-0 bottom-12 z-40 flex justify-center">
         <a
           href="/form"

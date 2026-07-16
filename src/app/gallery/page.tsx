@@ -71,7 +71,7 @@ export default async function GalleryPage() {
       {/* soft brand spotlight so the light canvas isn't flat */}
       <div className="pointer-events-none fixed inset-0 z-0" style={{ background: "radial-gradient(80% 40% at 50% -8%, rgba(42,79,208,0.12), transparent 62%)" }} />
 
-      {/* header — logo home + back to fleet */}
+      {/* header, logo home + back to fleet */}
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-10">
         <Link href="/" className="flex items-center gap-2.5">
           <Logo size={30} color="#0b0d12" accent={ACCENT} />
@@ -109,10 +109,10 @@ export default async function GalleryPage() {
           <p className="py-20 text-center text-sm text-neutral-400">No photographs in the library yet.</p>
         )}
 
-        {/* CTA footer — turn browsing into a booking */}
+        {/* CTA footer, turn browsing into a booking */}
         <div className="mt-16 flex flex-col items-center gap-4 border-t border-neutral-900/[0.08] pt-12 text-center">
           <h2 className="font-josefin text-2xl font-light tracking-tight sm:text-3xl">Seen one you like?</h2>
-          <p className="max-w-sm text-sm text-neutral-500">Reserve any vehicle in the collection — chauffeur-driven across Lagos &amp; Abuja.</p>
+          <p className="max-w-sm text-sm text-neutral-500">Reserve any vehicle in the collection, chauffeur-driven across Lagos &amp; Abuja.</p>
           <Link
             href="/form"
             className="mt-1 inline-flex h-11 items-center gap-2 rounded-full px-7 text-sm font-semibold tracking-wide text-white transition-transform duration-150 hover:scale-[1.03]"

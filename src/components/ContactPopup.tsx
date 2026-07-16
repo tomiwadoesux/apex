@@ -121,7 +121,7 @@ function ContactDetail({
         </span>
       </button>
 
-      {/* tiny action menu — sits just under the text, above the rest of the card */}
+      {/* tiny action menu, sits just under the text, above the rest of the card */}
       <span
         role="menu"
         className="absolute left-1/2 top-full z-[25] mt-2 flex items-center gap-0.5 rounded-xl border p-1 shadow-xl"
@@ -248,7 +248,7 @@ export function ContactPopup({
 
   return (
     <>
-      {/* Contact popup — frosts the page and floats a glass card. Click outside / × / Esc
+      {/* Contact popup, frosts the page and floats a glass card. Click outside / × / Esc
           to close. The card IRISES open: a clip-path circle grows from its centre. */}
       <div
         aria-hidden={!open}
@@ -279,7 +279,7 @@ export function ContactPopup({
               WebkitClipPath: open ? "circle(150% at 50% 50%)" : "circle(0% at 50% 50%)",
             }}
           >
-            {/* logo slot — the flying clone settles here; reserves the glyph's footprint. */}
+            {/* logo slot, the flying clone settles here; reserves the glyph's footprint. */}
             <div
               ref={popupLogoRef}
               aria-hidden
@@ -398,7 +398,7 @@ export function ContactPopup({
         </div>
       </div>
 
-      {/* Flying logo — a fixed clone that rides ABOVE the frosted overlay from the
+      {/* Flying logo, a fixed clone that rides ABOVE the frosted overlay from the
           header slot to the popup's centre-top on open, and back on close. */}
       {flyShown && headerPos && popupPos ? (
         <div

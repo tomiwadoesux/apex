@@ -14,7 +14,7 @@ export default function GooeyPage() {
         </h1>
         <p className="mt-3 max-w-md text-sm text-foreground/55">
           Hover (or tap) each icon. The morph uses an SVG goo filter so the shapes
-          stretch and merge like liquid — avatars are placeholders.
+          stretch and merge like liquid, avatars are placeholders.
         </p>
 
         <div className="flex flex-col gap-40 py-32">

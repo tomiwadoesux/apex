@@ -38,7 +38,7 @@ export default function MapHero() {
     <div className="relative h-dvh w-full overflow-hidden bg-[#06090d]">
       <MapStage settings={settings} onCameraChange={handleCameraChange} />
 
-      {/* Mood tint — blends with the map canvas underneath */}
+      {/* Mood tint, blends with the map canvas underneath */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{

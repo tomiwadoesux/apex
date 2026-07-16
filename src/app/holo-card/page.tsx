@@ -1,7 +1,7 @@
 "use client";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Apex ride pass — a monochromatic, premium booking card. The centre is the
+   Apex ride pass, a monochromatic, premium booking card. The centre is the
    booked ride: car image + type, the pickup → (dashed) → destination route, the
    ride time, an EMV-style chip, and a QR code that scans to /booking/<number>.
 
@@ -82,7 +82,7 @@ const RIDE_DATE = "Sat, 21 Jun 2026";
 const RIDE_TIME = "18:30";
 const PHONE = "0904 338 0193";
 const EMAIL = "apexrental08@gmail.com";
-const SERVICE = "Airport transfer"; // the booked service — e.g. Point to point · Airport · Hourly
+const SERVICE = "Airport transfer"; // the booked service, e.g. Point to point · Airport · Hourly
 const DEFAULT_REF = "4827 1193 0641";
 
 // Deterministic during SSR; reshuffled only on the client (a click handler).
@@ -299,7 +299,7 @@ export default function HoloCardPage() {
             service="Point to point" pickup={PICKUP} dropoff={DESTINATION}
             date={RIDE_DATE} time={RIDE_TIME} bookingRef={ref}
           />
-          {/* hourly hire card — identical, but NO drop-off (shows duration) */}
+          {/* hourly hire card, identical, but NO drop-off (shows duration) */}
           <RideCard
             light={light} s={s} accent={accent} surface={surface} cardBorder={cardBorder}
             ink={ink} dim={dim} hair={hair} car={car}
@@ -325,7 +325,7 @@ function RouteRow({ marker, icon: Icon, label, name, accent, ink, dim, img, ligh
         <div style={{ fontSize: "2cqw", letterSpacing: "0.28em", textTransform: "uppercase", color: dim }}>{label}</div>
         <div className="truncate" style={{ fontSize: "3cqw", fontWeight: 500, color: ink, marginTop: "0.4cqw" }}>{name}</div>
       </div>
-      {/* the location itself — a floating-island render, themed light/dark */}
+      {/* the location itself, a floating-island render, themed light/dark */}
       {img && (
         <div className="pointer-events-none absolute" style={{ right: 0, top: "50%", width: "13cqw", height: "12cqw", transform: "translateY(-50%)" }}>
           <Image
@@ -487,7 +487,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: light ? "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.75) 0%, transparent 55%)" : "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.07) 0%, transparent 55%)" }} />
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(85% 60% at 78% 112%, rgba(var(--glow-rgb), ${light ? 0.05 : 0.1}) 0%, transparent 60%)` }} />
 
-          {/* oversized faint logo bleeding off the corner — depth, not a centre mark */}
+          {/* oversized faint logo bleeding off the corner, depth, not a centre mark */}
           <LogoMark style={{ position: "absolute", top: "-11cqw", right: "-13cqw", width: "62cqw", height: "auto", color: accent, opacity: light ? 0.06 : 0.08, transform: "rotate(-8deg)", pointerEvents: "none" }} />
 
           <div className="pointer-events-none absolute inset-0 flex flex-col" style={{ padding: "4cqw 7cqw 2cqw", transform: "translate(calc(var(--cx) * var(--parallax)), calc(var(--cy) * var(--parallax)))" }}>
@@ -509,7 +509,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               </div>
             </div>
 
-            {/* hero: the car — bigger for more presence / breathing room */}
+            {/* hero: the car, bigger for more presence / breathing room */}
             <div className="relative mt-[1cqw]" style={{ height: "72cqw", marginInline: "-7cqw" }}>
               <Image
                 key={car.name + (light ? "l" : "d")}
@@ -524,7 +524,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               />
             </div>
 
-            {/* car name + class — centred, snug under the car — with the accent
+            {/* car name + class, centred, snug under the car, with the accent
                 hairline sitting directly UNDER the "… · Chauffeured" line */}
             <div className="mt-[0.5cqw] text-center">
               <div style={{ fontFamily: "var(--font-josefin-sans), sans-serif", fontWeight: 500, fontSize: "6.4cqw", lineHeight: 1.0, color: ink }}>{car.name}</div>
@@ -535,7 +535,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
             </div>
 
             {/* route: pickup → drop-off (point-to-point, connected dots) OR
-                pickup + duration (hourly, ICONS — so it doesn't read as a route) */}
+                pickup + duration (hourly, ICONS, so it doesn't read as a route) */}
             <div className="mt-[2cqw] flex flex-col">
               {dropoff ? (
                 <>
@@ -551,7 +551,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               )}
             </div>
 
-            {/* booking number — stays up with the content */}
+            {/* booking number, stays up with the content */}
             <div className="mt-[2cqw] text-center">
               <div style={{ borderTop: `2px dotted ${light ? "rgba(10,18,40,.3)" : "rgba(255,255,255,.26)"}`, margin: "2cqw 0 2.5cqw" }} />
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.3em", color: dim }}>BOOKING No.</div>
@@ -559,7 +559,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               <div style={{ fontSize: "2.2cqw", letterSpacing: "0.02em", color: accent, marginTop: "1.4cqw", whiteSpace: "nowrap" }}>apexriderental.com/booking/{bookingRef.replace(/\s+/g, "")}</div>
             </div>
 
-            {/* contact — pinned to the bottom */}
+            {/* contact, pinned to the bottom */}
             <div className="mt-auto flex flex-col items-center" style={{ gap: "1.8cqw", paddingTop: "3cqw" }}>
               <span className="inline-flex items-center" style={{ gap: "1.8cqw", fontSize: "2.6cqw", color: ink, whiteSpace: "nowrap" }}>
                 <Phone strokeWidth={2.2} style={{ width: "2.9cqw", height: "2.9cqw", color: accent, flexShrink: 0 }} />
@@ -571,7 +571,7 @@ function RideCard({ light, s, accent, surface, cardBorder, ink, dim, hair, car, 
               </span>
             </div>
 
-            {/* sharing instruction — pushed right down to the bottom edge */}
+            {/* sharing instruction, pushed right down to the bottom edge */}
             <div style={{ marginTop: "3cqw", fontSize: "2.3cqw", lineHeight: 1.4, color: dim, textAlign: "center", paddingInline: "1cqw" }}>
               Only share this card with whoever you&apos;re sharing this ride with, or who you booked it for.
             </div>

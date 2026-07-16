@@ -223,7 +223,7 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* notification channels — green when the env var is present on the server */}
+            {/* notification channels, green when the env var is present on the server */}
             {notifyStatus && (
               <div className={card}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -250,7 +250,7 @@ export default function AdminPage() {
                     {testResults.map((r) => (
                       <div key={r.channel} className="flex items-start gap-1.5">
                         <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: r.ok ? "#16a34a" : "#dc2626" }} />
-                        <span><span className="font-bold uppercase">{r.channel}</span> — {r.detail}</span>
+                        <span><span className="font-bold uppercase">{r.channel}</span>, {r.detail}</span>
                       </div>
                     ))}
                   </div>
@@ -337,7 +337,7 @@ export default function AdminPage() {
                         </div>
                         <div>
                           <label className={label}>Driver</label>
-                          <input defaultValue={b.driver ?? ""} onBlur={(e) => void patchBooking(b.id, { driver: e.target.value })} placeholder="e.g. Emeka — black Escalade" className={input} />
+                          <input defaultValue={b.driver ?? ""} onBlur={(e) => void patchBooking(b.id, { driver: e.target.value })} placeholder="e.g. Emeka, black Escalade" className={input} />
                         </div>
                         <div>
                           <label className={label}>Internal notes</label>
@@ -428,7 +428,7 @@ export default function AdminPage() {
               <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Cars</h2>
               <p className="mb-3 text-xs text-neutral-500">
                 Added cars appear in the form&apos;s all-cars list and in Quick Booking. Photos come from the existing
-                library only — new photos still need a code update.
+                library only, new photos still need a code update.
               </p>
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {CARS.map((c) => {
@@ -438,7 +438,7 @@ export default function AdminPage() {
                       key={c.id}
                       type="button"
                       onClick={() => set("hiddenCars", hidden ? config.hiddenCars.filter((n) => n !== c.name) : [...config.hiddenCars, c.name])}
-                      title={hidden ? "Hidden — click to show" : "Shown — click to hide"}
+                      title={hidden ? "Hidden, click to show" : "Shown, click to hide"}
                       className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${hidden ? "border-red-200 bg-red-50 text-red-600 line-through" : "border-neutral-200 bg-white text-neutral-700"}`}
                     >
                       {c.name}
@@ -477,7 +477,7 @@ export default function AdminPage() {
             <section className={card}>
               <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Quick Booking cars</h2>
               <p className="mb-3 text-xs text-neutral-500">
-                Pick which cars appear in the Quick Booking pop-up. {config.quickCars.length === 0 ? "None selected — all cars show." : `${config.quickCars.length} selected.`}
+                Pick which cars appear in the Quick Booking pop-up. {config.quickCars.length === 0 ? "None selected, all cars show." : `${config.quickCars.length} selected.`}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => {
@@ -532,7 +532,7 @@ export default function AdminPage() {
                 ))}
               </div>
               <div className="mt-4 border-t border-neutral-100 pt-4">
-                <p className="mb-2 text-xs text-neutral-500">Flat fare for each trip type (no hourly duration) — charged via Paystack.</p>
+                <p className="mb-2 text-xs text-neutral-500">Flat fare for each trip type (no hourly duration), charged via Paystack.</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {config.tripTypes.map((t) => (
                     <div key={t.id} className="flex items-center gap-2">
@@ -553,18 +553,18 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* payment channel — Paystack */}
+            {/* payment channel, Paystack */}
             <section className={card}>
               <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Payment channel</h2>
               <p className="text-xs leading-relaxed text-neutral-500">
                 Customers now pay online through <span className="font-semibold text-neutral-700">Paystack</span> on the last
-                step of Quick Booking and the form — card, bank transfer, or USSD. The fare is the per-hour price above ×
+                step of Quick Booking and the form, card, bank transfer, or USSD. The fare is the per-hour price above ×
                 the hours, or the flat trip-type rate. Set any trip rate to 0 to make that trip &ldquo;contact us&rdquo; instead of pay-now.
               </p>
               <p className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-500">
                 Set your keys as environment variables (Vercel → Settings → Environment Variables):
-                <br />• <span className="font-mono font-semibold text-neutral-700">NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY</span> — your Paystack public key
-                <br />• <span className="font-mono font-semibold text-neutral-700">PAYSTACK_SECRET_KEY</span> — your Paystack secret key
+                <br />• <span className="font-mono font-semibold text-neutral-700">NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY</span>, your Paystack public key
+                <br />• <span className="font-mono font-semibold text-neutral-700">PAYSTACK_SECRET_KEY</span>, your Paystack secret key
                 <br />Until both are set, the pay button will say payments aren&apos;t configured yet.
               </p>
             </section>

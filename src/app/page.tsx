@@ -158,7 +158,7 @@ function HatchButton({
       className="group pointer-events-auto relative inline-flex h-9 sm:h-11 items-center gap-2 sm:gap-2.5 overflow-hidden rounded-full border px-4 sm:px-6 text-[13px] sm:text-sm font-semibold tracking-wide transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-px"
       style={{ background: bg, color: ink, borderColor: border, boxShadow: sheen }}
     >
-      {/* diagonal hatch — oversized so it can slide on hover without exposing an edge */}
+      {/* diagonal hatch, oversized so it can slide on hover without exposing an edge */}
       {hatch ? (
         <span
           aria-hidden="true"
@@ -185,7 +185,7 @@ const TESTIMONIALS = [
     name: "Chidi Okeke",
     role: "Wedding hire",
     message:
-      "Booked the fleet for our wedding — every car arrived early, beautifully styled, and the drivers were impeccable.",
+      "Booked the fleet for our wedding, every car arrived early, beautifully styled, and the drivers were impeccable.",
   },
   {
     name: "Funke Adeyemi",
@@ -315,7 +315,7 @@ function TestimonialsCarousel({ atFooter }: { atFooter: boolean }) {
           );
         })}
       </div>
-      {/* pager arrows — phones only; desktop shows all three cards at once */}
+      {/* pager arrows, phones only; desktop shows all three cards at once */}
       <div className="mt-5 flex items-center justify-center gap-3 sm:hidden">
         <CarouselArrow dir={-1} disabled={!canLeft} onClick={() => page(-1)} />
         <CarouselArrow dir={1} disabled={!canRight} onClick={() => page(1)} />
@@ -368,7 +368,7 @@ function StandUpHeadline({ text, reveal, className, style }: { text: string; rev
 }
 
 // ── scroll-story tuning ──
-const STORY_VH = 800; // total scroll length (× viewport height) for the whole story — a touch longer so each service holds a bit before it changes
+const STORY_VH = 800; // total scroll length (× viewport height) for the whole story, a touch longer so each service holds a bit before it changes
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const win = (p: number, a: number, b: number) => clamp01((p - a) / (b - a)); // p → [a,b] → 0..1
 const smooth = (x: number) => {
@@ -536,7 +536,7 @@ export default function Home() {
           {/* base wash so the pinned stage is never transparent */}
           <div className="absolute inset-0 z-0" style={{ backgroundColor: "#f6f7f9" }} />
 
-          {/* still dot-grid background (hero) — dims as the photo takes over */}
+          {/* still dot-grid background (hero), dims as the photo takes over */}
           <div
             className="pointer-events-none absolute inset-0 z-0"
             style={{
@@ -557,12 +557,12 @@ export default function Home() {
             }}
           />
 
-          {/* CITY REVEAL — clip-only overlay; transparent until it clips the photo in */}
+          {/* CITY REVEAL, clip-only overlay; transparent until it clips the photo in */}
           <div className="pointer-events-none absolute inset-0 z-[2]">
             <CityReveal progress={revealProgress} className="h-full w-full" />
           </div>
 
-          {/* dark overlay over the revealed photo — settles in as the reveal plays so
+          {/* dark overlay over the revealed photo, settles in as the reveal plays so
               the photo reads moodier and the white "See our services" stays legible */}
           <div
             className="pointer-events-none absolute inset-0 z-[3]"
@@ -573,7 +573,7 @@ export default function Home() {
             }}
           />
 
-          {/* SERVICE CARDS — bg photo crossfade + blue panel wipe-ins */}
+          {/* SERVICE CARDS, bg photo crossfade + blue panel wipe-ins */}
           <div
             className="absolute inset-0 z-[3]"
             style={{ opacity: cardsIn, pointerEvents: "none" }}
@@ -581,13 +581,13 @@ export default function Home() {
             <ServiceCards progress={cardsProgress} />
           </div>
 
-          {/* FRONT — the fleet (transparent) pinned in FRONT of the reveal. Its cars
+          {/* FRONT, the fleet (transparent) pinned in FRONT of the reveal. Its cars
               sit exactly over the city photo's cars; at the END of the intro the cutout
               simply FADES out as the full photo lands behind it, so the PNG and the
               photo read as one image (no clip / mask split). */}
           <div className="pointer-events-none absolute inset-0 z-[4]">
             {/* Preload the reveal photo so it's fetched at the SAME time as the hero
-                cutout — kills the mid-scroll lag before the mask has the image.
+                cutout, kills the mid-scroll lag before the mask has the image.
                 React 19 hoists this <link> into <head> and dedupes it; the decode
                 signal (`bgLoaded`) is wired up in an effect above. */}
             <link rel="preload" as="image" href="/images/FORNT-BG.webp" fetchPriority="high" />
@@ -595,10 +595,10 @@ export default function Home() {
             {/* The cutout is drawn through the SAME viewBox + slice mapping as
                 CityReveal's photo (2688×1520, xMidYMid slice). That makes the cutout
                 and the reveal photo scale and crop as ONE image at EVERY screen aspect
-                ratio — so the cars stay locked together on a laptop, an external
+                ratio, so the cars stay locked together on a laptop, an external
                 monitor, anything. FRONT.webp is exported at exactly 2688×1520 with the
                 old (17,147) alignment nudge BAKED IN, so it sits at 0,0 as a pixel-
-                perfect overlay of the reveal photo — no runtime offset to tune. */}
+                perfect overlay of the reveal photo, no runtime offset to tune. */}
             <svg
               viewBox="0 0 2688 1520"
               preserveAspectRatio="xMidYMid slice"
@@ -630,7 +630,7 @@ export default function Home() {
             />
           </div>
 
-          {/* brand lockup — top-left (persists; ink turns white over the photo).
+          {/* brand lockup, top-left (persists; ink turns white over the photo).
               Clickable site-wide convention: the logo always leads back home. */}
           <div className="pointer-events-none absolute left-5 top-5 z-30" style={{ color: headInk }}>
             <Link href="/" className="pointer-events-auto flex items-center gap-2.5">
@@ -646,7 +646,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Contact — top-right (persists) */}
+          {/* Contact, top-right (persists) */}
           <div
             className="absolute right-5 top-5 z-30"
             style={{ opacity: reveal ? 1 : 0, transition: "opacity 420ms ease-out 300ms" }}
@@ -663,7 +663,7 @@ export default function Home() {
             />
           </div>
 
-          {/* HERO headline — adaptive ink (headInk): DARK on the light hero, fading to
+          {/* HERO headline, adaptive ink (headInk): DARK on the light hero, fading to
               WHITE as the dark city photo takes over, so it stays legible on both
               without the mix-blend "difference" ghosting it used to show over the busy
               photo. As the photo finishes forming the two headlines crossfade with a
@@ -695,7 +695,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* CTA sub-label — a frosted-glass pill of the three services, separated by
+          {/* CTA sub-label, a frosted-glass pill of the three services, separated by
               accent dots. The glass flips from light to dark with the overlay
               (overlayIn) so it stays legible on both the light hero and the city
               photo, and the ink tracks headInk like the headline. Phones: sits just
@@ -734,7 +734,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Buttons — anchored LOW in the hero, centred; they scroll away with the
+          {/* Buttons, anchored LOW in the hero, centred; they scroll away with the
               story like everything else on the stage. */}
           <div
             className="pointer-events-none absolute inset-x-0 z-[25] flex items-center justify-center gap-3"
@@ -761,7 +761,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FOOTER — REVEALED, not scrolled in: on sm+ it sticks to the viewport
+      {/* FOOTER, REVEALED, not scrolled in: on sm+ it sticks to the viewport
           bottom BEHIND the story (z-0 vs the story's z-10), so the page appears
           to lift away like a curtain and expose it. On phones (where the footer
           is taller than the screen) it stays in normal flow. A blue CTA banner
@@ -769,7 +769,7 @@ export default function Home() {
           faint brand watermark bleeds off the bottom. */}
       <footer className="relative z-10 w-full overflow-hidden sm:sticky sm:bottom-0 sm:z-0 sm:h-screen" style={{ background: "linear-gradient(180deg, #0c1017 0%, #06080d 100%)", color: "#eef1f6" }}>
         <div className="relative mx-auto flex w-full max-w-6xl flex-col px-6 pb-8 pt-14 sm:h-full sm:px-10 sm:pt-10">
-          {/* CTA banner — brand-blue gradient card with the same inner sheen as the CTAs */}
+          {/* CTA banner, brand-blue gradient card with the same inner sheen as the CTAs */}
           <div
             className="relative overflow-hidden rounded-[1.75rem] px-7 py-9 sm:rounded-[2rem] sm:px-10 sm:py-11"
             style={{
@@ -777,7 +777,7 @@ export default function Home() {
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 24px 60px -24px rgba(42,79,208,0.55)",
             }}
           >
-            {/* oversized faint logo bleeding off the card corner — slow 3D turntable spin */}
+            {/* oversized faint logo bleeding off the card corner, slow 3D turntable spin */}
             <span aria-hidden className="pointer-events-none absolute -right-8 -top-10 opacity-[0.1]">
               <Logo size={190} color="#ffffff" accent="#ffffff" animate="spin3d" />
             </span>
@@ -789,7 +789,7 @@ export default function Home() {
                   Ready when you are.
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-white/70">
-                  Chauffeur-driven rides across Lagos &amp; Abuja — booked in minutes.
+                  Chauffeur-driven rides across Lagos &amp; Abuja, booked in minutes.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -812,13 +812,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* client voices — fill the band between the CTA card and the bottom bar;
+          {/* client voices, fill the band between the CTA card and the bottom bar;
               the cards do their 3D recline + fan entrance as the curtain lifts */}
           <div className="flex flex-1 items-center pt-10 sm:pt-6">
             <TestimonialsCarousel atFooter={atFooter} />
           </div>
 
-          {/* bottom bar — logo lockup + slim nav pinned to the very bottom */}
+          {/* bottom bar, logo lockup + slim nav pinned to the very bottom */}
           <div className="mt-10 flex flex-col items-center justify-between gap-5 border-t border-white/[0.08] pt-6 pb-1 sm:flex-row">
             <Link href="/" className="inline-flex items-center gap-3">
               <Logo size={30} color="#f3f5fa" accent={accent} />
@@ -843,7 +843,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Quick Booking — stays mounted so a closed popup resumes where it stopped;
+      {/* Quick Booking, stays mounted so a closed popup resumes where it stopped;
           only a reload starts the flow over. */}
       <QuickBooking open={quickOpen} onClose={() => setQuickOpen(false)} />
 
@@ -857,7 +857,7 @@ export default function Home() {
         logoSize={HEAD_LOGO}
       />
 
-      {/* Accent scroll bar — a thin SQUARE rail pinned to the right edge whose accent
+      {/* Accent scroll bar, a thin SQUARE rail pinned to the right edge whose accent
           fill grows from the top down as the page scrolls, reaching full at the bottom.
           The native scrollbar is hidden (below) so this reads as the page's scroll bar.
           Sits under the contact popup (z-[60]) so the popup covers it when open. */}

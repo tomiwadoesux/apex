@@ -1,7 +1,7 @@
 "use client";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Apex Ride pass — the premium, monochromatic booking card. Extracted from the
+   Apex Ride pass, the premium, monochromatic booking card. Extracted from the
    /holo-card playground so the booking form, /check-booking, and the playground
    all render ONE card. The centre is the booked ride: car image + type, the
    pickup → (dashed) → destination route (or pickup + duration for hourly), the
@@ -314,7 +314,7 @@ export function RideCard({
       onFirstTouch = () => {
         DOE.requestPermission!()
           .then((state) => { if (state === "granted") attach(); })
-          .catch(() => { /* denied — the ambient float keeps playing instead */ });
+          .catch(() => { /* denied, the ambient float keeps playing instead */ });
         window.removeEventListener("touchend", onFirstTouch!);
       };
       window.addEventListener("touchend", onFirstTouch);
@@ -395,7 +395,7 @@ export function RideCard({
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: light ? "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.75) 0%, transparent 55%)" : "radial-gradient(120% 80% at 50% -15%, rgba(255,255,255,.07) 0%, transparent 55%)" }} />
           <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(85% 60% at 78% 112%, rgba(var(--glow-rgb), ${light ? 0.05 : 0.1}) 0%, transparent 60%)` }} />
 
-          {/* oversized faint logo bleeding off the corner — depth, not a centre mark */}
+          {/* oversized faint logo bleeding off the corner, depth, not a centre mark */}
           <LogoMark style={{ position: "absolute", top: "-11cqw", right: "-13cqw", width: "62cqw", height: "auto", color: accent, opacity: light ? 0.06 : 0.08, transform: "rotate(-8deg)", pointerEvents: "none" }} />
 
           <div className="pointer-events-none absolute inset-0 flex flex-col" style={{ padding: "4cqw 7cqw 2cqw", transform: "translate(calc(var(--cx) * var(--parallax)), calc(var(--cy) * var(--parallax)))" }}>
@@ -417,7 +417,7 @@ export function RideCard({
               </div>
             </div>
 
-            {/* hero: the car — bleeds wide so long SUVs render big, not letterboxed */}
+            {/* hero: the car, bleeds wide so long SUVs render big, not letterboxed */}
             <div className="relative mt-[1cqw]" style={{ height: "80cqw", marginInline: "-11cqw" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -469,7 +469,7 @@ export function RideCard({
               )}
             </div>
 
-            {/* contact — pinned to the bottom */}
+            {/* contact, pinned to the bottom */}
             <div className="mt-auto flex flex-col items-center" style={{ gap: "1.8cqw", paddingTop: "3cqw" }}>
               <span className="inline-flex items-center" style={{ gap: "1.8cqw", fontSize: "2.6cqw", color: ink, whiteSpace: "nowrap" }}>
                 <Phone strokeWidth={2.2} style={{ width: "2.9cqw", height: "2.9cqw", color: accent, flexShrink: 0 }} />

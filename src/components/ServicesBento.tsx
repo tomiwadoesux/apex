@@ -280,7 +280,7 @@ export default function ServicesBento({
 
   return (
     <div className={`pointer-events-none fixed inset-0 z-[5] ${text}`}>
-      {/* hidden measurers — fixed-width copies of every card, used only to size
+      {/* hidden measurers, fixed-width copies of every card, used only to size
           the panel to the tallest card's content (the live panel's width animates
           with scroll, so it can't be measured). Never painted. */}
       <div aria-hidden className="invisible absolute left-0 top-0" style={{ width: panelW }}>
@@ -300,7 +300,7 @@ export default function ServicesBento({
           service anchors (a circle while travelling, a rounded square at rest);
           each service's card content is stacked inside and fades in once settled.
           NB: this element carries the transform that centres it, so its children
-          can't use backdrop-filter — the panel itself does the frosting. */}
+          can't use backdrop-filter, the panel itself does the frosting. */}
       <div
         ref={panelRef}
         className="absolute -translate-x-1/2 -translate-y-1/2 overflow-hidden border"
@@ -418,7 +418,7 @@ function Bento({
     // The rounded glass shell is now the shared MORPHING PANEL (rendered above);
     // this just lays the cells out inside it. The grid fills the panel's padding.
     <div ref={gridRef} className="relative grid w-full grid-cols-4 gap-2 sm:gap-2.5">
-      {/* TITLE — tall hero cell with a big faint icon watermark */}
+      {/* TITLE, tall hero cell with a big faint icon watermark */}
       <div
         ref={(el) => {
           cellRefs.current[0] = el;
@@ -440,7 +440,7 @@ function Bento({
         </h3>
       </div>
 
-      {/* STAT — accent-filled cell for the colour pop */}
+      {/* STAT, accent-filled cell for the colour pop */}
       <div
         ref={(el) => {
           cellRefs.current[1] = el;
@@ -476,7 +476,7 @@ function Bento({
         <p className={`text-[11.5px] leading-relaxed sm:text-[13px] ${dim}`} style={contentFade}>{s.blurb}</p>
       </div>
 
-      {/* FEATURE tiles — 2 × 2 */}
+      {/* FEATURE tiles, 2 × 2 */}
       {s.features.map((f, fi) => (
         <div
           key={f.label}

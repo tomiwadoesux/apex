@@ -28,7 +28,7 @@ function rows(b: Booking): string {
     row("Reference", b.id),
     row("Passenger", b.passenger.name),
     row("Phone", b.passenger.phone),
-    row("Car", `${b.car.name}${b.car.klass ? ` — ${b.car.klass}` : ""}`),
+    row("Car", `${b.car.name}${b.car.klass ? `, ${b.car.klass}` : ""}`),
     row("Service", b.service),
     row("Pickup", b.pickup),
     row("Destination", b.dropoff),
@@ -85,7 +85,7 @@ async function sendPush(b: Booking): Promise<void> {
       Priority: "high",
       Tags: "oncoming_automobile",
     },
-    body: `${b.passenger.name} (${b.passenger.phone})\n${b.car.name} — ${b.service}\n${b.pickup}\n${b.date} at ${b.time}`,
+    body: `${b.passenger.name} (${b.passenger.phone})\n${b.car.name}, ${b.service}\n${b.pickup}\n${b.date} at ${b.time}`,
   });
   if (!res.ok) throw new Error(`ntfy ${res.status}`);
 }
@@ -158,7 +158,7 @@ export async function notifyBookingCreated(
   extras?: { receipt?: string | null; receiptName?: string | null },
 ): Promise<void> {
   if (!RESEND_KEY && !NTFY_TOPIC) {
-    console.warn("[notify] skipped — no RESEND_API_KEY or NTFY_TOPIC configured");
+    console.warn("[notify] skipped, no RESEND_API_KEY or NTFY_TOPIC configured");
     return;
   }
   const jobs: Promise<void>[] = [];
@@ -171,7 +171,7 @@ export async function notifyBookingCreated(
         `Your ApexRide booking ${b.id}`,
         emailShell(
           "Your ride is booked",
-          `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. We've received your booking — our team will reach out shortly to confirm the details below. Your work order ID is <strong>${esc(b.id)}</strong>; keep it to track your booking anytime.`,
+          `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. We've received your booking, our team will reach out shortly to confirm the details below. Your work order ID is <strong>${esc(b.id)}</strong>; keep it to track your booking anytime.`,
           b,
           { label: "Check your booking", href: `${SITE_URL}/check-booking?ref=${encodeURIComponent(b.id)}` },
         ),
@@ -183,7 +183,7 @@ export async function notifyBookingCreated(
     jobs.push(
       sendEmail(
         COMPANY_EMAIL,
-        `New booking ${b.id} — ${b.passenger.name || "unknown"}`,
+        `New booking ${b.id}, ${b.passenger.name || "unknown"}`,
         emailShell(
           "Someone just booked a ride",
           receipt
@@ -218,12 +218,12 @@ export async function notifyPaymentReceived(
     jobs.push(
       sendEmail(
         COMPANY_EMAIL,
-        `Payment submitted — ${b.id} — ${b.passenger.name || "unknown"}`,
+        `Payment submitted, ${b.id}, ${b.passenger.name || "unknown"}`,
         emailShell(
           "Payment received",
           receipt
             ? `The guest has transferred the fare for booking ${esc(b.id)} and attached their receipt (below). Confirm it, then mark the booking paid.`
-            : `Payment has come in for booking ${esc(b.id)}. The details are below — mark the booking paid and let the guest know.`,
+            : `Payment has come in for booking ${esc(b.id)}. The details are below, mark the booking paid and let the guest know.`,
           b,
         ),
         receipt ? [receipt] : undefined,
@@ -234,7 +234,7 @@ export async function notifyPaymentReceived(
   if (NTFY_TOPIC) {
     jobs.push(
       sendPushText(
-        `Payment received — ${b.id}`,
+        `Payment received, ${b.id}`,
         `${b.passenger.name || "A guest"} submitted a receipt.\n${b.paymentNote || ""}`.trim(),
       ),
     );

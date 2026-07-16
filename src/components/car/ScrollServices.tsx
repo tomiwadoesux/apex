@@ -165,7 +165,7 @@ const SLOTS: { info: [number, number]; feat: [number, number] }[] = [
   { info: [0.8, 0.5], feat: [0.2, 0.5] }, //   2 · split to the edges
   { info: [0.2, 0.4], feat: [0.2, 0.74] }, //  3 · stacked, bottom-left
   { info: [0.8, 0.5], feat: [0.2, 0.5] }, //   4 · edges (info right, feat left)
-  { info: [0.2, 0.5], feat: [0.8, 0.5] }, //   5 · edges SWAPPED — cards switch
+  { info: [0.2, 0.5], feat: [0.8, 0.5] }, //   5 · edges SWAPPED, cards switch
   { info: [0.37, 0.5], feat: [0.63, 0.5] }, // 6 · centred
 ];
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -350,7 +350,7 @@ export default function ScrollServices({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[5]">
-      {/* INFO card — frosted accent panel that travels between slots; text swaps */}
+      {/* INFO card, frosted accent panel that travels between slots; text swaps */}
       <div
         ref={infoCard}
         className={`flex h-[20rem] w-[21rem] flex-col items-center justify-center px-8 text-center ${CARD_CLASS}`}
@@ -371,7 +371,7 @@ export default function ScrollServices({
         </div>
       </div>
 
-      {/* FEATURES card — frosted accent panel, travels too */}
+      {/* FEATURES card, frosted accent panel, travels too */}
       <div
         ref={featCard}
         className={`flex h-[20rem] w-[21rem] flex-col justify-center px-8 text-left ${CARD_CLASS}`}

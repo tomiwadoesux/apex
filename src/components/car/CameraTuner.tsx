@@ -113,7 +113,7 @@ export default function CameraTuner({
         <button onClick={() => setOpen(false)} style={btn}>×</button>
       </div>
 
-      {/* lens type (radio) — Standard/Wide/Ultra-wide are perspective focal
+      {/* lens type (radio), Standard/Wide/Ultra-wide are perspective focal
           lengths; Fisheye is the real barrel-distortion camera */}
       <div style={{ marginBottom: 10 }}>
         <div style={{ marginBottom: 4, opacity: 0.8 }}>Lens type (active pose)</div>

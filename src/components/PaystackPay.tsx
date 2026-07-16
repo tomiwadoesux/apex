@@ -72,7 +72,7 @@ export default function PaystackPay({
       return;
     }
     if (!window.PaystackPop) {
-      setError("Payment is still loading — give it a second and tap again.");
+      setError("Payment is still loading, give it a second and tap again.");
       return;
     }
     setBusy(true);
@@ -107,22 +107,51 @@ export default function PaystackPay({
     handler.openIframe();
   };
 
+  const methods = ["Card", "Transfer", "USSD", "Bank"];
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className={`rounded-2xl border px-4 py-4 text-center ${isLight ? "border-neutral-900/10 bg-white/60" : "border-white/10 bg-white/[0.04]"}`}>
-        <div className={`text-[10px] font-bold uppercase tracking-widest ${isLight ? "text-neutral-400" : "text-white/40"}`}>Amount to pay</div>
-        <div className="mt-0.5 text-3xl font-bold tabular-nums" style={{ color: accent }}>{naira(amountNaira)}</div>
-        <div className={`mt-1 text-[11px] ${isLight ? "text-neutral-500" : "text-white/50"}`}>Secured by Paystack — card, transfer, USSD or bank.</div>
+    <div className="flex flex-col gap-3.5">
+      {/* amount card */}
+      <div
+        className="relative overflow-hidden rounded-3xl px-5 py-6 text-center"
+        style={{
+          background: isLight
+            ? "linear-gradient(160deg, #f3f6ff 0%, #eef2ff 55%, #e7ecff 100%)"
+            : "linear-gradient(160deg, rgba(253,186,22,0.10), rgba(255,255,255,0.03))",
+          border: `1px solid ${accent}22`,
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-[0.12]"
+          style={{ background: accent }}
+        />
+        <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: accent + "14", color: accent }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Amount to pay</span>
+        </div>
+        <div className="mt-2 text-[2.6rem] font-bold leading-none tabular-nums" style={{ color: accent }}>{naira(amountNaira)}</div>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+          {methods.map((m) => (
+            <span key={m} className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${isLight ? "bg-white/70 text-neutral-600" : "bg-white/10 text-white/70"}`}>{m}</span>
+          ))}
+        </div>
       </div>
+
       <button
         type="button"
         onClick={pay}
         disabled={busy}
-        className="h-12 rounded-full text-sm font-bold tracking-wide text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
-        style={{ background: accent, color: isLight ? "#fff" : "#0a0a0a", boxShadow: "inset 0 2px 4px rgba(255,255,255,0.25)" }}
+        className="inline-flex items-center justify-center gap-2 rounded-full py-4 text-sm font-bold tracking-wide transition-all hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ background: accent, color: isLight ? "#fff" : "#0a0a0a", boxShadow: `0 8px 20px -8px ${accent}99` }}
       >
-        {busy ? "Opening Paystack…" : `Pay ${naira(amountNaira)} with Paystack`}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        {busy ? "Opening Paystack…" : `Pay ${naira(amountNaira)}`}
       </button>
+      <p className={`text-center text-[10px] ${isLight ? "text-neutral-400" : "text-white/40"}`}>Secured by Paystack. Your card details never touch our site.</p>
       {error && <p className="text-center text-[11px] font-medium text-red-600">{error}</p>}
     </div>
   );

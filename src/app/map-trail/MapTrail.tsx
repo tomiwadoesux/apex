@@ -7,7 +7,7 @@ import { createNavigator } from "./streetGraph";
 import Logo, { LOGO_PATHS } from "@/components/Logo";
 import { useReducedMotion } from "@/components/useReducedMotion";
 
-const VIEW = 250; // viewBox window (of the 600-unit map) — larger = zoomed out
+const VIEW = 250; // viewBox window (of the 600-unit map), larger = zoomed out
 const SPEED = 25; // svg units / second the navigator drives
 const CAM_SMOOTH = 2.6; // higher = camera catches the navigator faster
 const CAM_LEAD = VIEW * 0.55; // camera starts this far ahead so the marker drives in
@@ -166,7 +166,7 @@ export default function MapTrail() {
             <circle key={`t${i}`} className={styles.tree} cx={t.cx} cy={t.cy} r={t.r} />
           ))}
 
-          {/* buildings — faux-3D drop shadow, then the footprint */}
+          {/* buildings, faux-3D drop shadow, then the footprint */}
           {CITY.buildings.map((b, i) => (
             <rect
               key={`bs${i}`}
@@ -238,7 +238,7 @@ export default function MapTrail() {
             <circle className={styles.pulse} r={3} />
           </g>
 
-          {/* the navigator — the Apex logo itself */}
+          {/* the navigator, the Apex logo itself */}
           <g ref={markerRef} className={styles.marker}>
             <path className={styles.markerBody} d={LOGO_PATHS[0]} />
             <path className={styles.markerDot} d={LOGO_PATHS[1]} />
