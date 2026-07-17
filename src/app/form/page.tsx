@@ -621,6 +621,8 @@ export default function BookingForm() {
   // Live running fare — the per-hour rate for the chosen car, and the total once a
   // duration / trip type is picked. Shown on-screen so the guest sees the cost build.
   const liveRate = cfg.carRates[FLEET_CARS.find((c) => c.name === selectedVehicle.name)?.id ?? ""] ?? DEFAULT_RATE;
+  // Rate for the car currently showing in the Car-step carousel (shown by its name).
+  const displayedRate = cfg.carRates[FLEET_CARS.find((c) => c.name === displayedVehicleName)?.id ?? ""] ?? DEFAULT_RATE;
   const liveAmount: number | null = (() => {
     if (!selectedService) return null;
     if (selectedService.group === "type") return cfg.tripRates[selectedService.id] ?? null;
@@ -1497,9 +1499,9 @@ export default function BookingForm() {
       </header>
 
       {/* Floating step progress text, positioned constantly at the top */}
-      {/* Live fare pill — always visible from the car step on, so the guest can
-          watch the amount build as they pick the car, then the duration. */}
-      {currentStep >= 3 && currentStep <= 7 && (
+      {/* Live fare pill — from the duration step on. On the car step the price is
+          shown with the car name instead (see the carousel details below). */}
+      {currentStep >= 4 && currentStep <= 7 && (
         <div className="fixed top-2 sm:top-3 left-1/2 -translate-x-1/2 z-40 select-none pointer-events-none">
           <div
             className="flex items-center gap-2 rounded-full border px-4 py-1.5 shadow-sm backdrop-blur"
@@ -1888,6 +1890,11 @@ export default function BookingForm() {
                       {displayedVehicleName}
                     </span>
                   </h2>
+                  {!isCustomCar && (
+                    <div className="car-detail-text mt-1 text-lg sm:text-xl font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
+                      {naira(displayedRate)}<span className={`ml-1 text-xs font-medium ${isLight ? "text-neutral-400" : "text-white/40"}`}>/ hour</span>
+                    </div>
+                  )}
                   <div className={`text-xs sm:text-sm font-medium tracking-wide mt-1.5 ${isLight ? "text-neutral-600" : "text-white/60"} text-center`}>
                     <span className="car-detail-text inline-block">{displayedVehicleDetails.year}</span>
                     <span className={`car-detail-text inline-block mx-2 font-bold text-base ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>·</span>
