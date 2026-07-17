@@ -441,6 +441,14 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
             </span>
           </div>
         )}
+
+        {/* Lagos-only disclaimer, pinned at the bottom of the modal */}
+        {step <= 4 && (
+          <div className="flex shrink-0 items-center justify-center gap-1.5 border-t border-neutral-100 bg-neutral-50/70 px-5 py-2 text-center text-[10px] font-medium text-neutral-500">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            Quick Booking is available within Lagos only.
+          </div>
+        )}
       </div>
     </div>
   );
