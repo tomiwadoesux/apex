@@ -69,6 +69,20 @@ export async function PUT(req: Request) {
               .filter(([k]) => k),
           )
         : current.tripRates,
+    qbRates:
+      body.qbRates && typeof body.qbRates === "object" && !Array.isArray(body.qbRates)
+        ? Object.fromEntries(
+            Object.entries(body.qbRates as Record<string, { airport?: unknown; hours12?: unknown }>)
+              .map(([k, v]) => [
+                str(k, 40),
+                {
+                  airport: Math.max(0, Math.min(1_000_000_000, Math.round(Number(v?.airport) || 0))),
+                  hours12: Math.max(0, Math.min(1_000_000_000, Math.round(Number(v?.hours12) || 0))),
+                },
+              ] as const)
+              .filter(([k]) => k),
+          )
+        : current.qbRates,
     payment:
       body.payment && typeof body.payment === "object"
         ? {

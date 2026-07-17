@@ -559,11 +559,11 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* per-hour prices */}
+            {/* per-hour prices (full form) */}
             <section className={card}>
-              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Prices per hour (₦)</h2>
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Prices per hour (₦) — full form</h2>
               <p className="mb-3 text-xs text-neutral-500">
-                Shown beside each car in Quick Booking. Leave a car blank to use its built-in default rate.
+                Used on the full booking form (rate × hours). Leave a car blank to use its built-in default rate.
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => (
@@ -607,6 +607,39 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </section>
+
+            {/* Quick Booking prices — Airport + 12 hours per car */}
+            <section className={card}>
+              <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Quick Booking prices (₦)</h2>
+              <p className="mb-3 text-xs text-neutral-500">
+                The Airport Pickup and 12-hour fares shown for each car in Quick Booking.
+              </p>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 pl-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                  <span className="min-w-0 flex-1">Car</span>
+                  <span className="w-28 text-right">Airport</span>
+                  <span className="w-28 text-right">12 hours</span>
+                </div>
+                {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => {
+                  const r = config.qbRates[c.id] ?? { airport: 0, hours12: 0 };
+                  return (
+                    <div key={c.id} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
+                      <input
+                        type="number" min={0} step={1000} value={r.airport || ""} placeholder="0"
+                        onChange={(e) => set("qbRates", { ...config.qbRates, [c.id]: { ...r, airport: Number(e.target.value) || 0 } })}
+                        className={`${input} !w-28 text-right tabular-nums`}
+                      />
+                      <input
+                        type="number" min={0} step={1000} value={r.hours12 || ""} placeholder="0"
+                        onChange={(e) => set("qbRates", { ...config.qbRates, [c.id]: { ...r, hours12: Number(e.target.value) || 0 } })}
+                        className={`${input} !w-28 text-right tabular-nums`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
 

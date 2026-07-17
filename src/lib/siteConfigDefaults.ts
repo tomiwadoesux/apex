@@ -41,6 +41,9 @@ export type SiteConfig = {
   // Flat Naira fare for each trip type (no hourly duration) — keyed by trip-type
   // id (custom / interstate / airport / point). Used to charge these via Paystack.
   tripRates: Record<string, number>;
+  // Quick Booking prices per car: the Airport Pickup fare and the 12-hour fare,
+  // both in Naira, keyed by fleet variant id. Shown on the car step.
+  qbRates: Record<string, { airport: number; hours12: number }>;
   // ApexRide's bank details — legacy; Paystack is the live channel now.
   payment: PaymentInfo;
 };
@@ -79,6 +82,20 @@ export const DEFAULT_CONFIG: SiteConfig = {
   quickCars: [],
   carRates: { ...RATE_PER_HOUR },
   tripRates: { custom: 100000, interstate: 150000, airport: 40000, point: 60000 },
+  qbRates: {
+    "phantom-2023": { airport: 200000, hours12: 400000 },
+    "sclass-2023": { airport: 150000, hours12: 300000 },
+    "g63-2022": { airport: 150000, hours12: 300000 },
+    "lx600-2024": { airport: 150000, hours12: 300000 },
+    "rangerover-hse-2024": { airport: 120000, hours12: 220000 },
+    "escalade-2024": { airport: 100000, hours12: 200000 },
+    "velar-2023": { airport: 90000, hours12: 150000 },
+    "gle53-suv-2023": { airport: 100000, hours12: 180000 },
+    "gle53-coupe-2023": { airport: 100000, hours12: 180000 },
+    "gx460-2019": { airport: 90000, hours12: 140000 },
+    "prado-2023": { airport: 90000, hours12: 140000 },
+    "hilux-2023": { airport: 100000, hours12: 150000 },
+  },
   payment: { ...PAYMENT },
 };
 
