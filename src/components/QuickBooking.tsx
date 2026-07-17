@@ -25,7 +25,6 @@ import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
 import type { Booking } from "@/lib/bookings";
 
 const BLUE = "#00209C";
-const AVAILABLE_CARS: Variant[] = CARS.filter((c) => c.image);
 const DAYS_AHEAD = 60;
 
 // Lagos airport terminals for an airport pickup, plus "Other" for a typed one.
@@ -85,10 +84,14 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   }, []);
 
   const allCars: Variant[] = [
-    ...AVAILABLE_CARS.filter((c) => !cfg.hiddenCars.includes(c.name)),
+    ...CARS,
     ...cfg.extraCars.map((c) => ({ id: c.id, label: c.year, name: c.name, year: Number(c.year) || 2025, type: c.type || "Fleet selection", specs: c.specs, image: c.image })),
   ];
-  const availableCars: Variant[] = cfg.quickCars.length ? allCars.filter((c) => cfg.quickCars.includes(c.id)) : allCars;
+  // Admin's chosen Quick Booking cars, in order (photo optional). Empty → every
+  // photographed car.
+  const availableCars: Variant[] = cfg.quickCars.length
+    ? cfg.quickCars.map((id) => allCars.find((c) => c.id === id)).filter((c): c is Variant => Boolean(c))
+    : allCars.filter((c) => c.image && !cfg.hiddenCars.includes(c.name));
 
   // Price for a car + service from the admin-editable Quick Booking rates.
   const priceFor = (carId: string, svc: Service): number => {
@@ -259,13 +262,23 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 onClick={() => { setCar(c); setStep(1); }}
                 className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${active ? "border-[#00209C] bg-[#00209C]/[0.05] shadow-sm" : "border-neutral-900/10 bg-white hover:border-[#00209C]/40 hover:shadow-sm"}`}
               >
-                <span className="relative block h-12 shrink-0" style={{ width: "5rem" }}>
-                  {c.image && <Image src={c.image} alt="" fill sizes="80px" className="object-contain" />}
+                <span className="relative block h-12 shrink-0 overflow-hidden rounded-lg" style={{ width: "5rem" }}>
+                  {c.image ? (
+                    <Image src={c.image} alt="" fill sizes="80px" className="object-contain" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center bg-neutral-100 text-neutral-300">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13" /><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z" /><circle cx="7.5" cy="16.5" r="0.5" /><circle cx="16.5" cy="16.5" r="0.5" />
+                      </svg>
+                    </span>
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-sm font-semibold ${active ? "text-[#00209C]" : "text-neutral-900"}`}>{c.name}</span>
                   <span className="mt-1 flex flex-wrap gap-1">
-                    <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">Airport <span className="tabular-nums" style={{ color: BLUE }}>{naira(r?.airport ?? 0)}</span></span>
+                    {(r?.airport ?? 0) > 0 && (
+                      <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">Airport <span className="tabular-nums" style={{ color: BLUE }}>{naira(r!.airport)}</span></span>
+                    )}
                     <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">12hrs <span className="tabular-nums" style={{ color: BLUE }}>{naira(r?.hours12 ?? 0)}</span></span>
                   </span>
                 </span>
@@ -278,7 +291,9 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
           {step === 1 && car && (
             <>
               {([
-                { id: "airport" as Service, name: "Airport Pickup", desc: "We meet you at your terminal and drive you in.", price: priceFor(car.id, "airport") },
+                ...(priceFor(car.id, "airport") > 0
+                  ? [{ id: "airport" as Service, name: "Airport Pickup", desc: "We meet you at your terminal and drive you in.", price: priceFor(car.id, "airport") }]
+                  : []),
                 { id: "12h" as Service, name: "12 Hours", desc: "A chauffeur for a fixed 12-hour block, wherever you go.", price: priceFor(car.id, "12h") },
               ]).map((s) => {
                 const active = service === s.id;

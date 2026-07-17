@@ -79,22 +79,27 @@ export const DEFAULT_CONFIG: SiteConfig = {
   ],
   extraCars: [],
   hiddenCars: [],
-  quickCars: [],
+  // Quick Booking's "Within Lagos" roster — the exact 5 cars, in order.
+  quickCars: ["lx570-2019", "gx460-2019", "prado-upgraded", "escalade-2024", "hilux-2023"],
   carRates: { ...RATE_PER_HOUR },
   tripRates: { custom: 100000, interstate: 150000, airport: 40000, point: 60000 },
   qbRates: {
+    // The 5 "Within Lagos" cars (airport 0 = airport pickup not offered).
+    "lx570-2019": { airport: 150000, hours12: 300000 },
+    "gx460-2019": { airport: 90000, hours12: 140000 },
+    "prado-upgraded": { airport: 90000, hours12: 140000 },
+    "escalade-2024": { airport: 0, hours12: 200000 },
+    "hilux-2023": { airport: 100000, hours12: 150000 },
+    // Sensible defaults for the rest of the fleet (used only if the team adds them).
     "phantom-2023": { airport: 200000, hours12: 400000 },
     "sclass-2023": { airport: 150000, hours12: 300000 },
     "g63-2022": { airport: 150000, hours12: 300000 },
     "lx600-2024": { airport: 150000, hours12: 300000 },
     "rangerover-hse-2024": { airport: 120000, hours12: 220000 },
-    "escalade-2024": { airport: 100000, hours12: 200000 },
     "velar-2023": { airport: 90000, hours12: 150000 },
     "gle53-suv-2023": { airport: 100000, hours12: 180000 },
     "gle53-coupe-2023": { airport: 100000, hours12: 180000 },
-    "gx460-2019": { airport: 90000, hours12: 140000 },
     "prado-2023": { airport: 90000, hours12: 140000 },
-    "hilux-2023": { airport: 100000, hours12: 150000 },
   },
   payment: { ...PAYMENT },
 };

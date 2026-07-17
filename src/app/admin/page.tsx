@@ -537,7 +537,7 @@ export default function AdminPage() {
                 Pick which cars appear in the Quick Booking pop-up. {config.quickCars.length === 0 ? "None selected, all cars show." : `${config.quickCars.length} selected.`}
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => {
+                {[...CARS, ...config.extraCars].map((c) => {
                   const on = config.quickCars.includes(c.id);
                   return (
                     <button
@@ -547,7 +547,7 @@ export default function AdminPage() {
                       className="rounded-full border px-3 py-1 text-[11px] font-medium transition-colors"
                       style={on ? { borderColor: BLUE, background: BLUE, color: "#fff" } : { borderColor: "rgba(0,0,0,0.12)", color: "#525252" }}
                     >
-                      {c.name}
+                      {c.name} · {c.year}{!c.image ? " (no photo)" : ""}
                     </button>
                   );
                 })}
@@ -622,11 +622,14 @@ export default function AdminPage() {
                   <span className="w-28 text-right">Airport</span>
                   <span className="w-28 text-right">12 hours</span>
                 </div>
-                {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => {
+                {((config.quickCars.length
+                  ? config.quickCars.map((id) => [...CARS, ...config.extraCars].find((c) => c.id === id)).filter(Boolean)
+                  : [...CARS.filter((c) => c.image), ...config.extraCars]
+                ) as { id: string; name: string; year: number | string }[]).map((c) => {
                   const r = config.qbRates[c.id] ?? { airport: 0, hours12: 0 };
                   return (
                     <div key={c.id} className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name} · {c.year}</span>
                       <input
                         type="number" min={0} step={1000} value={r.airport || ""} placeholder="0"
                         onChange={(e) => set("qbRates", { ...config.qbRates, [c.id]: { ...r, airport: Number(e.target.value) || 0 } })}
