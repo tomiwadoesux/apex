@@ -1,8 +1,9 @@
 // POST /api/bookings — save a booking and return its unique reference.
 // Runs on the Node runtime so the file-store fallback (fs) works in local dev.
 
-import { createBooking, type BookingInput } from "@/lib/bookings";
-import { notifyBookingCreated } from "@/lib/notify";
+import { after } from "next/server";
+import { createBooking, type Booking, type BookingInput } from "@/lib/bookings";
+import { notifyBookingCreated, notifyBookingUnsaved } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -50,14 +51,19 @@ export async function POST(request: Request) {
   const receipt = typeof body.receipt === "string" && body.receipt.startsWith("data:image/") ? body.receipt : null;
   const receiptName = str(body.receiptName, 120) || null;
 
+  let booking: Booking;
   try {
-    const booking = await createBooking(input);
-    // Emails + team push. Awaited so serverless doesn't kill the sends, but
-    // notifyBookingCreated never throws — a failed email can't fail the booking.
-    await notifyBookingCreated(booking, { receipt, receiptName });
-    return Response.json({ booking }, { status: 201 });
+    booking = await createBooking(input);
   } catch (err) {
     console.error("[bookings] create failed", err);
+    // The guest is still shown a pass (the form falls back to a local reference),
+    // so get the details to the team rather than lose the booking.
+    after(() => notifyBookingUnsaved(input, { receipt, receiptName }));
     return Response.json({ error: "Could not save booking" }, { status: 500 });
   }
+  // Emails, team push, Telegram + WhatsApp, sent after the response so the guest
+  // isn't kept waiting; after() keeps the function alive until they finish, and
+  // notifyBookingCreated never throws, so a failed send can't fail the booking.
+  after(() => notifyBookingCreated(booking, { receipt, receiptName }));
+  return Response.json({ booking }, { status: 201 });
 }

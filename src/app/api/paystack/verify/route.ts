@@ -2,6 +2,7 @@
 // -side, then mark the booking paid and alert the team. The client never decides
 // payment succeeded; this route (with the secret key) is the only authority.
 
+import { after } from "next/server";
 import { getBooking, updateBooking } from "@/lib/bookings";
 import { verifyTransaction, paystackConfigured } from "@/lib/paystack";
 import { notifyPaymentReceived } from "@/lib/notify";
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
   const naira = Math.round(tx.amount / 100);
   const note = `Paid ₦${naira.toLocaleString("en-NG")} via Paystack · ref ${tx.reference}`;
   const updated = (await updateBooking(bookingId, { paid: true, paymentNote: note })) ?? { ...booking, paid: true, paymentNote: note };
-  await notifyPaymentReceived(updated);
+  after(() => notifyPaymentReceived(updated));
 
   return Response.json({ ok: true, bookingId });
 }

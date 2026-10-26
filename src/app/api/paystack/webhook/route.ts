@@ -5,6 +5,7 @@
 // booking paid on charge.success. Set this URL in Paystack → Settings → Webhooks.
 
 import crypto from "crypto";
+import { after } from "next/server";
 import { getBooking, updateBooking } from "@/lib/bookings";
 import { notifyPaymentReceived } from "@/lib/notify";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   const naira = Math.round((event.data?.amount ?? 0) / 100);
   const note = `Paid ₦${naira.toLocaleString("en-NG")} via Paystack · ref ${event.data?.reference ?? ""}`.trim();
   const updated = (await updateBooking(bookingId, { paid: true, paymentNote: note })) ?? { ...booking, paid: true, paymentNote: note };
-  await notifyPaymentReceived(updated);
+  after(() => notifyPaymentReceived(updated));
 
   return Response.json({ ok: true });
 }

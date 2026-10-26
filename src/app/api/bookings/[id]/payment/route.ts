@@ -3,6 +3,7 @@
 // on the booking and emails the team the receipt. Kept separate from booking
 // creation so payment can happen later (and persist until it does).
 
+import { after } from "next/server";
 import { getBooking, updateBooking } from "@/lib/bookings";
 import { notifyPaymentReceived } from "@/lib/notify";
 
@@ -28,7 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const receiptName = str(body.receiptName, 120) || null;
 
   const updated = (await updateBooking(id, { paymentNote })) ?? { ...booking, paymentNote };
-  await notifyPaymentReceived(updated, { receipt, receiptName });
+  after(() => notifyPaymentReceived(updated, { receipt, receiptName }));
 
   return Response.json({ ok: true });
 }

@@ -1514,7 +1514,7 @@ export default function BookingForm() {
               {liveAmount != null ? "Total" : "Rate"}
             </span>
             <span className="text-sm font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-              {liveAmount != null ? naira(liveAmount) : `${naira(liveRate)}/hr`}
+              {naira(liveAmount ?? liveRate)}
             </span>
           </div>
         </div>
@@ -1892,7 +1892,7 @@ export default function BookingForm() {
                   </h2>
                   {!isCustomCar && (
                     <div className="car-detail-text mt-1 text-lg sm:text-xl font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                      {naira(displayedRate)}<span className={`ml-1 text-xs font-medium ${isLight ? "text-neutral-400" : "text-white/40"}`}>/ hour</span>
+                      {naira(displayedRate)}
                     </div>
                   )}
                   <div className={`text-xs sm:text-sm font-medium tracking-wide mt-1.5 ${isLight ? "text-neutral-600" : "text-white/60"} text-center`}>

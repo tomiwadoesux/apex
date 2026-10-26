@@ -39,31 +39,55 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
   const [tab, setTab] = useState<"bookings" | "options">("bookings");
 
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [openRef, setOpenRef] = useState<string | null>(null);
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
-  const [notifyStatus, setNotifyStatus] = useState<{ resend: boolean; companyEmail: string | null; ntfyTopic: string | null; supabase: boolean } | null>(null);
+  const [saveError, setSaveError] = useState("");
+  const [notifyStatus, setNotifyStatus] = useState<{
+    resend: boolean;
+    companyEmail: string | null;
+    ntfyTopic: string | null;
+    telegramBot: boolean;
+    telegramChats: number;
+    whatsappTo: string | null;
+    whatsappKey: boolean;
+    supabase: boolean;
+  } | null>(null);
   const [testResults, setTestResults] = useState<{ channel: string; ok: boolean; detail: string }[] | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const loadAll = useCallback(async () => {
-    const [b, c, n] = await Promise.all([
-      fetch("/api/admin/bookings"),
-      fetch("/api/admin/config"),
-      fetch("/api/admin/notify-status"),
-    ]);
-    if (b.status === 401 || c.status === 401) {
-      setAuthed(false);
-      return;
+  // Never throws: a failed request becomes a visible error instead of silently
+  // leaving the panel on the login screen (which looked like a wrong password).
+  const loadAll = useCallback(async (): Promise<"ok" | "unauthorized" | "failed"> => {
+    try {
+      const [b, c, n] = await Promise.all([
+        fetch("/api/admin/bookings"),
+        fetch("/api/admin/config"),
+        fetch("/api/admin/notify-status"),
+      ]);
+      if (b.status === 401 || c.status === 401) {
+        setAuthed(false);
+        return "unauthorized";
+      }
+      const data = (await b.json().catch(() => null)) as { bookings?: Booking[]; error?: string } | null;
+      setBookings(data?.bookings ?? []);
+      setLoadError(b.ok ? "" : data?.error || `Bookings couldn't load (error ${b.status}). Press Refresh to try again.`);
+      const cfg = c.ok ? ((await c.json().catch(() => null)) as SiteConfig | null) : null;
+      if (cfg) setConfig(cfg);
+      if (n.ok) setNotifyStatus(await n.json().catch(() => null));
+      setAuthed(true);
+      return "ok";
+    } catch {
+      setLoadError("Couldn't reach the server. Check your connection, then try again.");
+      setAuthed((a) => a ?? false);
+      return "failed";
     }
-    setBookings((await b.json()).bookings ?? []);
-    setConfig(await c.json());
-    if (n.ok) setNotifyStatus(await n.json());
-    setAuthed(true);
   }, []);
 
   const runNotifyTest = async () => {
@@ -81,17 +105,30 @@ export default function AdminPage() {
   }, [loadAll]);
 
   const login = async () => {
+    if (signingIn) return;
     setLoginError("");
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (res.ok) {
+    setLoadError("");
+    setSigningIn(true);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) {
+        setLoginError((await res.json().catch(() => null))?.error ?? `Login failed (error ${res.status}).`);
+        return;
+      }
       setPassword("");
-      void loadAll();
-    } else {
-      setLoginError((await res.json().catch(() => null))?.error ?? "Login failed.");
+      // The password was right; if the panel still can't see the session, the
+      // browser dropped the cookie.
+      if ((await loadAll()) === "unauthorized") {
+        setLoginError("Password accepted, but your browser didn't keep the login. Allow cookies for this site, open it over https://, and try again.");
+      }
+    } catch {
+      setLoginError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setSigningIn(false);
     }
   };
 
@@ -117,24 +154,29 @@ export default function AdminPage() {
   const patchBooking = async (ref: string, patch: Partial<Pick<Booking, "status" | "driver" | "notes" | "paid">>) => {
     // optimistic — the row updates immediately, the server confirms
     setBookings((all) => all.map((b) => (b.id === ref ? { ...b, ...patch } : b)));
-    await fetch(`/api/admin/bookings/${encodeURIComponent(ref)}`, {
+    const res = await fetch(`/api/admin/bookings/${encodeURIComponent(ref)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
-    });
+    }).catch(() => null);
+    if (!res?.ok) setLoadError(`Your change to ${ref} didn't save${res ? ` (error ${res.status})` : ""}. Press Refresh and try again.`);
   };
 
   const saveConfig = async () => {
     if (!config) return;
     setSaving(true);
+    setSaveError("");
     const res = await fetch("/api/admin/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
-    });
-    if (res.ok) {
+    }).catch(() => null);
+    if (res?.ok) {
       setConfig(await res.json());
       setSavedAt(Date.now());
+    } else {
+      setSavedAt(0);
+      setSaveError(`Not saved${res ? ` (error ${res.status})` : ""}, try again`);
     }
     setSaving(false);
   };
@@ -171,6 +213,9 @@ export default function AdminPage() {
                 name="username"
                 type="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className={input}
@@ -186,6 +231,11 @@ export default function AdminPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
+                  // Once the eye shows it as text, phone keyboards would otherwise
+                  // capitalise / autocorrect it ("password" → "Password").
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`${input} pr-11`}
@@ -212,10 +262,10 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {loginError && <p className="text-xs font-medium text-red-600">{loginError}</p>}
+            {(loginError || loadError) && <p className="text-xs font-medium text-red-600">{loginError || loadError}</p>}
 
-            <button type="submit" className={`${btn} mt-1 w-full`} style={{ background: BLUE }}>
-              Sign in
+            <button type="submit" disabled={signingIn} className={`${btn} mt-1 w-full`} style={{ background: BLUE }}>
+              {signingIn ? "Signing in…" : "Sign in"}
             </button>
           </form>
 
@@ -230,7 +280,7 @@ export default function AdminPage() {
     );
   }
 
-  if (authed === null || !config) {
+  if (authed === null) {
     return <main className="grid min-h-dvh place-items-center bg-[#f4f6fb] text-sm text-neutral-400">Loading…</main>;
   }
 
@@ -260,6 +310,7 @@ export default function AdminPage() {
             type="button"
             onClick={async () => {
               await fetch("/api/admin/login", { method: "DELETE" });
+              setLoadError("");
               setAuthed(false);
             }}
             className="ml-2 text-xs font-semibold text-neutral-400 hover:text-neutral-900"
@@ -290,6 +341,22 @@ export default function AdminPage() {
                       { on: notifyStatus.resend, name: notifyStatus.resend ? "Email keys OK" : "No RESEND_API_KEY" },
                       { on: Boolean(notifyStatus.companyEmail), name: notifyStatus.companyEmail ? `Alerts → ${notifyStatus.companyEmail}` : "No COMPANY_EMAIL" },
                       { on: Boolean(notifyStatus.ntfyTopic), name: notifyStatus.ntfyTopic ? `Push → ${notifyStatus.ntfyTopic}` : "No NTFY_TOPIC" },
+                      {
+                        on: notifyStatus.telegramBot && notifyStatus.telegramChats > 0,
+                        name: !notifyStatus.telegramBot
+                          ? "No TELEGRAM_BOT_TOKEN"
+                          : notifyStatus.telegramChats
+                            ? `Telegram → ${notifyStatus.telegramChats} chat${notifyStatus.telegramChats > 1 ? "s" : ""}`
+                            : "No TELEGRAM_CHAT_ID",
+                      },
+                      {
+                        on: Boolean(notifyStatus.whatsappTo && notifyStatus.whatsappKey),
+                        name: !notifyStatus.whatsappTo
+                          ? "No CALLMEBOT_PHONE"
+                          : notifyStatus.whatsappKey
+                            ? `WhatsApp → ${notifyStatus.whatsappTo}`
+                            : "No CALLMEBOT_API_KEY",
+                      },
                       { on: notifyStatus.supabase, name: notifyStatus.supabase ? "Supabase connected" : "Supabase not connected" },
                     ].map((c) => (
                       <span key={c.name} className="flex items-center gap-1.5">
@@ -312,10 +379,34 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
+                {!(notifyStatus.telegramBot && notifyStatus.telegramChats > 0) && !(notifyStatus.whatsappTo && notifyStatus.whatsappKey) && (
+                  <details className="mt-3 border-t border-neutral-100 pt-3 text-xs leading-relaxed text-neutral-500">
+                    <summary className="cursor-pointer font-semibold text-neutral-700">Get booking alerts on Telegram or WhatsApp</summary>
+                    <p className="mt-2">
+                      <span className="font-semibold text-neutral-700">Telegram (most reliable):</span>{" "}in Telegram, message
+                      @BotFather, send /newbot and copy the token it gives you into{" "}
+                      <span className="font-mono font-semibold text-neutral-700">TELEGRAM_BOT_TOKEN</span>, then redeploy. Open your new
+                      bot and press Start (or add it to your team&apos;s group and say hi), then press Send test here: it shows your chat
+                      id. Put it in <span className="font-mono font-semibold text-neutral-700">TELEGRAM_CHAT_ID</span> (separate several
+                      with commas) and redeploy again.
+                    </p>
+                    <p className="mt-2">
+                      <span className="font-semibold text-neutral-700">WhatsApp:</span>{" "}get a free API key for your own number from
+                      CallMeBot (callmebot.com, &ldquo;WhatsApp API&rdquo;: you message their bot once and it replies with the key). Set{" "}
+                      <span className="font-mono font-semibold text-neutral-700">CALLMEBOT_PHONE</span> to your number and{" "}
+                      <span className="font-mono font-semibold text-neutral-700">CALLMEBOT_API_KEY</span> to the key.
+                    </p>
+                    <p className="mt-2">Set these in Vercel → Settings → Environment Variables; a change only applies after a redeploy.</p>
+                  </details>
+                )}
               </div>
             )}
 
-            {bookings.length === 0 && <p className="text-sm text-neutral-400">No bookings yet.</p>}
+            {loadError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-relaxed text-red-700">{loadError}</div>
+            )}
+
+            {bookings.length === 0 && !loadError && <p className="text-sm text-neutral-400">No bookings yet.</p>}
             {bookings.map((b) => {
               const status = (b.status ?? "new") as BookingStatus;
               const open = openRef === b.id;
@@ -410,12 +501,16 @@ export default function AdminPage() {
         )}
 
         {/* ── OPTIONS ── */}
-        {tab === "options" && (
+        {tab === "options" && !config && (
+          <p className="text-sm text-red-600">The form options couldn&apos;t load. Press Refresh on the Bookings tab to try again.</p>
+        )}
+        {tab === "options" && config && (
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h1 className="font-josefin text-2xl font-light">Form options</h1>
               <div className="flex items-center gap-3">
                 {savedAt > 0 && <span className="text-xs text-green-700">Saved ✓</span>}
+                {saveError && <span className="text-xs font-medium text-red-600">{saveError}</span>}
                 <button type="button" onClick={() => void saveConfig()} disabled={saving} className={btn} style={{ background: BLUE }}>
                   {saving ? "Saving…" : "Save changes"}
                 </button>

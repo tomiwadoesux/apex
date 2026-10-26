@@ -23,6 +23,8 @@ export async function sb<T = unknown>(
     },
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
     cache: "no-store",
+    // Fail fast if the project is down instead of hanging the request.
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Supabase request failed: ${res.status} ${await res.text().catch(() => "")}`);
   if (res.status === 204 || init?.prefer === "return=minimal") return undefined as T;
