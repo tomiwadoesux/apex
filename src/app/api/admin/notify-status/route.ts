@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 // GET — which notification channels the server has configured (booleans only).
 export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  return NextResponse.json(notificationStatus(), { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(await notificationStatus(), { headers: { "Cache-Control": "no-store" } });
 }
 
 // POST — fire a test email + push and report per-channel results.

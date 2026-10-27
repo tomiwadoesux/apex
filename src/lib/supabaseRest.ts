@@ -27,6 +27,7 @@ export async function sb<T = unknown>(
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Supabase request failed: ${res.status} ${await res.text().catch(() => "")}`);
-  if (res.status === 204 || init?.prefer === "return=minimal") return undefined as T;
+  // return=minimal (alone or in a list, e.g. with resolution=merge-duplicates) means an empty body.
+  if (res.status === 204 || init?.prefer?.includes("return=minimal")) return undefined as T;
   return (await res.json()) as T;
 }

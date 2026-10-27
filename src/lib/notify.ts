@@ -3,16 +3,18 @@
 //   • Resend email to the company inbox (COMPANY_EMAIL) announcing the booking.
 //   • ntfy.sh push to the team's phones (NTFY_TOPIC) — anyone with the free ntfy
 //     app subscribed to the topic gets an instant lock-screen notification.
-//   • Telegram message from the team's bot (TELEGRAM_BOT_TOKEN, made with
-//     @BotFather) to every chat in TELEGRAM_CHAT_ID — comma separated, so it can
-//     be you, a teammate or a group the bot was added to.
-//   • WhatsApp message to your own number through CallMeBot's free API
-//     (CALLMEBOT_PHONE + the CALLMEBOT_API_KEY their bot sends you).
+//   • Telegram message from the team's bot (made with @BotFather) to every chat
+//     connected to it: you, a teammate, or a group the bot was added to.
+//   • WhatsApp message to your own number through CallMeBot's free API.
+// Telegram and WhatsApp are set up in /admin (saved by notifySettings); the
+// TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID / CALLMEBOT_PHONE / CALLMEBOT_API_KEY env
+// vars still work, and are the backup when the database can't be read.
 //
 // Every channel is optional: a missing env var just skips that channel, and a
 // failed send never breaks the booking itself. Server-only.
 
 import type { Booking, BookingInput } from "./bookings";
+import { getNotifySettings, type AlertChat } from "./notifySettings";
 import { naira } from "./pricing";
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
@@ -23,15 +25,34 @@ const FROM = process.env.RESEND_FROM || "ApexRide <bookings@ayotomcs.me>";
 // (not from COMPANY_EMAIL) so a stale env var can't redirect them elsewhere.
 const COMPANY_EMAIL = "apexrental08@gmail.com";
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
-const TELEGRAM_CHATS = (process.env.TELEGRAM_CHAT_ID ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-// International format for CallMeBot; a local Nigerian 0… number gets +234.
-const callmebotDigits = (process.env.CALLMEBOT_PHONE ?? "").replace(/\D/g, "").replace(/^0/, "234");
-const WHATSAPP_PHONE = callmebotDigits ? `+${callmebotDigits}` : null;
-const WHATSAPP_KEY = process.env.CALLMEBOT_API_KEY?.trim();
-const telegramOn = Boolean(TELEGRAM_TOKEN && TELEGRAM_CHATS.length);
-const whatsappOn = Boolean(WHATSAPP_PHONE && WHATSAPP_KEY);
 const SITE_URL = process.env.SITE_URL || "https://apexriderental.com";
+
+// International format for CallMeBot; a local Nigerian 0… number gets +234.
+export function normalizeWhatsApp(raw: string | null | undefined): string {
+  const digits = (raw ?? "").replace(/\D/g, "").replace(/^0/, "234");
+  return digits ? `+${digits}` : "";
+}
+
+type ChatChannels = { telegramToken: string; telegramChats: string[]; whatsappPhone: string; whatsappKey: string };
+
+// The Telegram / WhatsApp setup in force: what was saved in /admin, else the env vars.
+async function chatChannels(): Promise<ChatChannels> {
+  const s = await getNotifySettings();
+  const telegram = s.telegramToken
+    ? { telegramToken: s.telegramToken, telegramChats: s.telegramChats.map((c) => c.id) }
+    : {
+        telegramToken: process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "",
+        telegramChats: (process.env.TELEGRAM_CHAT_ID ?? "").split(",").map((c) => c.trim()).filter(Boolean),
+      };
+  const whatsapp =
+    s.whatsappPhone && s.whatsappKey
+      ? { whatsappPhone: s.whatsappPhone, whatsappKey: s.whatsappKey }
+      : { whatsappPhone: normalizeWhatsApp(process.env.CALLMEBOT_PHONE), whatsappKey: process.env.CALLMEBOT_API_KEY?.trim() ?? "" };
+  return { ...telegram, ...whatsapp };
+}
+
+const telegramOn = (c: ChatChannels) => Boolean(c.telegramToken && c.telegramChats.length);
+const whatsappOn = (c: ChatChannels) => Boolean(c.whatsappPhone && c.whatsappKey);
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -155,29 +176,53 @@ function telegramButtons(b: Booking): TelegramButton[] {
   return buttons;
 }
 
-async function sendTelegram(html: string, buttons: TelegramButton[] = []): Promise<void> {
-  const post = (chatId: string, withButtons: boolean) =>
-    fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: html,
-        parse_mode: "HTML",
-        ...(withButtons && buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {}),
-      }),
-      signal: AbortSignal.timeout(10_000),
+// Telegram Bot API call → its `result`, or an Error carrying Telegram's reason.
+async function telegramApi<T>(token: string, method: string, body?: unknown): Promise<T> {
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  const data = (await res.json().catch(() => null)) as { ok?: boolean; result?: T; description?: string } | null;
+  if (!res.ok || !data?.ok) {
+    const hint = res.status === 401 || res.status === 404 ? " (check the bot token)" : "";
+    throw Object.assign(new Error(`Telegram ${res.status}: ${data?.description ?? "no reply"}${hint}`), { status: res.status });
+  }
+  return data.result as T;
+}
+
+// Checks a bot token and returns the bot's handle + name (for its t.me link).
+export async function telegramGetMe(token: string): Promise<{ username: string; name: string }> {
+  const me = await telegramApi<{ username?: string; first_name?: string }>(token, "getMe");
+  return { username: me.username ?? "", name: me.first_name ?? "" };
+}
+
+export async function sendTelegramMessage(token: string, chatId: string, html: string, buttons: TelegramButton[] = []): Promise<void> {
+  const send = (withButtons: boolean) =>
+    telegramApi(token, "sendMessage", {
+      chat_id: chatId,
+      text: html,
+      parse_mode: "HTML",
+      ...(withButtons && buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {}),
     });
+  try {
+    await send(true);
+  } catch (e) {
+    // A button Telegram rejects mustn't cost the alert: resend without them.
+    if ((e as { status?: number }).status !== 400 || !buttons.length) throw e;
+    await send(false);
+  }
+}
+
+async function sendTelegram(token: string, chats: string[], html: string, buttons: TelegramButton[] = []): Promise<void> {
   const sends = await Promise.allSettled(
-    TELEGRAM_CHATS.map(async (chatId) => {
-      let res = await post(chatId, true);
-      // A button Telegram rejects mustn't cost the alert: resend without them.
-      if (res.status === 400 && buttons.length) res = await post(chatId, false);
-      if (!res.ok) {
-        const why = ((await res.json().catch(() => null)) as { description?: string } | null)?.description;
-        throw new Error(`Telegram ${res.status} for chat ${chatId}: ${why ?? "no reply"}`);
-      }
-    }),
+    chats.map((chatId) =>
+      sendTelegramMessage(token, chatId, html, buttons).catch((e: Error) => {
+        throw new Error(`${e.message} (chat ${chatId})`);
+      }),
+    ),
   );
   const failed = sends.find((s): s is PromiseRejectedResult => s.status === "rejected");
   if (failed) throw failed.reason;
@@ -185,33 +230,25 @@ async function sendTelegram(html: string, buttons: TelegramButton[] = []): Promi
 
 type TelegramChat = { id: number; title?: string; first_name?: string; last_name?: string; username?: string };
 
-// Chats that messaged the bot recently (Telegram keeps ~24h of updates), as
-// "id (name)", so Send test can show which id belongs in TELEGRAM_CHAT_ID.
-async function telegramChatsSeen(): Promise<string[]> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
-  });
-  const data = (await res.json().catch(() => null)) as {
-    ok?: boolean;
-    description?: string;
-    result?: { message?: { chat: TelegramChat }; channel_post?: { chat: TelegramChat }; my_chat_member?: { chat: TelegramChat } }[];
-  } | null;
-  if (!res.ok || !data?.ok) {
-    throw new Error(`Telegram ${res.status}: ${data?.description ?? "no reply"}${res.status === 401 || res.status === 404 ? ", check TELEGRAM_BOT_TOKEN" : ""}`);
-  }
-  const seen = new Map<number, string>();
-  for (const u of data.result ?? []) {
+// People and groups that messaged the bot recently (Telegram keeps ~24h of
+// updates): who /admin can connect, or whose id goes in TELEGRAM_CHAT_ID.
+export async function telegramChatsSeen(token: string): Promise<AlertChat[]> {
+  const updates = await telegramApi<{ message?: { chat: TelegramChat }; channel_post?: { chat: TelegramChat }; my_chat_member?: { chat: TelegramChat } }[]>(
+    token,
+    "getUpdates",
+  );
+  const seen = new Map<string, string>();
+  for (const u of updates) {
     const chat = u.message?.chat ?? u.channel_post?.chat ?? u.my_chat_member?.chat;
-    if (chat) seen.set(chat.id, chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.username || "");
+    if (chat) seen.set(String(chat.id), chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.username || "");
   }
-  return [...seen].map(([id, name]) => (name ? `${id} (${name})` : String(id)));
+  return [...seen].map(([id, name]) => ({ id, name: name || id }));
 }
 
 // CallMeBot answers with a short HTML page, returned here as plain text. It can
 // answer 200 even for a bad key, so the reply itself is checked too.
-async function sendWhatsApp(text: string): Promise<string> {
-  const query = new URLSearchParams({ phone: WHATSAPP_PHONE ?? "", text, apikey: WHATSAPP_KEY ?? "" });
+export async function sendWhatsApp(phone: string, key: string, text: string): Promise<string> {
+  const query = new URLSearchParams({ phone, text, apikey: key });
   const res = await fetch(`https://api.callmebot.com/whatsapp.php?${query}`, {
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -224,10 +261,10 @@ async function sendWhatsApp(text: string): Promise<string> {
 }
 
 // Telegram + WhatsApp sends for one alert, for whichever are configured.
-function chatAlerts(title: string, b: Booking, note?: string): Promise<unknown>[] {
+function chatAlerts(c: ChatChannels, title: string, b: Booking, note?: string): Promise<unknown>[] {
   const jobs: Promise<unknown>[] = [];
-  if (telegramOn) jobs.push(sendTelegram(telegramAlert(title, b, note), telegramButtons(b)));
-  if (whatsappOn) jobs.push(sendWhatsApp(whatsappAlert(title, b, note)));
+  if (telegramOn(c)) jobs.push(sendTelegram(c.telegramToken, c.telegramChats, telegramAlert(title, b, note), telegramButtons(b)));
+  if (whatsappOn(c)) jobs.push(sendWhatsApp(c.whatsappPhone, c.whatsappKey, whatsappAlert(title, b, note)));
   return jobs;
 }
 
@@ -239,16 +276,17 @@ async function settle(jobs: Promise<unknown>[], what: string): Promise<void> {
 
 // Which channels the server actually has configured — surfaced in /admin so a
 // missing env var is visible instead of a silent skip.
-export function notificationStatus() {
+export async function notificationStatus() {
+  const c = await chatChannels();
   return {
     resend: Boolean(RESEND_KEY),
     companyEmail: COMPANY_EMAIL || null,
     from: FROM,
     ntfyTopic: NTFY_TOPIC || null,
-    telegramBot: Boolean(TELEGRAM_TOKEN),
-    telegramChats: TELEGRAM_CHATS.length,
-    whatsappTo: WHATSAPP_PHONE,
-    whatsappKey: Boolean(WHATSAPP_KEY),
+    telegramBot: Boolean(c.telegramToken),
+    telegramChats: c.telegramChats.length,
+    whatsappTo: c.whatsappPhone || null,
+    whatsappKey: Boolean(c.whatsappKey),
     supabase: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   };
 }
@@ -292,36 +330,34 @@ export async function sendTestNotifications(): Promise<{ channel: string; ok: bo
       results.push({ channel: "push", ok: false, detail: String(e).slice(0, 300) });
     }
   }
-  if (!TELEGRAM_TOKEN) {
-    results.push({ channel: "telegram", ok: false, detail: "TELEGRAM_BOT_TOKEN is not set" });
-  } else if (!TELEGRAM_CHATS.length) {
-    // No chat yet: list who has messaged the bot, so the right id can be copied.
-    try {
-      const chats = await telegramChatsSeen();
-      results.push({
-        channel: "telegram",
-        ok: false,
-        detail: chats.length
-          ? `TELEGRAM_CHAT_ID is not set. Chats that messaged your bot: ${chats.join(", ")}. Put the number in TELEGRAM_CHAT_ID.`
-          : "TELEGRAM_CHAT_ID is not set. Send your bot any message in Telegram, then press Send test again to see your chat id.",
-      });
-    } catch (e) {
-      results.push({ channel: "telegram", ok: false, detail: String(e).slice(0, 300) });
-    }
+  const c = await chatChannels();
+  if (!c.telegramToken) {
+    results.push({ channel: "telegram", ok: false, detail: "not set up yet, add your bot under Booking alerts below" });
+  } else if (!c.telegramChats.length) {
+    results.push({ channel: "telegram", ok: false, detail: "nobody is connected to the bot yet, see Booking alerts below" });
   } else {
     try {
-      await sendTelegram(telegramAlert("✅ ApexRide test notification", fake, "If you can read this, Telegram booking alerts are working."), telegramButtons(fake));
-      results.push({ channel: "telegram", ok: true, detail: `sent to ${TELEGRAM_CHATS.length} chat${TELEGRAM_CHATS.length > 1 ? "s" : ""}` });
+      await sendTelegram(
+        c.telegramToken,
+        c.telegramChats,
+        telegramAlert("✅ ApexRide test notification", fake, "If you can read this, Telegram booking alerts are working."),
+        telegramButtons(fake),
+      );
+      results.push({ channel: "telegram", ok: true, detail: `sent to ${c.telegramChats.length} chat${c.telegramChats.length > 1 ? "s" : ""}` });
     } catch (e) {
       results.push({ channel: "telegram", ok: false, detail: String(e).slice(0, 300) });
     }
   }
-  if (!whatsappOn) {
-    results.push({ channel: "whatsapp", ok: false, detail: `${WHATSAPP_PHONE ? "CALLMEBOT_API_KEY" : "CALLMEBOT_PHONE"} is not set` });
+  if (!whatsappOn(c)) {
+    results.push({ channel: "whatsapp", ok: false, detail: "not set up yet, see Booking alerts below" });
   } else {
     try {
-      const reply = await sendWhatsApp(whatsappAlert("✅ ApexRide test notification", fake, "If you can read this, WhatsApp booking alerts are working."));
-      results.push({ channel: "whatsapp", ok: true, detail: `sent to ${WHATSAPP_PHONE}, CallMeBot replied: ${reply.slice(0, 160) || "OK"}` });
+      const reply = await sendWhatsApp(
+        c.whatsappPhone,
+        c.whatsappKey,
+        whatsappAlert("✅ ApexRide test notification", fake, "If you can read this, WhatsApp booking alerts are working."),
+      );
+      results.push({ channel: "whatsapp", ok: true, detail: `sent to ${c.whatsappPhone}, CallMeBot replied: ${reply.slice(0, 160) || "OK"}` });
     } catch (e) {
       results.push({ channel: "whatsapp", ok: false, detail: String(e).slice(0, 300) });
     }
@@ -333,7 +369,8 @@ export async function notifyBookingCreated(
   b: Booking,
   extras?: { receipt?: string | null; receiptName?: string | null },
 ): Promise<void> {
-  if (!RESEND_KEY && !NTFY_TOPIC && !telegramOn && !whatsappOn) {
+  const c = await chatChannels();
+  if (!RESEND_KEY && !NTFY_TOPIC && !telegramOn(c) && !whatsappOn(c)) {
     console.warn("[notify] skipped, no notification channel configured");
     return;
   }
@@ -373,7 +410,7 @@ export async function notifyBookingCreated(
   }
 
   if (NTFY_TOPIC) jobs.push(sendPush(b));
-  jobs.push(...chatAlerts(`🚘 New booking ${b.id}`, b));
+  jobs.push(...chatAlerts(c, `🚘 New booking ${b.id}`, b));
 
   await settle(jobs, "booking");
 }
@@ -384,7 +421,8 @@ export async function notifyPaymentReceived(
   b: Booking,
   extras?: { receipt?: string | null; receiptName?: string | null },
 ): Promise<void> {
-  if (!RESEND_KEY && !NTFY_TOPIC && !telegramOn && !whatsappOn) return;
+  const c = await chatChannels();
+  if (!RESEND_KEY && !NTFY_TOPIC && !telegramOn(c) && !whatsappOn(c)) return;
   const jobs: Promise<unknown>[] = [];
   const receipt = receiptAttachment(extras?.receipt, extras?.receiptName);
 
@@ -413,7 +451,7 @@ export async function notifyPaymentReceived(
       ),
     );
   }
-  jobs.push(...chatAlerts(`💸 Payment received, ${b.id}`, b));
+  jobs.push(...chatAlerts(c, `💸 Payment received, ${b.id}`, b));
 
   await settle(jobs, "payment");
 }
@@ -450,7 +488,9 @@ export async function notifyBookingUnsaved(
       ),
     );
   }
-  jobs.push(...chatAlerts("⚠️ Booking NOT saved", b, note));
+  // With the database down, the saved Telegram/WhatsApp setup can't be read, so
+  // this reaches those apps only through the env vars; email always goes.
+  jobs.push(...chatAlerts(await chatChannels(), "⚠️ Booking NOT saved", b, note));
 
   await settle(jobs, "unsaved booking");
 }
