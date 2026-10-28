@@ -171,3 +171,14 @@ select:-webkit-autofill:focus {
   .accent-scrollbar-lg { scrollbar-width: none; }
   .accent-scrollbar-lg::-webkit-scrollbar { display: none; }
 }
+
+/* Admin: the login card settles in with a tiny rise + fade (transform/opacity
+   only, ease-out, one-shot). Respects reduced-motion. */
+@keyframes admin-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.admin-pop { animation: admin-pop 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-pop { animation: none; }
+}
