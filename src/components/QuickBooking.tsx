@@ -2,11 +2,11 @@
 
 // Quick Booking — a compact, resumable booking flow that pops up ON the landing
 // page (no navigation, no step dots). Steps:
-//   1. Car       — the fleet, each showing its Airport + 12-hour price.
+//   1. Car       — the fleet, each showing its Airport, 12-hour and 24-hour price.
 //   2. Service   — Airport Pickup or 12 Hours (price set from the car).
 //   3. When      — a horizontal scroll of dates from today, plus a pickup time.
 //   4. Location  — airport terminal (or a typed one) for airport pickups; a
-//                  pickup address for 12-hour bookings.
+//                  pickup address for 12- and 24-hour bookings.
 //   5. Contact   — name, phone, optional email.
 //   6. Payment   — Paystack. Persists (until paid) even across a tab close.
 //
@@ -30,7 +30,7 @@ const DAYS_AHEAD = 60;
 // Lagos airport terminals for an airport pickup, plus "Other" for a typed one.
 const TERMINALS = ["MMIA — International", "MMA2 — Domestic", "MMA1 / GAT — Domestic", "Other"];
 
-type Service = "airport" | "12h";
+type Service = "airport" | "12h" | "24h";
 
 /* ── helpers ────────────────────────────────────────────────────────────────── */
 
@@ -79,9 +79,11 @@ const STEP_TITLES = ["Choose your car", "Choose a service", "When do you need it
 export default function QuickBooking({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULT_CONFIG);
+  // Re-fetch on every open so admin edits show up without reloading the page.
   useEffect(() => {
-    fetch("/api/config").then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
-  }, []);
+    if (!open) return;
+    fetch("/api/config", { cache: "no-store" }).then((r) => r.json()).then((c) => setCfg((prev) => ({ ...prev, ...c }))).catch(() => {});
+  }, [open]);
 
   const allCars: Variant[] = [
     ...CARS,
@@ -97,7 +99,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const priceFor = (carId: string, svc: Service): number => {
     const r = cfg.qbRates[carId];
     if (!r) return 0;
-    return svc === "airport" ? r.airport : r.hours12;
+    return svc === "airport" ? r.airport : svc === "24h" ? r.hours24 ?? 0 : r.hours12;
   };
 
   const [car, setCar] = useState<Variant | null>(null);
@@ -142,7 +144,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [open, resumed, onClose]);
 
-  const serviceLabel = service === "airport" ? "Airport Pickup" : service === "12h" ? "12 Hours" : "";
+  const serviceLabel = service === "airport" ? "Airport Pickup" : service === "12h" ? "12 Hours" : service === "24h" ? "24 Hours" : "";
   const amount = car && service ? priceFor(car.id, service) : null;
   const terminalLabel = terminal === "Other" ? terminalCustom.trim() : terminal;
 
@@ -155,7 +157,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
       service: serviceLabel,
       pickup: pickupText,
       dropoff: null,
-      duration: service === "12h" ? "12 hours" : null,
+      duration: service === "12h" ? "12 hours" : service === "24h" ? "24 hours" : null,
       date: formatCardDate(date),
       time,
       light: true,
@@ -280,6 +282,9 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                       <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">Airport <span className="tabular-nums" style={{ color: BLUE }}>{naira(r!.airport)}</span></span>
                     )}
                     <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">12hrs <span className="tabular-nums" style={{ color: BLUE }}>{naira(r?.hours12 ?? 0)}</span></span>
+                    {(r?.hours24 ?? 0) > 0 && (
+                      <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-600">24hrs <span className="tabular-nums" style={{ color: BLUE }}>{naira(r!.hours24!)}</span></span>
+                    )}
                   </span>
                 </span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={active ? BLUE : "#cbd5e1"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>
@@ -295,6 +300,9 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                   ? [{ id: "airport" as Service, name: "Airport Pickup", desc: "We meet you at your terminal and drive you in.", price: priceFor(car.id, "airport") }]
                   : []),
                 { id: "12h" as Service, name: "12 Hours", desc: "A chauffeur for a fixed 12-hour block, wherever you go.", price: priceFor(car.id, "12h") },
+                ...(priceFor(car.id, "24h") > 0
+                  ? [{ id: "24h" as Service, name: "24 Hours", desc: "A chauffeur on call around the clock for a full day.", price: priceFor(car.id, "24h") }]
+                  : []),
               ]).map((s) => {
                 const active = service === s.id;
                 return (

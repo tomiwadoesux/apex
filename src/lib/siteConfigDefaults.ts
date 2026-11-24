@@ -41,9 +41,10 @@ export type SiteConfig = {
   // Flat Naira fare for each trip type (no hourly duration) — keyed by trip-type
   // id (custom / interstate / airport / point). Used to charge these via Paystack.
   tripRates: Record<string, number>;
-  // Quick Booking prices per car: the Airport Pickup fare and the 12-hour fare,
-  // both in Naira, keyed by fleet variant id. Shown on the car step.
-  qbRates: Record<string, { airport: number; hours12: number }>;
+  // Quick Booking prices per car: the Airport Pickup, 12-hour and 24-hour fares,
+  // all in Naira, keyed by fleet variant id. Shown on the car step. 0 (or a
+  // missing hours24, from configs saved before it existed) = not offered.
+  qbRates: Record<string, { airport: number; hours12: number; hours24?: number }>;
   // ApexRide's bank details — legacy; Paystack is the live channel now.
   payment: PaymentInfo;
 };

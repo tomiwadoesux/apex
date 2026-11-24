@@ -24,9 +24,9 @@ const SECTIONS = {
   durations: ["durations"],
   tripTypes: ["tripTypes"],
   quickRequests: ["quickRequests"],
-  cars: ["hiddenCars", "extraCars"],
+  // Added cars carry their Quick Booking prices, so saving cars writes those too.
+  cars: ["hiddenCars", "extraCars", "qbRates"],
   quickCars: ["quickCars"],
-  rates: ["carRates", "tripRates"],
   qbRates: ["qbRates"],
 } satisfies Record<string, (keyof SiteConfig)[]>;
 type Section = keyof typeof SECTIONS;
@@ -47,6 +47,21 @@ export default function OptionsTab({
 
   const set = <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => {
     onConfig({ ...config, [key]: value });
+  };
+
+  // Set one Quick Booking fare for a car, keeping its other fares.
+  const setQb = (id: string, field: "airport" | "hours12" | "hours24", value: string) => {
+    const r = config.qbRates[id] ?? { airport: 0, hours12: 0, hours24: 0 };
+    set("qbRates", { ...config.qbRates, [id]: { ...r, [field]: Number(value) || 0 } });
+  };
+
+  // Removing an added car also drops its Quick Booking prices (one update, so
+  // both changes land together).
+  const removeCar = (i: number) => {
+    const id = config.extraCars[i].id;
+    const { [id]: _drop, ...qbRates } = config.qbRates;
+    void _drop;
+    onConfig({ ...config, extraCars: config.extraCars.filter((_, j) => j !== i), qbRates });
   };
 
   const isDirty = (section: Section) =>
@@ -215,7 +230,28 @@ export default function OptionsTab({
                   <option value="">No photo</option>
                   {IMAGE_CHOICES.map((img) => <option key={img} value={img}>{img.split("/")[3]}</option>)}
                 </select>
-                <button type="button" onClick={() => set("extraCars", config.extraCars.filter((_, j) => j !== i))} className="shrink-0 text-xs font-semibold text-red-600">Remove</button>
+                <button type="button" onClick={() => removeCar(i)} className="shrink-0 text-xs font-semibold text-red-600">Remove</button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Quick Booking ₦</span>
+                <span className="text-[11px] text-neutral-500">Airport</span>
+                <input
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.airport || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "airport", e.target.value)}
+                  className={`${input} !w-28 text-right tabular-nums`}
+                />
+                <span className="text-[11px] text-neutral-500">12 hours / full day</span>
+                <input
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.hours12 || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "hours12", e.target.value)}
+                  className={`${input} !w-28 text-right tabular-nums`}
+                />
+                <span className="text-[11px] text-neutral-500">24 hours</span>
+                <input
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.hours24 || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "hours24", e.target.value)}
+                  className={`${input} !w-28 text-right tabular-nums`}
+                />
               </div>
             </div>
           ))}
@@ -261,86 +297,40 @@ export default function OptionsTab({
         {saveButton("quickCars")}
       </section>
 
-      {/* per-hour prices (full form) */}
-      <section className={card}>
-        <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Prices per hour (₦) — full form</h2>
-        <p className="mb-3 text-xs text-neutral-500">
-          Used on the full booking form (rate × hours). Leave a car blank to use its built-in default rate.
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {[...CARS.filter((c) => c.image), ...config.extraCars].map((c) => (
-            <div key={c.id} className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
-              <span className="text-sm text-neutral-400">₦</span>
-              <input
-                type="number"
-                min={0}
-                step={1000}
-                value={config.carRates[c.id] ?? ""}
-                placeholder="default"
-                onChange={(e) => {
-                  const next = { ...config.carRates };
-                  if (e.target.value === "") delete next[c.id];
-                  else next[c.id] = Number(e.target.value);
-                  set("carRates", next);
-                }}
-                className={`${input} !w-32 text-right tabular-nums`}
-              />
-              <span className="text-[11px] text-neutral-400">/hr</span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 border-t border-neutral-100 pt-4">
-          <p className="mb-2 text-xs text-neutral-500">Flat fare for each trip type (no hourly duration), charged via Paystack.</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {config.tripTypes.map((t) => (
-              <div key={t.id} className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{t.name}</span>
-                <span className="text-sm text-neutral-400">₦</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={config.tripRates[t.id] ?? ""}
-                  placeholder="0"
-                  onChange={(e) => set("tripRates", { ...config.tripRates, [t.id]: Number(e.target.value) || 0 })}
-                  className={`${input} !w-28 text-right tabular-nums`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-        {saveButton("rates")}
-      </section>
-
-      {/* Quick Booking prices — Airport + 12 hours per car */}
+      {/* Quick Booking prices — Airport, 12 hours / full day and 24 hours per car */}
       <section className={card}>
         <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Quick Booking prices (₦)</h2>
         <p className="mb-3 text-xs text-neutral-500">
-          The Airport Pickup and 12-hour fares shown for each car in Quick Booking.
+          The Airport Pickup, 12-hour and 24-hour fares shown for each car in Quick Booking. Leave Airport or
+          24 hours at 0 to not offer it for that car.
         </p>
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 pl-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
             <span className="min-w-0 flex-1">Car</span>
             <span className="w-28 text-right">Airport</span>
-            <span className="w-28 text-right">12 hours</span>
+            <span className="w-28 text-right">12 hours / full day</span>
+            <span className="w-28 text-right">24 hours</span>
           </div>
           {((config.quickCars.length
             ? config.quickCars.map((id) => [...CARS, ...config.extraCars].find((c) => c.id === id)).filter(Boolean)
             : [...CARS.filter((c) => c.image), ...config.extraCars]
           ) as { id: string; name: string; year: number | string }[]).map((c) => {
-            const r = config.qbRates[c.id] ?? { airport: 0, hours12: 0 };
             return (
               <div key={c.id} className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name} · {c.year}</span>
-                <input
-                  type="number" min={0} step={1000} value={r.airport || ""} placeholder="0"
-                  onChange={(e) => set("qbRates", { ...config.qbRates, [c.id]: { ...r, airport: Number(e.target.value) || 0 } })}
+<input
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.airport || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "airport", e.target.value)}
                   className={`${input} !w-28 text-right tabular-nums`}
                 />
                 <input
-                  type="number" min={0} step={1000} value={r.hours12 || ""} placeholder="0"
-                  onChange={(e) => set("qbRates", { ...config.qbRates, [c.id]: { ...r, hours12: Number(e.target.value) || 0 } })}
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.hours12 || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "hours12", e.target.value)}
+                  className={`${input} !w-28 text-right tabular-nums`}
+                />
+                <input
+                  type="number" min={0} step={1000} value={config.qbRates[c.id]?.hours24 || ""} placeholder="0"
+                  onChange={(e) => setQb(c.id, "hours24", e.target.value)}
                   className={`${input} !w-28 text-right tabular-nums`}
                 />
               </div>
@@ -354,9 +344,9 @@ export default function OptionsTab({
       <section className={card}>
         <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Payment channel</h2>
         <p className="text-xs leading-relaxed text-neutral-500">
-          Customers now pay online through <span className="font-semibold text-neutral-700">Paystack</span> on the last
-          step of Quick Booking and the form, card, bank transfer, or USSD. The fare is the per-hour price above ×
-          the hours, or the flat trip-type rate. Set any trip rate to 0 to make that trip &ldquo;contact us&rdquo; instead of pay-now.
+          Customers pay online through <span className="font-semibold text-neutral-700">Paystack</span> on the last
+          step of Quick Booking, card, bank transfer, or USSD, using the Quick Booking prices above. Full-form
+          bookings show no price; the team confirms the fare with the guest.
         </p>
         <p className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-500">
           Set your keys as environment variables (Vercel → Settings → Environment Variables):

@@ -11,7 +11,6 @@ import { CARS as FLEET_CARS } from "@/components/fleet/data";
 import { RidePass, type RideBooking } from "@/components/RideCard";
 import PaystackPay from "@/components/PaystackPay";
 import { loadPending, savePending, clearPending } from "@/lib/pendingPayment";
-import { DEFAULT_RATE, naira } from "@/lib/pricing";
 import type { Booking } from "@/lib/bookings";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfigDefaults";
 
@@ -618,18 +617,6 @@ export default function BookingForm() {
         ? `Custom${customTripText.trim() ? ` · ${customTripText.trim()}` : ""}`
         : selectedService.name;
 
-  // Live running fare — the per-hour rate for the chosen car, and the total once a
-  // duration / trip type is picked. Shown on-screen so the guest sees the cost build.
-  const liveRate = cfg.carRates[FLEET_CARS.find((c) => c.name === selectedVehicle.name)?.id ?? ""] ?? DEFAULT_RATE;
-  // Rate for the car currently showing in the Car-step carousel (shown by its name).
-  const displayedRate = cfg.carRates[FLEET_CARS.find((c) => c.name === displayedVehicleName)?.id ?? ""] ?? DEFAULT_RATE;
-  const liveAmount: number | null = (() => {
-    if (!selectedService) return null;
-    if (selectedService.group === "type") return cfg.tripRates[selectedService.id] ?? null;
-    const hours = selectedService.id === "multiday" ? 24 * (multiDayNum || 1) : selectedService.durationHours ?? 0;
-    return hours > 0 ? liveRate * hours : null;
-  })();
-
   // The pickup / destination labels the summary + booking use: address, with the
   // optional landmark folded in for the chauffeur.
   const joinPlace = (addr: string, landmark: string) => {
@@ -1223,17 +1210,9 @@ export default function BookingForm() {
           ? `${multiDayNum} day${multiDayNum > 1 ? "s" : ""}`
           : `${selectedService.durationHours} hours`
         : null;
-    // Fare: per-hour rate × hours for duration bookings; a flat per-trip-type rate
-    // (all editable in /admin) for the trip types.
-    const fleetMatch = FLEET_CARS.find((c) => c.name === v.name);
-    const carRate = cfg.carRates[fleetMatch?.id ?? ""] ?? DEFAULT_RATE;
-    let amount: number | null = null;
-    if (!isType && selectedService) {
-      const hours = selectedService.id === "multiday" ? 24 * (Number(multiDayNum) || 1) : selectedService.durationHours ?? 0;
-      amount = hours > 0 ? carRate * hours : null;
-    } else if (isType && selectedService) {
-      amount = cfg.tripRates[selectedService.id] ?? null;
-    }
+    // The full form shows no prices: bookings go in without an amount and the
+    // team confirms the fare (only Quick Booking is priced / pay-now).
+    const amount: number | null = null;
     const payload = {
       passenger: { name: contactName.trim(), phone: contactPhone.trim(), email: contactEmail.trim() },
       car: { name: v.name, klass: v.class, image: v.img.light.side },
@@ -1499,27 +1478,6 @@ export default function BookingForm() {
       </header>
 
       {/* Floating step progress text, positioned constantly at the top */}
-      {/* Live fare pill — from the duration step on. On the car step the price is
-          shown with the car name instead (see the carousel details below). */}
-      {currentStep >= 4 && currentStep <= 7 && (
-        <div className="fixed top-2 sm:top-3 left-1/2 -translate-x-1/2 z-40 select-none pointer-events-none">
-          <div
-            className="flex items-center gap-2 rounded-full border px-4 py-1.5 shadow-sm backdrop-blur"
-            style={{
-              borderColor: isLight ? "rgba(0,32,156,0.2)" : "rgba(253,186,22,0.3)",
-              background: isLight ? "rgba(255,255,255,0.9)" : "rgba(10,10,10,0.7)",
-            }}
-          >
-            <span className={`text-[9px] font-bold uppercase tracking-[0.18em] ${isLight ? "text-neutral-400" : "text-white/40"}`}>
-              {liveAmount != null ? "Total" : "Rate"}
-            </span>
-            <span className="text-sm font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-              {naira(liveAmount ?? liveRate)}
-            </span>
-          </div>
-        </div>
-      )}
-
       {currentStep <= 7 && (
         <div className="fixed top-[5.25rem] sm:top-12 left-1/2 -translate-x-1/2 z-20 w-full px-5 text-center flex flex-col items-center gap-1 sm:gap-2 select-none pointer-events-none">
           <div className="h-5 flex items-center justify-center overflow-visible">
@@ -1890,11 +1848,6 @@ export default function BookingForm() {
                       {displayedVehicleName}
                     </span>
                   </h2>
-                  {!isCustomCar && (
-                    <div className="car-detail-text mt-1 text-lg sm:text-xl font-bold tabular-nums" style={{ color: isLight ? "#00209C" : "#FDBA16" }}>
-                      {naira(displayedRate)}
-                    </div>
-                  )}
                   <div className={`text-xs sm:text-sm font-medium tracking-wide mt-1.5 ${isLight ? "text-neutral-600" : "text-white/60"} text-center`}>
                     <span className="car-detail-text inline-block">{displayedVehicleDetails.year}</span>
                     <span className={`car-detail-text inline-block mx-2 font-bold text-base ${isLight ? "text-[#00209C]" : "text-[#FDBA16]"}`}>·</span>
