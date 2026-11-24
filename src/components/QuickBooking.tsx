@@ -7,7 +7,7 @@
 //   3. When      — a horizontal scroll of dates from today, plus a pickup time.
 //   4. Location  — airport terminal (or a typed one) for airport pickups; a
 //                  pickup address for 12- and 24-hour bookings.
-//   5. Contact   — name, phone, optional email.
+//   5. Contact   — name, phone, email (all required).
 //   6. Payment   — Paystack. Persists (until paid) even across a tab close.
 //
 // The component stays MOUNTED on the landing page and only hides its overlay, so
@@ -113,6 +113,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [saving, setSaving] = useState(false);
@@ -206,7 +207,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const startOver = () => {
     setStep(0); setCar(null); setService(null); setDate(""); setTime("");
     setTerminal(""); setTerminalCustom(""); setPickup("");
-    setName(""); setPhone(""); setPhoneTouched(false); setEmail("");
+    setName(""); setPhone(""); setPhoneTouched(false); setEmail(""); setEmailTouched(false);
     setBooking(null); setResumed(false); clearPending();
   };
   const handleClose = () => { setResumed(false); onClose(); };
@@ -215,7 +216,10 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   if (!open && !resumed) return null;
 
   const phoneBad = phoneTouched && phone.trim() !== "" && !validPhone(phone);
-  const contactReady = name.trim() !== "" && validPhone(phone);
+  // Email is required for Quick Booking (receipt + Paystack need it).
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const emailBad = emailTouched && email.trim() !== "" && !emailOk;
+  const contactReady = name.trim() !== "" && validPhone(phone) && emailOk;
   const locationReady = service === "airport"
     ? terminal !== "" && (terminal !== "Other" || terminalCustom.trim() !== "")
     : pickup.trim() !== "";
@@ -401,8 +405,9 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
                 {phoneBad && <p className="mt-1.5 text-[10px] font-medium text-red-600">Invalid Nigerian phone number. Must be 11 digits starting with 0 (e.g. 08012345678).</p>}
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Email <span className="font-normal text-neutral-400">(optional — for your receipt)</span></label>
-                <input type="email" value={email} autoComplete="email" onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className={inputCls} />
+                <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Email *</label>
+                <input type="email" value={email} autoComplete="email" onChange={(e) => setEmail(e.target.value)} onBlur={() => setEmailTouched(true)} placeholder="you@email.com" className={inputCls} />
+                {emailBad && <p className="mt-1.5 text-[10px] font-medium text-red-600">Enter a valid email address (e.g. you@email.com).</p>}
               </div>
               <button type="button" disabled={!contactReady || submitting} onClick={() => void submit()} className={continueBtn} style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}>
                 {submitting ? "Placing your booking…" : `Continue to payment${amount != null ? ` · ${naira(amount)}` : ""}`}
