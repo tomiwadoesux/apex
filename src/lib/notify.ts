@@ -18,12 +18,18 @@ import { getNotifySettings, type AlertChat } from "./notifySettings";
 import { naira } from "./pricing";
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
-// ayotomcs.me is the domain verified in Resend, so senders must live on it —
-// not on the apex. subdomain. RESEND_FROM overrides if that ever changes.
-const FROM = process.env.RESEND_FROM || "ApexRide <bookings@ayotomcs.me>";
+// No-reply sender on apexriderental.com (the domain verified in Resend).
+// RESEND_FROM overrides it (e.g. while testing with another verified domain).
+const FROM = process.env.RESEND_FROM || "ApexRide <no-reply@apexriderental.com>";
 // Where booking + payment alerts land — the ApexRide business inbox. Hard-wired
 // (not from COMPANY_EMAIL) so a stale env var can't redirect them elsewhere.
 const COMPANY_EMAIL = "apexrental08@gmail.com";
+// Public contact details printed in every email's footer (emails come from a
+// no-reply address, so these are how guests reach us).
+const CONTACT_PHONE = "0904 338 0193";
+const CONTACT_PHONE_INTL = "+2349043380193";
+const CONTACT_WHATSAPP = "https://wa.me/2349043380193";
+const CONTACT_EMAIL = "apexrental08@gmail.com";
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const SITE_URL = process.env.SITE_URL || "https://apexriderental.com";
 
@@ -71,7 +77,8 @@ function rows(b: Booking): string {
     row("Destination", b.dropoff),
     row("Duration", b.duration),
     row("Date", `${b.date} at ${b.time}`),
-    row("Payment note", b.paymentNote ?? null),
+    row(b.paid ? "Amount paid" : "Amount", b.amount && b.amount > 0 ? naira(b.amount) : null),
+    row("Payment", b.paymentNote ?? null),
   ].join("");
 }
 
@@ -87,10 +94,23 @@ function emailShell(heading: string, intro: string, b: Booking, cta?: { label: s
       <p style="color:#475569;font-size:14px;line-height:1.6;margin:10px 0 18px">${intro}</p>
       <table style="border-collapse:collapse">${rows(b)}</table>
       ${cta ? `<a href="${cta.href}" style="display:inline-block;margin-top:20px;background:#2A4FD0;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:999px">${cta.label}</a>` : ""}
-      <p style="color:#94a3b8;font-size:12px;margin:22px 0 0">Questions? Call or WhatsApp us on 0904 338 0193.</p>
+      ${contactFooter()}
     </div>
   </div>
 </div>`;
+}
+
+// Every email: no-reply notice + how to reach us (phone, WhatsApp, email).
+function contactFooter(): string {
+  const link = "color:#2A4FD0;text-decoration:none;font-weight:600";
+  return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0">
+        <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0 0 8px">This is an automated message from a no-reply address, please don't reply. Need help? Contact us:</p>
+        <p style="color:#475569;font-size:13px;line-height:1.9;margin:0">
+          📞 <a href="tel:${CONTACT_PHONE_INTL}" style="${link}">${CONTACT_PHONE}</a><br />
+          💬 <a href="${CONTACT_WHATSAPP}" style="${link}">WhatsApp us</a><br />
+          ✉️ <a href="mailto:${CONTACT_EMAIL}" style="${link}">${CONTACT_EMAIL}</a>
+        </p>
+      </div>`;
 }
 
 type Attachment = { filename: string; content: string }; // content = base64 (no data-URL prefix)
@@ -377,7 +397,10 @@ export async function notifyBookingCreated(
   const jobs: Promise<unknown>[] = [];
   const receipt = receiptAttachment(extras?.receipt, extras?.receiptName);
 
-  if (RESEND_KEY && b.passenger.email) {
+  // Guest confirmation for full-form bookings (no amount). Quick Booking
+  // bookings carry an amount and get a receipt after paying instead.
+  const priced = Boolean(b.amount && b.amount > 0);
+  if (RESEND_KEY && b.passenger.email && !priced) {
     jobs.push(
       sendEmail(
         b.passenger.email,
@@ -425,6 +448,22 @@ export async function notifyPaymentReceived(
   if (!RESEND_KEY && !NTFY_TOPIC && !telegramOn(c) && !whatsappOn(c)) return;
   const jobs: Promise<unknown>[] = [];
   const receipt = receiptAttachment(extras?.receipt, extras?.receiptName);
+
+  // Guest receipt (Quick Booking pays via Paystack).
+  if (RESEND_KEY && b.passenger.email) {
+    jobs.push(
+      sendEmail(
+        b.passenger.email,
+        `Payment receipt, ApexRide booking ${b.id}`,
+        emailShell(
+          "Payment received, thank you",
+          `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}. Your payment for booking <strong>${esc(b.id)}</strong> has been received and your ride is confirmed. Keep this email as your receipt; our team will reach out with your chauffeur's details.`,
+          b,
+          { label: "Check your booking", href: `${SITE_URL}/check-booking?ref=${encodeURIComponent(b.id)}` },
+        ),
+      ),
+    );
+  }
 
   if (RESEND_KEY && COMPANY_EMAIL) {
     jobs.push(

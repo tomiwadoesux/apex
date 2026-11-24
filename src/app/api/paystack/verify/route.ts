@@ -44,6 +44,10 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Amount paid is less than the fare" }, { status: 402 });
   }
 
+  // Already marked paid (the webhook got here first): it sent the receipt and
+  // team alert, so don't send them twice.
+  if (booking.paid) return Response.json({ ok: true, bookingId });
+
   const naira = Math.round(tx.amount / 100);
   const note = `Paid ₦${naira.toLocaleString("en-NG")} via Paystack · ref ${tx.reference}`;
   const updated = (await updateBooking(bookingId, { paid: true, paymentNote: note })) ?? { ...booking, paid: true, paymentNote: note };
