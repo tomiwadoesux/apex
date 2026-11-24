@@ -1,65 +1,106 @@
 "use client";
 
 // The Options tab — everything on the booking form that has an option. Edits
-// autosave: each change is debounced and PUT to /api/admin/config on its own,
-// so there is no big "Save changes" button to forget. The header shows a quiet
-// Saving… / Saved indicator; failures surface as a toast with a retry.
+// stay local until that section's Save settings button is pressed; the button
+// PUTs only the section's own fields to /api/admin/config (the route keeps the
+// current value for anything missing), so unsaved edits elsewhere are left
+// alone. The header shows a quiet Saving… / Saved indicator; failures surface
+// as a toast with a retry.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CARS } from "@/components/fleet/data";
 import type { SiteConfig } from "@/lib/siteConfigDefaults";
-import { ACCENT, BLUE, card, input } from "../ui";
+import { ACCENT, BLUE, btn, card, input } from "../ui";
 
 // The photo choices for added cars: the EXISTING car images already in the repo.
 const IMAGE_CHOICES = [...new Set(CARS.filter((c) => c.image).map((c) => c.image!))];
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// The config fields each section's Save settings button writes.
+const SECTIONS = {
+  pickups: ["popularPickups"],
+  durations: ["durations"],
+  tripTypes: ["tripTypes"],
+  quickRequests: ["quickRequests"],
+  cars: ["hiddenCars", "extraCars"],
+  quickCars: ["quickCars"],
+  rates: ["carRates", "tripRates"],
+  qbRates: ["qbRates"],
+} satisfies Record<string, (keyof SiteConfig)[]>;
+type Section = keyof typeof SECTIONS;
+
 export default function OptionsTab({
   config,
+  savedConfig,
   onConfig,
+  onSaved,
 }: {
   config: SiteConfig;
+  savedConfig: SiteConfig;
   onConfig: (c: SiteConfig) => void;
+  onSaved: (c: SiteConfig) => void;
 }) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const dirty = useRef(false);
+  const [savingSection, setSavingSection] = useState<Section | null>(null);
 
   const set = <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => {
-    dirty.current = true;
     onConfig({ ...config, [key]: value });
   };
 
-  const save = useCallback(async (snapshot: SiteConfig) => {
+  const isDirty = (section: Section) =>
+    SECTIONS[section].some((k) => JSON.stringify(config[k]) !== JSON.stringify(savedConfig[k]));
+  const anyDirty = (Object.keys(SECTIONS) as Section[]).some(isDirty);
+
+  // Warn before leaving the page with edits that haven't been saved.
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
+
+  const save = async (section: Section) => {
+    const keys = SECTIONS[section];
+    const patch = Object.fromEntries(keys.map((k) => [k, config[k]]));
+    setSavingSection(section);
     setSaveState("saving");
     const res = await fetch("/api/admin/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(snapshot),
+      body: JSON.stringify(patch),
     }).catch(() => null);
-    if (res?.ok) {
-      dirty.current = false;
+    const next = res?.ok ? ((await res.json().catch(() => null)) as SiteConfig | null) : null;
+    setSavingSection(null);
+    if (next) {
+      // Take the server's cleaned-up values for this section only, so unsaved
+      // edits in other sections stay on screen.
+      const fromServer = Object.fromEntries(keys.map((k) => [k, next[k]]));
+      onSaved({ ...savedConfig, ...fromServer });
+      onConfig({ ...config, ...fromServer });
       setSaveState("saved");
     } else {
       setSaveState("error");
       toast.error(`Changes didn't save${res ? ` (error ${res.status})` : ""}`, {
-        // Retry by re-marking the snapshot dirty: the fresh object identity
-        // re-triggers the autosave effect below.
-        action: { label: "Retry", onClick: () => { dirty.current = true; onConfig({ ...snapshot }); } },
+        action: { label: "Retry", onClick: () => void save(section) },
       });
     }
-  }, [onConfig]);
+  };
 
-  // Debounced autosave: any local edit schedules one PUT ~900ms after typing
-  // stops. Server-driven refreshes don't mark the config dirty, so they never
-  // echo a save back.
-  useEffect(() => {
-    if (!dirty.current) return;
-    setSaveState("saving");
-    const t = setTimeout(() => void save(config), 900);
-    return () => clearTimeout(t);
-  }, [config, save]);
+  const saveButton = (section: Section) => (
+    <div className="mt-4 flex justify-end border-t border-neutral-100 pt-4">
+      <button
+        type="button"
+        onClick={() => void save(section)}
+        disabled={!isDirty(section) || savingSection !== null}
+        className={btn}
+        style={{ background: BLUE }}
+      >
+        {savingSection === section ? "Saving…" : "Save settings"}
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +129,7 @@ export default function OptionsTab({
             </div>
           ))}
         </div>
+        {saveButton("pickups")}
       </section>
 
       {/* durations */}
@@ -106,6 +148,7 @@ export default function OptionsTab({
             </div>
           ))}
         </div>
+        {saveButton("durations")}
       </section>
 
       {/* trip types */}
@@ -119,6 +162,7 @@ export default function OptionsTab({
             </div>
           ))}
         </div>
+        {saveButton("tripTypes")}
       </section>
 
       {/* quick requests */}
@@ -133,6 +177,7 @@ export default function OptionsTab({
           ))}
           <button type="button" onClick={() => set("quickRequests", [...config.quickRequests, ""])} className="self-start text-xs font-semibold" style={{ color: ACCENT }}>+ Add chip</button>
         </div>
+        {saveButton("quickRequests")}
       </section>
 
       {/* cars */}
@@ -183,6 +228,7 @@ export default function OptionsTab({
             + Add car
           </button>
         </div>
+        {saveButton("cars")}
       </section>
 
       {/* quick booking cars */}
@@ -212,6 +258,7 @@ export default function OptionsTab({
             Clear (show all)
           </button>
         )}
+        {saveButton("quickCars")}
       </section>
 
       {/* per-hour prices (full form) */}
@@ -263,6 +310,7 @@ export default function OptionsTab({
             ))}
           </div>
         </div>
+        {saveButton("rates")}
       </section>
 
       {/* Quick Booking prices — Airport + 12 hours per car */}
@@ -299,6 +347,7 @@ export default function OptionsTab({
             );
           })}
         </div>
+        {saveButton("qbRates")}
       </section>
 
       {/* payment channel, Paystack */}

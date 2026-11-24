@@ -3,7 +3,7 @@
 // /admin — the team's panel. Password login (ADMIN_PASSWORD env var), then two
 // tabs: BOOKINGS (stats, search, filters, and a per-booking drawer for status /
 // driver / notes / payment) and OPTIONS (everything on the booking form that
-// has an option — edits autosave). The pieces live in ./components; shared
+// has an option — each section has its own Save settings button). The pieces live in ./components; shared
 // styles in ./ui.
 
 import { useCallback, useEffect, useState } from "react";
@@ -32,6 +32,9 @@ export default function AdminPage() {
   const [openRef, setOpenRef] = useState<string | null>(null);
   const [filter, setFilter] = useState<BookingFilter>("all");
   const [config, setConfig] = useState<SiteConfig | null>(null);
+  // Last config the server confirmed; the Options tab diffs against it to know
+  // which sections have unsaved edits.
+  const [savedConfig, setSavedConfig] = useState<SiteConfig | null>(null);
   const [notifyStatus, setNotifyStatus] = useState<NotifyStatus | null>(null);
 
   // Never throws: a failed request becomes a visible error instead of silently
@@ -51,7 +54,10 @@ export default function AdminPage() {
       setBookings(data?.bookings ?? []);
       setLoadError(b.ok ? "" : data?.error || `Bookings couldn't load (error ${b.status}). Press Refresh to try again.`);
       const cfg = c.ok ? ((await c.json().catch(() => null)) as SiteConfig | null) : null;
-      if (cfg) setConfig(cfg);
+      if (cfg) {
+        setConfig(cfg);
+        setSavedConfig(cfg);
+      }
       if (n.ok) setNotifyStatus(await n.json().catch(() => null));
       setAuthed(true);
       return "ok";
@@ -217,8 +223,8 @@ export default function AdminPage() {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
             >
-              {config ? (
-                <OptionsTab config={config} onConfig={setConfig} />
+              {config && savedConfig ? (
+                <OptionsTab config={config} savedConfig={savedConfig} onConfig={setConfig} onSaved={setSavedConfig} />
               ) : (
                 <p className="text-sm text-red-600">The form options couldn&apos;t load. Press Refresh on the Bookings tab to try again.</p>
               )}
