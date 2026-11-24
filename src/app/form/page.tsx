@@ -468,9 +468,12 @@ export default function BookingForm() {
     return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
   };
 
+  // At least `hours` from now, rounded UP to the next whole hour (so "In 2
+  // hours" never lands under the 2-hour minimum notice).
   const roundedHoursFromNow = (hours: number) => {
     const date = new Date();
-    date.setHours(date.getHours() + hours, 0, 0, 0);
+    date.setTime(date.getTime() + hours * 3_600_000);
+    if (date.getMinutes() || date.getSeconds() || date.getMilliseconds()) date.setHours(date.getHours() + 1, 0, 0, 0);
     return date;
   };
 
@@ -640,7 +643,14 @@ export default function BookingForm() {
       : selectedService.id === "custom"
         ? customTripText.trim() !== ""
         : true);
-  const scheduleComplete = bookingDate !== "" && bookingTime !== "";
+  // Full-form bookings need at least 2 hours' notice before pickup.
+  const MIN_LEAD_HOURS = 2;
+  const scheduleTooSoon = (() => {
+    if (!bookingDate || !bookingTime) return false;
+    const start = new Date(`${bookingDate}T${bookingTime}`);
+    return Number.isNaN(start.getTime()) || start.getTime() < new Date().getTime() + MIN_LEAD_HOURS * 3_600_000;
+  })();
+  const scheduleComplete = bookingDate !== "" && bookingTime !== "" && !scheduleTooSoon;
   const allRequiredComplete =
     contactComplete && pickupComplete && vehicleComplete && serviceComplete && scheduleComplete;
   // Status colours for the review chips.
@@ -1188,7 +1198,7 @@ export default function BookingForm() {
       return true;
     }
     if (currentStep === 6) {
-      return bookingDate !== "" && bookingTime !== "";
+      return scheduleComplete;
     }
     if (currentStep === 7) {
       // The review step: only let the request send when every required section is done.
@@ -1949,6 +1959,10 @@ export default function BookingForm() {
                     );
                   })}
                 </div>
+
+                <p className={`text-[11px] font-medium ${scheduleTooSoon ? "text-red-500" : isLight ? "text-neutral-900/45" : "text-white/40"}`}>
+                  {scheduleTooSoon ? "That pickup is too soon. " : ""}Bookings must be made at least 2 hours before pickup.
+                </p>
 
                 {/* Quick pickup presets */}
                 {scheduleMode === "quick" && (

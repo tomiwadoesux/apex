@@ -126,6 +126,15 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
     if (p) { setBooking(p.booking); setStep(5); setResumed(true); }
   }, []);
 
+  // Quick Bookings need at least 1 hour's notice before pickup.
+  const MIN_LEAD_HOURS = 1;
+  const scheduleOk = (() => {
+    if (!date || !time) return false;
+    const start = new Date(`${date}T${time}`);
+    return !Number.isNaN(start.getTime()) && start.getTime() >= new Date().getTime() + MIN_LEAD_HOURS * 3_600_000;
+  })();
+  const tooSoon = Boolean(date && time) && !scheduleOk;
+
   const days = useMemo(() => {
     const base = new Date();
     base.setHours(0, 0, 0, 0);
@@ -150,7 +159,7 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
   const terminalLabel = terminal === "Other" ? terminalCustom.trim() : terminal;
 
   const submit = async () => {
-    if (!car || !service || !date || !time || submitting) return;
+    if (!car || !service || !scheduleOk || submitting) return;
     const pickupText = service === "airport" ? terminalLabel : pickup.trim();
     const bookingPayload = {
       passenger: { name: name.trim(), phone: phone.trim(), email: email.trim() },
@@ -351,8 +360,11 @@ export default function QuickBooking({ open, onClose }: { open: boolean; onClose
               <div>
                 <label className="mb-1.5 block text-xs font-semibold tracking-wide text-neutral-500">Pickup time</label>
                 <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputCls} />
+                <p className={`mt-1.5 text-[10px] font-medium ${tooSoon ? "text-red-600" : "text-neutral-400"}`}>
+                  {tooSoon ? "That's too soon. " : ""}Quick Bookings must be made at least 1 hour before pickup.
+                </p>
               </div>
-              <button type="button" disabled={!date || !time} onClick={() => setStep(3)} className={continueBtn} style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}>Continue</button>
+              <button type="button" disabled={!scheduleOk} onClick={() => setStep(3)} className={continueBtn} style={{ background: BLUE, boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)" }}>Continue</button>
             </div>
           )}
 
