@@ -93,6 +93,14 @@ export async function PUT(req: Request) {
           }
         : current.payment,
   };
-  await setSiteConfig(next);
+  try {
+    await setSiteConfig(next);
+  } catch (err) {
+    // Say why in the response (and the server log) instead of a bare 500, e.g.
+    // no database configured, or the site_config table missing.
+    console.error("[admin/config] save failed:", err);
+    const reason = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Couldn't store the options: ${reason.slice(0, 300)}` }, { status: 500 });
+  }
   return NextResponse.json(next);
 }

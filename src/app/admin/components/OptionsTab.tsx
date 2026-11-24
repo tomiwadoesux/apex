@@ -86,7 +86,8 @@ export default function OptionsTab({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     }).catch(() => null);
-    const next = res?.ok ? ((await res.json().catch(() => null)) as SiteConfig | null) : null;
+    const body = res ? await res.json().catch(() => null) : null;
+    const next = res?.ok ? (body as SiteConfig | null) : null;
     setSavingSection(null);
     if (next) {
       // Take the server's cleaned-up values for this section only, so unsaved
@@ -97,7 +98,10 @@ export default function OptionsTab({
       setSaveState("saved");
     } else {
       setSaveState("error");
-      toast.error(`Changes didn't save${res ? ` (error ${res.status})` : ""}`, {
+      // Show the server's reason when it gives one, not just the status code.
+      const reason = (body as { error?: string } | null)?.error;
+      toast.error(`Changes didn't save${res ? ` (error ${res.status})` : " (no connection)"}`, {
+        description: reason,
         action: { label: "Retry", onClick: () => void save(section) },
       });
     }
