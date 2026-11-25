@@ -16,6 +16,9 @@
 import type { Booking, BookingInput } from "./bookings";
 import { getNotifySettings, type AlertChat } from "./notifySettings";
 import { naira } from "./pricing";
+import { getSiteConfig } from "./siteConfig";
+import type { PaymentInfo } from "./siteConfigDefaults";
+import { cancelledText, confirmedText, paymentDetailsText, teamActionUrl, waLink } from "./guestMessages";
 
 const RESEND_KEY = process.env.RESEND_API_KEY;
 // No-reply sender on apexriderental.com (the domain verified in Resend).
@@ -82,7 +85,7 @@ function rows(b: Booking): string {
   ].join("");
 }
 
-function emailShell(heading: string, intro: string, b: Booking, cta?: { label: string; href: string }): string {
+function emailShell(heading: string, intro: string, b: Booking, cta?: { label: string; href: string }, extra = ""): string {
   return `<div style="font-family:Helvetica,Arial,sans-serif;background:#f6f7f9;padding:32px 16px">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0">
     <div style="background:linear-gradient(135deg,#2A4FD0,#00209C);padding:22px 26px">
@@ -93,6 +96,7 @@ function emailShell(heading: string, intro: string, b: Booking, cta?: { label: s
       <div style="color:#0f172a;font-size:17px;font-weight:600">${heading}</div>
       <p style="color:#475569;font-size:14px;line-height:1.6;margin:10px 0 18px">${intro}</p>
       <table style="border-collapse:collapse">${rows(b)}</table>
+      ${extra}
       ${cta ? `<a href="${cta.href}" style="display:inline-block;margin-top:20px;background:#2A4FD0;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 22px;border-radius:999px">${cta.label}</a>` : ""}
       ${contactFooter()}
     </div>
@@ -185,15 +189,43 @@ function whatsappAlert(title: string, b: Booking, note?: string): string {
 }
 
 type TelegramButton = { text: string; url: string };
+type ButtonRows = TelegramButton[][];
 
-// One-tap actions under the Telegram alert: message the guest on WhatsApp, or
-// open the admin panel. (Telegram only takes http(s) links on buttons.)
-function telegramButtons(b: Booking): TelegramButton[] {
-  const buttons: TelegramButton[] = [];
-  const digits = b.passenger.phone.replace(/\D/g, "").replace(/^0/, "234");
-  if (digits.length >= 10) buttons.push({ text: "💬 WhatsApp guest", url: `https://wa.me/${digits}` });
-  if (SITE_URL.startsWith("https://")) buttons.push({ text: "Open admin", url: `${SITE_URL}/admin` });
-  return buttons;
+// Which alert this is decides the one-tap actions under it.
+type AlertKind = "request" | "quick-unpaid" | "quick-paid" | "payment-submitted" | "plain";
+
+// One-tap actions under a Telegram alert. WhatsApp buttons open the guest's chat
+// with the message already typed; email buttons open the signed /team page that
+// sends it from the no-reply address (Telegram only takes http(s) links).
+function telegramButtons(b: Booking, kind: AlertKind, bank: PaymentInfo): ButtonRows {
+  const phone = b.passenger.phone;
+  const canWa = Boolean(waLink(phone));
+  const canEmail = Boolean(b.passenger.email) && SITE_URL.startsWith("https://");
+  const pair = (label: string, text: string, action: "pay" | "confirm" | "cancel", email = true): TelegramButton[] => [
+    ...(canWa ? [{ text: `${label} · WhatsApp`, url: waLink(phone, text) }] : []),
+    ...(email && canEmail ? [{ text: `${label} · Email`, url: teamActionUrl(b, action) }] : []),
+  ];
+  const pay = () => pair("💳 Payment details", paymentDetailsText(b, bank, b.amount), "pay");
+  const confirm = (email = true) => pair("✅ Confirm booking", confirmedText(b), "confirm", email);
+  const cancel = (email = true) => pair("❌ Cancel", cancelledText(b), "cancel", email);
+  const chat = canWa ? [{ text: "💬 Chat on WhatsApp", url: waLink(phone) }] : [];
+  const admin = SITE_URL.startsWith("https://") ? [{ text: "Open admin", url: `${SITE_URL}/admin` }] : [];
+
+  const rows: ButtonRows =
+    kind === "request"
+      ? [pay(), confirm(), cancel(), [...chat, ...admin]]
+      : kind === "quick-unpaid"
+        ? [[...chat, ...cancel(false)], admin]
+        : kind === "quick-paid"
+          ? [confirm(false), cancel(), [...chat, ...admin]]
+          : kind === "payment-submitted"
+            ? [confirm(), cancel(), [...chat, ...admin]]
+            : [[...chat, ...admin]];
+  return rows.filter((r) => r.length);
+}
+
+async function bankDetails(): Promise<PaymentInfo> {
+  return (await getSiteConfig()).payment;
 }
 
 // Telegram Bot API call → its `result`, or an Error carrying Telegram's reason.
@@ -219,13 +251,13 @@ export async function telegramGetMe(token: string): Promise<{ username: string; 
   return { username: me.username ?? "", name: me.first_name ?? "" };
 }
 
-export async function sendTelegramMessage(token: string, chatId: string, html: string, buttons: TelegramButton[] = []): Promise<void> {
+export async function sendTelegramMessage(token: string, chatId: string, html: string, buttons: ButtonRows = []): Promise<void> {
   const send = (withButtons: boolean) =>
     telegramApi(token, "sendMessage", {
       chat_id: chatId,
       text: html,
       parse_mode: "HTML",
-      ...(withButtons && buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {}),
+      ...(withButtons && buttons.length ? { reply_markup: { inline_keyboard: buttons } } : {}),
     });
   try {
     await send(true);
@@ -236,7 +268,7 @@ export async function sendTelegramMessage(token: string, chatId: string, html: s
   }
 }
 
-async function sendTelegram(token: string, chats: string[], html: string, buttons: TelegramButton[] = []): Promise<void> {
+async function sendTelegram(token: string, chats: string[], html: string, buttons: ButtonRows = []): Promise<void> {
   const sends = await Promise.allSettled(
     chats.map((chatId) =>
       sendTelegramMessage(token, chatId, html, buttons).catch((e: Error) => {
@@ -281,9 +313,12 @@ export async function sendWhatsApp(phone: string, key: string, text: string): Pr
 }
 
 // Telegram + WhatsApp sends for one alert, for whichever are configured.
-function chatAlerts(c: ChatChannels, title: string, b: Booking, note?: string): Promise<unknown>[] {
+async function chatAlerts(c: ChatChannels, title: string, b: Booking, note?: string, kind: AlertKind = "plain"): Promise<Promise<unknown>[]> {
   const jobs: Promise<unknown>[] = [];
-  if (telegramOn(c)) jobs.push(sendTelegram(c.telegramToken, c.telegramChats, telegramAlert(title, b, note), telegramButtons(b)));
+  if (telegramOn(c)) {
+    const buttons = telegramButtons(b, kind, await bankDetails());
+    jobs.push(sendTelegram(c.telegramToken, c.telegramChats, telegramAlert(title, b, note), buttons));
+  }
   if (whatsappOn(c)) jobs.push(sendWhatsApp(c.whatsappPhone, c.whatsappKey, whatsappAlert(title, b, note)));
   return jobs;
 }
@@ -361,7 +396,7 @@ export async function sendTestNotifications(): Promise<{ channel: string; ok: bo
         c.telegramToken,
         c.telegramChats,
         telegramAlert("✅ ApexRide test notification", fake, "If you can read this, Telegram booking alerts are working."),
-        telegramButtons(fake),
+        telegramButtons(fake, "plain", await bankDetails()),
       );
       results.push({ channel: "telegram", ok: true, detail: `sent to ${c.telegramChats.length} chat${c.telegramChats.length > 1 ? "s" : ""}` });
     } catch (e) {
@@ -433,7 +468,11 @@ export async function notifyBookingCreated(
   }
 
   if (NTFY_TOPIC) jobs.push(sendPush(b));
-  jobs.push(...chatAlerts(c, `🚘 New booking ${b.id}`, b));
+  jobs.push(
+    ...(await (priced
+      ? chatAlerts(c, `⏳ Quick Booking ${b.id}, awaiting payment`, b, "The guest is on the Paystack step. You'll get another alert once they pay.", "quick-unpaid")
+      : chatAlerts(c, `📝 New booking request ${b.id}`, b, "Not paid yet: agree a price, then send payment details.", "request"))),
+  );
 
   await settle(jobs, "booking");
 }
@@ -490,7 +529,11 @@ export async function notifyPaymentReceived(
       ),
     );
   }
-  jobs.push(...chatAlerts(c, `💸 Payment received, ${b.id}`, b));
+  jobs.push(
+    ...(await (b.paid
+      ? chatAlerts(c, `✅ Paid Quick Booking ${b.id}`, b, "Paid through Paystack. The receipt has already been emailed to the guest.", "quick-paid")
+      : chatAlerts(c, `💸 Payment submitted ${b.id}`, b, "The guest says they've transferred. Check your account, then confirm.", "payment-submitted"))),
+  );
 
   await settle(jobs, "payment");
 }
@@ -529,7 +572,70 @@ export async function notifyBookingUnsaved(
   }
   // With the database down, the saved Telegram/WhatsApp setup can't be read, so
   // this reaches those apps only through the env vars; email always goes.
-  jobs.push(...chatAlerts(await chatChannels(), "⚠️ Booking NOT saved", b, note));
+  jobs.push(...(await chatAlerts(await chatChannels(), "⚠️ Booking NOT saved", b, note)));
 
   await settle(jobs, "unsaved booking");
+}
+
+/* ── Team-sent guest emails (the /team/<ref> page, opened from Telegram) ────── */
+
+function requireEmail(b: Booking): string {
+  if (!RESEND_KEY) throw new Error("Email isn't set up on the server (RESEND_API_KEY is missing).");
+  if (!b.passenger.email) throw new Error("This guest didn't give an email address.");
+  return b.passenger.email;
+}
+
+const thanks = (b: Booking) => `Thank you${b.passenger.name ? `, ${esc(b.passenger.name)}` : ""}.`;
+
+function bankBox(bank: PaymentInfo, amount: number, ref: string): string {
+  const line = (k: string, v: string) =>
+    `<tr><td style="padding:4px 14px 4px 0;color:#64748b;font-size:13px">${k}</td><td style="padding:4px 0;color:#0f172a;font-size:15px;font-weight:600">${esc(v)}</td></tr>`;
+  return `<div style="margin-top:18px;padding:16px 18px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe">
+        <div style="color:#2A4FD0;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Pay by bank transfer</div>
+        <table style="border-collapse:collapse">${line("Amount", naira(amount))}${line("Bank", bank.bankName)}${line("Account number", bank.accountNumber)}${line("Account name", bank.accountName)}</table>
+        <p style="color:#475569;font-size:13px;line-height:1.6;margin:10px 0 0">If you can, put <strong>${esc(ref)}</strong> in the transfer note, then send your receipt to us on WhatsApp or by email.</p>
+      </div>`;
+}
+
+export async function emailPaymentDetails(b: Booking, amount: number): Promise<void> {
+  const to = requireEmail(b);
+  const bank = await bankDetails();
+  await sendEmail(
+    to,
+    `Payment details, ApexRide booking ${b.id}`,
+    emailShell(
+      "Confirm your booking with a transfer",
+      `${thanks(b)} To confirm booking <strong>${esc(b.id)}</strong>, please transfer <strong>${naira(amount)}</strong> to the account below. We'll confirm your ride as soon as payment is in.`,
+      { ...b, amount },
+      undefined,
+      bankBox(bank, amount, b.id),
+    ),
+  );
+}
+
+export async function emailBookingConfirmed(b: Booking): Promise<void> {
+  const to = requireEmail(b);
+  await sendEmail(
+    to,
+    `Booking confirmed, ApexRide ${b.id}`,
+    emailShell(
+      "Your booking is confirmed ✅",
+      `${thanks(b)} We've received your payment and booking <strong>${esc(b.id)}</strong> is confirmed. Your chauffeur's details will follow before pickup.`,
+      { ...b, paid: true },
+      { label: "Check your booking", href: `${SITE_URL}/check-booking?ref=${encodeURIComponent(b.id)}` },
+    ),
+  );
+}
+
+export async function emailBookingCancelled(b: Booking, reason?: string | null): Promise<void> {
+  const to = requireEmail(b);
+  await sendEmail(
+    to,
+    `Booking cancelled, ApexRide ${b.id}`,
+    emailShell(
+      "Your booking has been cancelled",
+      `Booking <strong>${esc(b.id)}</strong> for ${esc(b.date)} at ${esc(b.time)} has been cancelled.${reason ? ` Reason: ${esc(reason)}.` : ""} If this is a mistake or you'd like to rebook, contact us below.`,
+      b,
+    ),
+  );
 }

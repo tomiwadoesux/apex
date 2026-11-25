@@ -18,6 +18,24 @@ function sign(value: string): string {
   return createHmac("sha256", secret() ?? "").update(value).digest("hex");
 }
 
+// Signed links for the /team/<ref> page (opened from Telegram alert buttons):
+// only a link the server made for that booking + action passes.
+export type TeamAction = "pay" | "confirm" | "cancel";
+export const TEAM_ACTIONS: TeamAction[] = ["pay", "confirm", "cancel"];
+
+const refDigits = (ref: string) => ref.replace(/\D/g, "");
+
+export function signAction(ref: string, action: TeamAction): string {
+  return sign(`team:${refDigits(ref)}:${action}`).slice(0, 32);
+}
+
+export function verifyAction(ref: string, action: string, sig: string | null | undefined): action is TeamAction {
+  if (!TEAM_ACTIONS.includes(action as TeamAction) || !sig || !refDigits(ref)) return false;
+  const a = Buffer.from(sig);
+  const b = Buffer.from(signAction(ref, action as TeamAction));
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export function checkPassword(password: string): boolean {
   const s = secret();
   if (!s) return false; // admin disabled until ADMIN_PASSWORD is set
