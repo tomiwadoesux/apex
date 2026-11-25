@@ -28,6 +28,7 @@ const SECTIONS = {
   cars: ["hiddenCars", "extraCars", "qbRates"],
   quickCars: ["quickCars"],
   qbRates: ["qbRates"],
+  payment: ["payment"],
 } satisfies Record<string, (keyof SiteConfig)[]>;
 type Section = keyof typeof SECTIONS;
 
@@ -358,6 +359,34 @@ export default function OptionsTab({
           <br />• <span className="font-mono font-semibold text-neutral-700">PAYSTACK_SECRET_KEY</span>, your Paystack secret key
           <br />Until both are set, the pay button will say payments aren&apos;t configured yet.
         </p>
+      </section>
+
+      {/* bank account, sent to guests from the Telegram "Payment details" buttons */}
+      <section className={card}>
+        <h2 className="mb-1 text-sm font-bold uppercase tracking-wider" style={{ color: BLUE }}>Bank account</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          The account customers transfer to. It&apos;s sent when you tap <span className="font-semibold text-neutral-700">Payment details</span> under
+          a Telegram booking alert, by WhatsApp or email.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {([
+            ["bankName", "Bank name", "e.g. GTBank"],
+            ["accountNumber", "Account number", "10 digits"],
+            ["accountName", "Account name", "Name on the account"],
+          ] as const).map(([key, label, placeholder]) => (
+            <label key={key} className="block text-xs font-semibold text-neutral-600">
+              {label}
+              <input
+                value={config.payment[key]}
+                placeholder={placeholder}
+                inputMode={key === "accountNumber" ? "numeric" : undefined}
+                onChange={(e) => set("payment", { ...config.payment, [key]: e.target.value })}
+                className={`${input} mt-1`}
+              />
+            </label>
+          ))}
+        </div>
+        {saveButton("payment")}
       </section>
     </div>
   );
